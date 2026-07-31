@@ -1,33 +1,25 @@
-import { createContact, createSpecial, createSupply, createTrade, createVendor, createWorkItem, timestamp, type DailyReportV3, type SupplyType, type TradeSection } from '../domain/daily';
+import { createContact, createSpecial, createSupply, createTrade, createWorkItem, timestamp, type DailyReportV3, type SupplyType, type TradeSection } from '../domain/daily';
 import { localToday } from '../format/date-format';
 import { saveDailyDraft } from '../data/daily-repository';
 import { validateTrade } from './daily-validator';
 
 export class DailyController {
   report: DailyReportV3; expandedId: string | null = null; private timer?: number;
-  constructor(report?: DailyReportV3) { const now = timestamp(); this.report = { id: 'current', date: localToday(), siteNameSnapshot: '', activeTab: 'engineering', tradeSections: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now, ...report }; this.report.supplies ??= []; this.report.contacts ??= []; this.report.specialItems ??= []; }
+  constructor(report?: DailyReportV3) { const now = timestamp(); this.report = { id: 'current', date: localToday(), siteId: null, siteNameSnapshot: '', activeTab: 'engineering', tradeSections: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now, ...report }; this.report.siteId ??= null; this.report.supplies ??= []; this.report.contacts ??= []; this.report.specialItems ??= []; }
   update(mutator: () => void): void { mutator(); this.report.updatedAt = timestamp(); window.clearTimeout(this.timer); this.timer = window.setTimeout(() => this.flush(), 600); }
   async flush(): Promise<void> { window.clearTimeout(this.timer); await saveDailyDraft(this.report); }
   switchTab(tab: DailyReportV3['activeTab']): void { if (this.report.activeTab === tab) return; this.update(() => { if (this.report.activeTab === 'engineering') this.expandedId = null; this.report.activeTab = tab; }); }
-  addTrade(name: string): string | null { const trimmed = name.trim(); if (!trimmed) return null; const existing = this.report.tradeSections.find((item) => item.tradeNameSnapshot.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase()); if (existing) { this.expandedId = existing.id; existing.status = 'draft'; return existing.id; } const section = createTrade(trimmed, this.report.tradeSections.length); this.update(() => this.report.tradeSections.push(section)); this.expandedId = section.id; return section.id; }
   trade(id: string): TradeSection | undefined { return this.report.tradeSections.find((item) => item.id === id); }
-  addVendor(tradeId: string): void { const trade = this.trade(tradeId); if (trade) this.update(() => trade.vendors.push(createVendor(trade.vendors.length))); }
-  addWorkItem(tradeId: string, vendorId: string): void { const vendor = this.trade(tradeId)?.vendors.find((item) => item.id === vendorId); if (vendor) this.update(() => vendor.workItems.push(createWorkItem(vendor.workItems.length))); }
-  deleteWorkItem(tradeId: string, vendorId: string, workItemId: string): boolean {
-    const vendor = this.trade(tradeId)?.vendors.find((item) => item.id === vendorId);
-    const work = vendor?.workItems.find((item) => item.id === workItemId);
-    if (!vendor || !work) return false;
-    const hasContent = Boolean(work.locationText.trim() || work.taskTextSnapshot.trim() || work.note.trim());
-    if (hasContent && !window.confirm('確定刪除此工項？刪除後無法復原。')) return false;
-    this.update(() => {
-      vendor.workItems = vendor.workItems.filter((item) => item.id !== workItemId);
-      vendor.workItems.forEach((item, index) => item.sortOrder = index);
-    });
-    return true;
-  }
+  findDuplicate(tradeTypeId: string | null, tradeName: string, vendorId: string | null, vendorName: string, exceptId?: string): TradeSection | undefined { const normalizedTrade = tradeName.trim().toLocaleLowerCase(); const normalizedVendor = vendorName.trim().toLocaleLowerCase(); return this.report.tradeSections.find((item) => { const sameTrade = tradeTypeId && item.tradeTypeId ? item.tradeTypeId === tradeTypeId : item.tradeNameSnapshot.trim().toLocaleLowerCase() === normalizedTrade; const sameVendor = vendorId && item.vendorId ? item.vendorId === vendorId : item.vendorNameSnapshot.trim().toLocaleLowerCase() === normalizedVendor; return item.id !== exceptId && sameTrade && sameVendor; }); }
+  addTrade(name: string, vendorName: string, tradeTypeId: string | null = null, vendorId: string | null = null): TradeSection | undefined { if (!name.trim() || !vendorName.trim()) return undefined; const existing = this.findDuplicate(tradeTypeId, name, vendorId, vendorName); if (existing) { this.expandedId = existing.id; return existing; } const section = createTrade(name, vendorName, this.report.tradeSections.length, tradeTypeId, vendorId); this.update(() => this.report.tradeSections.push(section)); this.expandedId = section.id; return section; }
+  changeVendor(id: string, vendorName: string, vendorId: string | null = null): TradeSection | undefined { const trade = this.trade(id); if (!trade || !vendorName.trim()) return undefined; const existing = this.findDuplicate(trade.tradeTypeId, trade.tradeNameSnapshot, vendorId, vendorName, id); if (existing) { this.expandedId = existing.id; return existing; } this.update(() => { trade.vendorId = vendorId; trade.vendorNameSnapshot = vendorName.trim(); }); return undefined; }
+  addWorkItem(tradeId: string): void { const trade = this.trade(tradeId); if (trade) this.update(() => trade.workItems.push(createWorkItem(trade.workItems.length))); }
+  deleteWorkItem(tradeId: string, workItemId: string): boolean { const trade = this.trade(tradeId); const work = trade?.workItems.find((item) => item.id === workItemId); if (!trade || !work) return false; const hasContent = Boolean(work.locationTextSnapshot.trim() || work.taskTextSnapshot.trim() || work.note.trim() || work.startFloorRaw || work.endFloorRaw); if (hasContent && !window.confirm('確定刪除此工項？刪除後無法復原。')) return false; this.update(() => { trade.workItems = trade.workItems.filter((item) => item.id !== workItemId); trade.workItems.forEach((item, index) => item.sortOrder = index); }); return true; }
+  deleteTrade(id: string): boolean { const trade = this.trade(id); if (!trade) return false; const hasContent = Boolean(trade.workerCount || trade.workItems.length); if (hasContent && !window.confirm(`確定刪除「${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot}」？\n\n此工種區塊中的施工人數與所有工項將一併刪除。`)) return false; this.update(() => { this.report.tradeSections = this.report.tradeSections.filter((item) => item.id !== id); this.report.tradeSections.forEach((item, index) => item.sortOrder = index); }); if (this.expandedId === id) this.expandedId = null; return true; }
+  reorderTrades(from: number, to: number): void { if (from === to || from < 0 || to < 0 || from >= this.report.tradeSections.length || to >= this.report.tradeSections.length) return; this.update(() => { const [section] = this.report.tradeSections.splice(from, 1); this.report.tradeSections.splice(to, 0, section); this.report.tradeSections.forEach((item, index) => item.sortOrder = index); }); }
   addSupply(type: SupplyType): void { this.update(() => this.report.supplies.push(createSupply(this.report.supplies.length, type))); }
   addContact(): void { this.update(() => this.report.contacts.push(createContact(this.report.contacts.length))); }
   addSpecial(): void { this.update(() => this.report.specialItems.push(createSpecial(this.report.specialItems.length))); }
   complete(tradeId: string): string[] { const trade = this.trade(tradeId); if (!trade) return []; const issues = validateTrade(trade); if (!issues.length) this.update(() => { trade.status = 'complete'; this.expandedId = null; }); return issues.map((item) => item.message); }
-  toggle(tradeId: string): void { const trade = this.trade(tradeId); if (!trade) return; this.update(() => { if (this.expandedId === tradeId) this.expandedId = null; else { if (trade.status === 'complete') trade.status = 'draft'; this.expandedId = tradeId; } }); }
+  toggle(tradeId: string): void { const trade = this.trade(tradeId); if (!trade) return; this.update(() => { if (this.expandedId === tradeId) this.expandedId = null; else this.expandedId = tradeId; }); }
 }
