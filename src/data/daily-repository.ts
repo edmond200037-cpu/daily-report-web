@@ -1,4 +1,4 @@
-import { timestamp, type DailyReportV3, type TradeSection, type WorkItem } from '../domain/daily';
+import { timestamp, type DailyReportV3, type TradeSection, type WorkItem, type MaterialEntry } from '../domain/daily';
 import { STORES } from './db.js';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
@@ -12,7 +12,7 @@ export const normalizeName = (value: string): string => value.trim().replace(/�
 export const cleanName = (value: string): string => value.trim().replace(/　/g, ' ').replace(/\s+/g, ' ');
 const now = () => new Date().toISOString();
 
-async function db(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const open = indexedDB.open('construction-daily-report', 4); open.onupgradeneeded = () => { const database = open.result; STORES.forEach((store: string) => { if (!database.objectStoreNames.contains(store)) database.createObjectStore(store, { keyPath: 'id' }); }); }; open.onsuccess = () => resolve(open.result); open.onerror = () => reject(new Error('無法開啟本機資料庫。')); }); }
+async function db(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const open = indexedDB.open('construction-daily-report', 5); open.onupgradeneeded = () => { const database = open.result; STORES.forEach((store: string) => { if (!database.objectStoreNames.contains(store)) database.createObjectStore(store, { keyPath: 'id' }); }); }; open.onsuccess = () => resolve(open.result); open.onerror = () => reject(new Error('無法開啟本機資料庫。')); }); }
 function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undefined {
   if (!value) return value;
   value.siteId ??= null;
@@ -20,9 +20,11 @@ function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undef
   const legacySections = value.tradeSections as Array<TradeSection & { vendors?: Array<{ id: string; vendorId?: string | null; vendorNameSnapshot?: string; workerCount?: string; sortOrder?: number; workItems?: WorkItem[]; createdAt?: string; updatedAt?: string }> }>;
   value.tradeSections = legacySections.flatMap((trade, tradeIndex) => {
     if (!trade.vendors) return [trade];
-    return trade.vendors.map((vendor, vendorIndex) => ({ id: vendor.id || crypto.randomUUID(), tradeTypeId: trade.tradeTypeId ?? null, tradeNameSnapshot: trade.tradeNameSnapshot ?? '', vendorId: vendor.vendorId ?? null, vendorNameSnapshot: vendor.vendorNameSnapshot ?? '', workerCount: vendor.workerCount ?? '', workItems: vendor.workItems ?? [], status: trade.status ?? 'draft', sortOrder: tradeIndex + vendorIndex / 1000, createdAt: vendor.createdAt ?? trade.createdAt ?? timestamp(), updatedAt: vendor.updatedAt ?? trade.updatedAt ?? timestamp() }));
+    return trade.vendors.map((vendor, vendorIndex) => ({ id: vendor.id || crypto.randomUUID(), tradeTypeId: trade.tradeTypeId ?? null, tradeNameSnapshot: trade.tradeNameSnapshot ?? '', vendorId: vendor.vendorId ?? null, vendorNameSnapshot: vendor.vendorNameSnapshot ?? '', workerCount: vendor.workerCount ?? '', workItems: vendor.workItems ?? [], materialEntries: [], status: trade.status ?? 'draft', sortOrder: tradeIndex + vendorIndex / 1000, createdAt: vendor.createdAt ?? trade.createdAt ?? timestamp(), updatedAt: vendor.updatedAt ?? trade.updatedAt ?? timestamp() }));
   });
   value.tradeSections.sort((a, b) => a.sortOrder - b.sortOrder).forEach((trade, index) => { trade.sortOrder = index; trade.tradeTypeId ??= null; trade.vendorId ??= null; trade.vendorNameSnapshot ??= ''; trade.workerCount ??= ''; trade.workItems ??= []; trade.workItems.forEach((work: WorkItem & { locationText?: string }, workIndex) => { work.sortOrder ??= workIndex; work.startFloorRaw ??= ''; work.startFloorNormalized ??= null; work.endFloorRaw ??= ''; work.endFloorNormalized ??= null; work.locationId ??= null; work.locationTextSnapshot ??= work.locationText ?? ''; work.taskId ??= null; delete work.locationText; delete (work as unknown as { locationMode?: unknown }).locationMode; }); });
+  value.tradeSections.forEach((trade) => { trade.materialEntries ??= []; });
+  value.standaloneMaterialEntries ??= (value.supplies ?? []).map((supply, index): MaterialEntry => ({ id: supply.id || crypto.randomUUID(), materialTypeId: null, materialTypeSnapshot: supply.type === 'concrete' ? '混凝土' : supply.type === 'clsm' ? 'CLSM' : supply.type === 'rebar' ? '鋼筋' : supply.name, itemName: supply.name || (supply.type === 'concrete' ? '混凝土' : ''), supplierId: null, supplierNameSnapshot: '', quantity: supply.quantity ?? '', unit: supply.unit || (supply.type === 'concrete' ? 'm3' : supply.type === 'clsm' ? '立方' : supply.type === 'rebar' ? '噸' : ''), specification: supply.strength ?? '', note: '', sortOrder: index, createdAt: supply.createdAt ?? timestamp(), updatedAt: supply.updatedAt ?? timestamp() }));
   return value;
 }
 export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> { const database = await db(); try { return normalizeDraft(await request(database.transaction('live_report_draft').objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined); } finally { database.close(); } }

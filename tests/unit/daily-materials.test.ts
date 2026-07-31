@@ -1,0 +1,16 @@
+import { describe, expect, it } from 'vitest';
+import { formatDailyReport } from '../../src/daily/daily-formatter';
+import { validateMaterialEntry } from '../../src/daily/daily-validator';
+import type { DailyReportV3, MaterialEntry } from '../../src/domain/daily';
+
+const material = (overrides: Partial<MaterialEntry> = {}): MaterialEntry => ({ id: 'm1', materialTypeId: null, materialTypeSnapshot: '混凝土', itemName: '一般混凝土', supplierId: null, supplierNameSnapshot: '天誠', quantity: '5', unit: '方', specification: '140kgf/cm²', note: '', sortOrder: 0, createdAt: '', updatedAt: '', ...overrides });
+const report = (): DailyReportV3 => ({ id: 'current', date: '2026-07-31', siteId: null, siteNameSnapshot: '鑫天地六期', activeTab: 'engineering', tradeSections: [{ id: 't1', tradeTypeId: null, tradeNameSnapshot: '安全支撐工程', vendorId: null, vendorNameSnapshot: '安暉', workerCount: '10', workItems: [{ id: 'w1', startFloorRaw: '', startFloorNormalized: null, endFloorRaw: '', endFloorNormalized: null, locationId: null, locationTextSnapshot: '', taskId: null, taskTextSnapshot: '支撐材料進場', note: '', sortOrder: 0, createdAt: '', updatedAt: '' }], materialEntries: [material()], status: 'complete', sortOrder: 0, createdAt: '', updatedAt: '' }], standaloneMaterialEntries: [material({ id: 'm2', itemName: '混凝土', quantity: '2.5', specification: '350kgf/cm²' })], supplies: [], contacts: [], specialItems: [], createdAt: '', updatedAt: '' });
+
+describe('叫料格式與驗證', () => {
+  it('工種叫料附屬於工種，獨立叫料排在工種之後', () => {
+    expect(formatDailyReport(report())).toContain('安全支撐工程：\n1.安暉10工-支撐材料進場。\n2.混凝土-天誠：一般混凝土5方，140kgf/cm²。\n\n混凝土-天誠：混凝土2.5方，350kgf/cm²。');
+  });
+  it('拒絕不合法的叫料數量與缺少供應商', () => {
+    expect(validateMaterialEntry(material({ quantity: '5方', supplierNameSnapshot: '' }))).toEqual(['請填寫供應商。', '數量只能輸入大於 0 的數字。']);
+  });
+});

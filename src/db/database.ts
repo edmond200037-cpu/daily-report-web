@@ -1,8 +1,8 @@
 import type { BackupPayload, Draft, Entity, ReportSnapshot } from '../types/domain';
 
-export const STORE_NAMES = ['sites', 'trade_types', 'trade_vendors', 'trade_tasks', 'floor_options', 'daily_reports', 'daily_memory_commits', 'app_settings', 'live_report_draft', 'water_level_points', 'water_level_logs', 'water_level_readings', 'debug_logs', 'reports', 'drafts', 'vendor_tasks', 'materials', 'material_specifications', 'special_categories', 'special_templates', 'special_template_variables', 'migration_metadata'] as const;
+export const STORE_NAMES = ['sites', 'trade_types', 'trade_vendors', 'trade_tasks', 'floor_options', 'daily_reports', 'daily_memory_commits', 'app_settings', 'live_report_draft', 'water_level_points', 'water_level_logs', 'water_level_readings', 'debug_logs', 'reports', 'drafts', 'vendor_tasks', 'materials', 'material_memories', 'supplier_memories', 'material_specifications', 'special_categories', 'special_templates', 'special_template_variables', 'migration_metadata'] as const;
 export type StoreName = typeof STORE_NAMES[number];
-const DB_NAME = 'construction-daily-report'; const DB_VERSION = 3;
+const DB_NAME = 'construction-daily-report'; const DB_VERSION = 5;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
