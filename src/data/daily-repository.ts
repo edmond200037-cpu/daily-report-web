@@ -3,7 +3,7 @@ import { STORES } from './db.js';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
 export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status?: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; }
-export type DailySettingsSection = 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations' | 'templates' | 'backup' | 'debug';
+export type DailySettingsSection = 'sites' | 'trade-tasks' | 'trades' | 'tasks' | 'vendors' | 'locations' | 'templates' | 'backup' | 'debug';
 export interface SpecialTemplate { id: string; text: string; normalizedName: string; createdAt: string; updatedAt: string; }
 const TEMPLATE_KEY = 'daily_special_templates_v1';
 const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
