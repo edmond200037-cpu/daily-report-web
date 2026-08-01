@@ -13,4 +13,12 @@ describe('叫料格式與驗證', () => {
   it('拒絕不合法的叫料數量與缺少供應商', () => {
     expect(validateMaterialEntry(material({ quantity: '5方', supplierNameSnapshot: '' }))).toEqual(['請填寫供應商。', '數量只能輸入大於 0 的數字。']);
   });
+  it('已連接獨立進料只在所屬工種輸出一次', () => {
+    const draft = report();
+    draft.tradeSections[0].materialEntries = [];
+    draft.standaloneMaterialEntries = [material({ id: 'm3', entryType: 'independent', connectedTradeSectionId: 't1', itemName: '泵送混凝土' })];
+    const output = formatDailyReport(draft);
+    expect(output).toContain('2.混凝土-天誠：泵送混凝土5方，140kgf/cm²。');
+    expect(output.match(/泵送混凝土/g)).toHaveLength(1);
+  });
 });
