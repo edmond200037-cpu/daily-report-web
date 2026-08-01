@@ -148,6 +148,11 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .backup { display: grid; gap: var(--space-3); }
 .backup hr { width: 100%; border: 0; border-top: 1px solid var(--line); }
 .hint, .empty { line-height: 1.65; }
+.pwa-update-notice { position: fixed; z-index: 80; right: var(--space-4); bottom: calc(var(--space-4) + env(safe-area-inset-bottom)); left: var(--space-4); display: grid; gap: var(--space-3); border: 1px solid #a9680c; border-radius: var(--radius-md); background: #fff7e8; box-shadow: 0 14px 34px rgb(73 48 12 / 22%); color: #503507; padding: var(--space-3) var(--space-4); }
+.pwa-update-notice strong { color: #5c3900; }
+.pwa-update-notice p { margin: var(--space-1) 0 0; font-size: .8125rem; line-height: 1.5; }
+.pwa-update-notice__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pwa-update-notice__actions button { min-height: 40px; }
 
 @media (min-width: 640px) {
   .app-shell { padding: 2rem 1.5rem 8rem; }
@@ -156,6 +161,7 @@ textarea { min-height: 4.5rem; resize: vertical; }
   .entry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .material-entry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-3); }
   .material-entry .danger-text { grid-column: 1 / -1; justify-self: start; }
+  .pwa-update-notice { right: 2rem; bottom: 2rem; left: auto; width: min(420px, calc(100vw - 4rem)); }
 }
 
 @media (min-width: 768px) { .settings-section-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
