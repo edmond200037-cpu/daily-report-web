@@ -3,11 +3,13 @@ import { localToday } from '../format/date-format';
 import { saveDailyDraft } from '../data/daily-repository';
 import { validateTrade } from './daily-validator';
 
+export type DailySaveState = 'saving' | 'saved' | 'error';
+
 export class DailyController {
   report: DailyReportV3; expandedId: string | null = null; private timer?: number;
-  constructor(report?: DailyReportV3) { const now = timestamp(); this.report = { id: 'current', date: localToday(), siteId: null, siteNameSnapshot: '', activeTab: 'engineering', tradeSections: [], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now, ...report }; this.report.siteId ??= null; this.report.supplies ??= []; this.report.standaloneMaterialEntries ??= []; this.report.tradeSections.forEach((trade) => trade.materialEntries ??= []); this.report.contacts ??= []; this.report.specialItems ??= []; }
-  update(mutator: () => void): void { mutator(); this.report.updatedAt = timestamp(); window.clearTimeout(this.timer); this.timer = window.setTimeout(() => this.flush(), 600); }
-  async flush(): Promise<void> { window.clearTimeout(this.timer); await saveDailyDraft(this.report); }
+  constructor(report?: DailyReportV3, private readonly onSaveState?: (state: DailySaveState) => void) { const now = timestamp(); this.report = { id: 'current', date: localToday(), siteId: null, siteNameSnapshot: '', activeTab: 'engineering', tradeSections: [], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now, ...report }; this.report.siteId ??= null; this.report.supplies ??= []; this.report.standaloneMaterialEntries ??= []; this.report.tradeSections.forEach((trade) => trade.materialEntries ??= []); this.report.contacts ??= []; this.report.specialItems ??= []; }
+  update(mutator: () => void): void { mutator(); this.report.updatedAt = timestamp(); this.onSaveState?.('saving'); window.clearTimeout(this.timer); this.timer = window.setTimeout(() => { void this.flush().catch(() => undefined); }, 600); }
+  async flush(): Promise<void> { window.clearTimeout(this.timer); this.onSaveState?.('saving'); try { await saveDailyDraft(this.report); this.onSaveState?.('saved'); } catch (error) { this.onSaveState?.('error'); throw error; } }
   switchTab(tab: DailyReportV3['activeTab']): void { if (this.report.activeTab === tab) return; this.update(() => { if (this.report.activeTab === 'engineering') this.expandedId = null; this.report.activeTab = tab; }); }
   trade(id: string): TradeSection | undefined { return this.report.tradeSections.find((item) => item.id === id); }
   findDuplicate(tradeTypeId: string | null, tradeName: string, vendorId: string | null, vendorName: string, exceptId?: string): TradeSection | undefined { const normalizedTrade = tradeName.trim().toLocaleLowerCase(); const normalizedVendor = vendorName.trim().toLocaleLowerCase(); return this.report.tradeSections.find((item) => { const sameTrade = tradeTypeId && item.tradeTypeId ? item.tradeTypeId === tradeTypeId : item.tradeNameSnapshot.trim().toLocaleLowerCase() === normalizedTrade; const sameVendor = vendorId && item.vendorId ? item.vendorId === vendorId : item.vendorNameSnapshot.trim().toLocaleLowerCase() === normalizedVendor; return item.id !== exceptId && sameTrade && sameVendor; }); }

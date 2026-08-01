@@ -1,1 +1,31 @@
-.dialog-backdrop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:1rem;background:#102b276b}.trade-picker{width:min(100%,420px);padding:1.15rem;border-radius:14px;background:#fffdf8;box-shadow:0 18px 48px #102b2766}.trade-picker h2{margin:.1rem 0 .8rem;font-family:Georgia,"Noto Serif TC",serif}.trade-picker input{font-size:1rem}.floating-add-trade{right:1.75rem}@media(min-width:640px){.floating-add-trade{right:2.75rem}}
+.dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 1rem; background: rgb(24 33 38 / 52%); }
+.trade-picker { width: min(100%, 420px); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); box-shadow: 0 18px 48px rgb(24 33 38 / 22%); padding: 1.15rem; }
+.trade-picker h2 { margin: .1rem 0 .8rem; color: var(--ink); font-size: 1.125rem; letter-spacing: -.01em; }
+.trade-picker input { font-size: 1rem; }
+
+/* Imported after the daily layout layer: aligns the live output drawer with the shared product tokens. */
+.daily-page { padding-bottom: 7rem; }
+.save-status { color: var(--ink-soft); font-size: .6875rem; font-weight: 760; }
+.save-status[data-state="saving"] { color: var(--accent-strong); }
+.save-status[data-state="error"] { color: var(--danger); }
+.daily-tabs { position: sticky; top: 0; z-index: 20; background: var(--canvas); padding: .5rem 0 0; }
+.work-section { display: grid; gap: var(--space-3); }
+.work-section__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding: .25rem 0; }
+.work-section__header h2 { margin: 0; color: var(--ink); font-size: 1.125rem; font-weight: 760; letter-spacing: -.01em; }
+.work-section__header p { margin: .25rem 0 0; color: var(--ink-soft); font-size: .875rem; line-height: 1.5; }
+.work-section__add { flex: none; min-height: 44px; }
+.work-section__empty { margin: 0; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); color: var(--ink-soft); padding: 1.25rem; text-align: center; }
+.daily-output { position: fixed; right: var(--page-edge-gap); bottom: calc(var(--preview-bottom-gap) + env(safe-area-inset-bottom)); left: var(--page-edge-gap); z-index: 30; overflow: hidden; border: 1px solid #3d4b53; border-radius: var(--radius-md); background: #202a30; color: #edf1f2; box-shadow: 0 12px 28px rgb(24 33 38 / 20%); }
+.daily-output__toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%; min-height: 58px; border: 0; border-radius: 0; background: #202a30; color: #edf1f2; padding: .75rem 1rem; text-align: left; }
+.daily-output__toggle:hover { background: #29363d; }
+.daily-output__toggle > span:first-child { display: grid; gap: .15rem; min-width: 0; }
+.daily-output__toggle strong { font-size: .9375rem; }
+.daily-output__toggle span span { overflow: hidden; color: #b6c5cb; font-size: .8rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.daily-output__toggle > span:last-child { flex: none; color: #f2bb58; font-size: .8125rem; }
+.daily-output__content { padding: 0 1rem 1rem; border-top: 1px solid #3d4b53; }
+.daily-output__content pre { max-height: min(42vh, 24rem); overflow: auto; margin: .85rem 0; border: 1px solid #3d4b53; border-radius: var(--radius-sm); background: #182126; color: #e6ebed; font-family: inherit; font-size: .875rem; line-height: 1.65; padding: .75rem; white-space: pre-wrap; word-break: break-word; }
+.daily-output__content .primary { width: 100%; }
+.daily-output__warning { margin: .85rem 0 0; color: #f2bb58; font-size: .875rem; }
+.daily-output__feedback { margin: .7rem 0 0; color: #b9dbc9; font-size: .875rem; font-weight: 700; text-align: center; }
+@media (min-width: 640px) { .daily-page { padding-bottom: 6rem; } .daily-output { left: auto; right: 2rem; width: min(520px, calc(100vw - 2rem)); } }
+@media (max-width: 420px) { .work-section__header { align-items: stretch; flex-direction: column; } .work-section__add { width: 100%; } .daily-output__toggle { min-height: 62px; } .daily-output__toggle span span { white-space: normal; } }
