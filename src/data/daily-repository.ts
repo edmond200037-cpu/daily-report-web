@@ -1,4 +1,4 @@
-import { timestamp, type DailyReportV3, type TradeSection, type WorkItem, type MaterialEntry } from '../domain/daily';
+import { timestamp, type DailyReportV3, type TradeSection, type WorkItem, type MaterialEntry, type ContactItem } from '../domain/daily';
 import { STORES } from './db.js';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
@@ -32,10 +32,41 @@ function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undef
   const existingMaterialIds = new Set(value.standaloneMaterialEntries.map((entry) => entry.id));
   value.tradeSections.forEach((trade) => { const legacyEntries = trade.materialEntries ?? []; legacyEntries.forEach((entry) => { if (!existingMaterialIds.has(entry.id)) { value.standaloneMaterialEntries.push({ ...entry, entryType: 'independent', connectedTradeSectionId: trade.id, sortOrder: value.standaloneMaterialEntries.length }); existingMaterialIds.add(entry.id); } }); trade.materialEntries = []; });
   value.standaloneMaterialEntries.forEach((entry, index) => entry.sortOrder = index);
+  const legacyContacts = value.contacts as Array<ContactItem & { plannedDate?: string; content?: string }> | undefined;
+  value.contacts = (legacyContacts ?? []).map((contact, contactIndex) => {
+    const stamp = contact.updatedAt ?? contact.createdAt ?? timestamp();
+    const items = contact.items?.length ? contact.items : (contact.content?.trim() ? [{ id: crypto.randomUUID(), content: contact.content.trim(), sortOrder: 0, createdAt: stamp, updatedAt: stamp }] : []);
+    return { ...contact, tradeTypeId: contact.tradeTypeId ?? null, vendorId: contact.vendorId ?? null, items: items.map((item, index) => ({ ...item, id: item.id || crypto.randomUUID(), content: item.content?.trim() ?? '', sortOrder: index, createdAt: item.createdAt ?? stamp, updatedAt: item.updatedAt ?? stamp })), sortOrder: contact.sortOrder ?? contactIndex, createdAt: contact.createdAt ?? stamp, updatedAt: stamp };
+  });
   return value;
 }
 export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> { const database = await db(); try { return normalizeDraft(await request(database.transaction('live_report_draft').objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined); } finally { database.close(); } }
 export async function saveDailyDraft(report: DailyReportV3): Promise<void> { const database = await db(); try { const tx = database.transaction('live_report_draft', 'readwrite'); tx.objectStore('live_report_draft').put(report); await txDone(tx); } finally { database.close(); } }
+
+function touchNamedMemory(store: IDBObjectStore, rows: NamedMemory[], value: string, stamp: string, tradeTypeId?: string): NamedMemory {
+  const name = cleanName(value); const normalizedName = normalizeName(name);
+  const current = rows.find((row) => row.normalizedName === normalizedName && (tradeTypeId === undefined || row.tradeTypeId === tradeTypeId));
+  const row: NamedMemory = current ? { ...current, name, usageCount: current.usageCount + 1, lastUsedAt: stamp, updatedAt: stamp } : { id: crypto.randomUUID(), name, normalizedName, usageCount: 1, lastUsedAt: stamp, createdAt: stamp, updatedAt: stamp, ...(tradeTypeId ? { tradeTypeId, status: 'confirmed' as const, manuallyCreated: false, manuallyConfirmed: false, firstUsedAt: stamp } : {}) };
+  store.put(row); return row;
+}
+
+/** Commits a contact and its reusable memories as one all-or-nothing transaction. */
+export async function saveContactEntry(report: DailyReportV3, contact: ContactItem): Promise<{ report: DailyReportV3; contact: ContactItem }> {
+  const database = await db();
+  try {
+    const tx = database.transaction(['live_report_draft', 'trade_types', 'trade_vendors', 'trade_tasks'], 'readwrite');
+    const trades = await request(tx.objectStore('trade_types').getAll()) as NamedMemory[];
+    const stamp = now(); const trade = touchNamedMemory(tx.objectStore('trade_types'), trades, contact.tradeNameSnapshot, stamp);
+    const vendors = await request(tx.objectStore('trade_vendors').getAll()) as NamedMemory[];
+    const vendor = touchNamedMemory(tx.objectStore('trade_vendors'), vendors, contact.vendorNameSnapshot, stamp, trade.id);
+    const tasks = await request(tx.objectStore('trade_tasks').getAll()) as NamedMemory[];
+    const items = contact.items.map((item, index) => ({ ...item, content: cleanName(item.content), sortOrder: index, updatedAt: stamp, createdAt: item.createdAt || stamp }));
+    items.forEach((item) => touchNamedMemory(tx.objectStore('trade_tasks'), tasks, item.content, stamp, trade.id));
+    const saved: ContactItem = { ...contact, id: contact.id || crypto.randomUUID(), tradeTypeId: trade.id, tradeNameSnapshot: trade.name, vendorId: vendor.id, vendorNameSnapshot: vendor.name, items, updatedAt: stamp, createdAt: contact.createdAt || stamp };
+    const next = structuredClone(report); const index = next.contacts.findIndex((item) => item.id === saved.id); if (index >= 0) next.contacts[index] = saved; else { saved.sortOrder = next.contacts.length; next.contacts.push(saved); } next.contacts.forEach((item, itemIndex) => item.sortOrder = itemIndex); next.updatedAt = stamp;
+    tx.objectStore('live_report_draft').put(next); await txDone(tx); return { report: next, contact: saved };
+  } finally { database.close(); }
+}
 
 export async function listMaterialTypes(): Promise<MaterialType[]> { const database = await db(); try { return (await request(database.transaction('material_types').objectStore('material_types').getAll()) as MaterialType[]).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)); } finally { database.close(); } }
 export async function createMaterialType(value: string): Promise<void> { const database = await db(); try { const tx = database.transaction('material_types', 'readwrite'); const store = tx.objectStore('material_types'); const types = await request(store.getAll()) as MaterialType[]; const name = materialTypeName(value); const error = materialTypeError(name, types); if (error) throw new Error(error); const stamp = now(); store.put({ id: crypto.randomUUID(), name, normalizedName: normalizeName(name), sortOrder: types.length, usageCount: 0, lastUsedAt: null, recentUnit: '', recentSupplierName: '', createdAt: stamp, updatedAt: stamp } satisfies MaterialType); await txDone(tx); } finally { database.close(); } }

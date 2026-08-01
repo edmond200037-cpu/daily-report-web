@@ -21,4 +21,9 @@ describe('叫料格式與驗證', () => {
     expect(output).toContain('2.混凝土-天誠：泵送混凝土5方，140kgf/cm²。');
     expect(output.match(/泵送混凝土/g)).toHaveLength(1);
   });
+  it('聯絡事項依施工項目排序使用全形分號輸出', () => {
+    const draft = report();
+    draft.contacts = [{ id: 'c1', tradeTypeId: 't1', tradeNameSnapshot: '鋼筋工程', vendorId: 'v1', vendorNameSnapshot: '萬大禾', items: [{ id: 'i2', content: '門窗開口補強', sortOrder: 1, createdAt: '', updatedAt: '' }, { id: 'i1', content: '1FL～3FL門窗角隅補強', sortOrder: 0, createdAt: '', updatedAt: '' }], sortOrder: 0, createdAt: '', updatedAt: '' }];
+    expect(formatDailyReport(draft)).toContain('鋼筋工程－萬大禾：1FL～3FL門窗角隅補強；門窗開口補強。');
+  });
 });
