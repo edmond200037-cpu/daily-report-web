@@ -123,6 +123,8 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .section-card header { display: flex; align-items: center; gap: var(--space-2); border-bottom: 1px solid var(--line); padding-bottom: var(--space-3); }
 .card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-left: auto; }
 .action-row, .button-group, .settings-item-actions, .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.form-actions--submit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; margin-top: var(--space-4); }
+.form-actions--submit > button { width: 100%; min-height: 44px; }
 
 .settings-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
 .settings-section-grid > button { width: 100%; min-height: 48px; }
