@@ -1,4 +1,4 @@
-import type { TradeSection, WorkItem, MaterialEntry } from '../domain/daily';
+import type { DailyReportV3, TradeSection, WorkItem, MaterialEntry } from '../domain/daily';
 import { normalizeName } from '../format/normalization';
 import { floorRange, normalizeFloor } from './floor';
 export interface DailyIssue { field: string; message: string; }
@@ -22,4 +22,15 @@ export function validateTrade(trade: TradeSection, linkedMaterials: MaterialEntr
   });
   [...trade.materialEntries, ...linkedMaterials].forEach((entry) => validateMaterialEntry(entry).forEach((message) => issues.push({ field: entry.id, message })));
   return issues;
+}
+
+export function validateDailyForFinalization(report: DailyReportV3): string[] {
+  const issues: string[] = [];
+  if (!report.date) issues.push('請填寫日報日期。');
+  if (!report.siteNameSnapshot.trim()) issues.push('請填寫工地名稱。');
+  if (!report.tradeSections.length) issues.push('請至少完成一個工種。');
+  if (report.tradeSections.some((trade) => trade.status !== 'complete')) issues.push('尚有工種草稿，請完成或刪除後再定稿。');
+  if (!report.tradeSections.some((trade) => trade.status === 'complete')) issues.push('請至少完成一個工種。');
+  report.tradeSections.filter((trade) => trade.status === 'complete').forEach((trade) => validateTrade(trade, report.standaloneMaterialEntries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId === trade.id)).forEach((issue) => issues.push(`${trade.tradeNameSnapshot || '工種'}：${issue.message}`)));
+  return [...new Set(issues)];
 }

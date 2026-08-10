@@ -1,5 +1,6 @@
-import { timestamp, type DailyReportV3, type TradeSection, type WorkItem, type MaterialEntry, type ContactItem } from '../domain/daily';
-import { STORES } from './db.js';
+import { createDailyDraft, DAILY_TEMPLATE_VERSION, timestamp, type DailyReportV3, type FinalizedDailyReport, type TradeSection, type WorkItem, type MaterialEntry, type ContactItem } from '../domain/daily';
+import { localToday } from '../format/date-format';
+import { openDatabase, STORES } from './db.js';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
 export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status?: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; }
@@ -15,7 +16,7 @@ const now = () => new Date().toISOString();
 export interface MaterialType { id: string; name: string; normalizedName: string; sortOrder: number; usageCount: number; lastUsedAt: string | null; recentUnit: string; recentSupplierName: string; createdAt: string; updatedAt: string; }
 export type MaterialMemoryField = 'itemName' | 'specification' | 'unit' | 'supplier';
 export interface MaterialMemoryItem { id: string; materialTypeId: string; fieldType: MaterialMemoryField; value: string; normalizedValue: string; usageCount: number; lastUsedAt: string; createdAt: string; updatedAt: string; }
-async function db(): Promise<IDBDatabase> { return new Promise((resolve, reject) => { const open = indexedDB.open('construction-daily-report', 6); open.onupgradeneeded = () => { const database = open.result; STORES.forEach((store: string) => { if (!database.objectStoreNames.contains(store)) database.createObjectStore(store, { keyPath: 'id' }); }); }; open.onsuccess = () => resolve(open.result); open.onerror = () => reject(new Error('無法開啟本機資料庫。')); }); }
+async function db(): Promise<IDBDatabase> { return openDatabase() as Promise<IDBDatabase>; }
 function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undefined {
   if (!value) return value;
   value.siteId ??= null;
@@ -116,3 +117,81 @@ export async function saveTemplate(value: string, editingId?: string): Promise<v
 export async function deleteTemplate(id: string): Promise<void> { const database = await db(); try { const tx = database.transaction('app_settings', 'readwrite'); const current = await request(tx.objectStore('app_settings').get(TEMPLATE_KEY)) as { id: string; templates?: SpecialTemplate[] } | undefined; tx.objectStore('app_settings').put({ id: TEMPLATE_KEY, templates: (current?.templates ?? []).filter((item) => item.id !== id) }); await txDone(tx); } finally { database.close(); } }
 export async function databaseSummary(): Promise<Record<string, number>> { const database = await db(); try { const output: Record<string, number> = {}; for (const store of STORES as string[]) output[store] = await request(database.transaction(store).objectStore(store).count()); return output; } finally { database.close(); } }
 export async function clearDebugLogs(): Promise<void> { const database = await db(); try { const tx = database.transaction('debug_logs', 'readwrite'); tx.objectStore('debug_logs').clear(); await txDone(tx); } finally { database.close(); } }
+
+export interface MemoryBackupPayload { schemaVersion: 1; exportType: 'memories'; exportedAt: string; appVersion: string; data: Record<string, unknown[]>; }
+export interface MemoryMergeSummary { added: number; skipped: number; invalid: number; }
+const MEMORY_STORES = ['sites', 'trade_types', 'trade_vendors', 'trade_tasks', 'location_memories', 'material_types', 'material_memory_items', 'app_settings'] as const;
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value));
+const rows = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
+
+/** Validates the portable, memory-only backup boundary before any write begins. */
+export function validateMemoryBackup(value: unknown): MemoryBackupPayload {
+  if (!isRecord(value) || value.schemaVersion !== 1 || value.exportType !== 'memories' || !isRecord(value.data)) throw new Error('此檔案不是支援的記憶備份。');
+  for (const [store, records] of Object.entries(value.data)) {
+    if (!(MEMORY_STORES as readonly string[]).includes(store) || !Array.isArray(records)) throw new Error(`記憶備份資料表「${store}」格式不正確。`);
+  }
+  return value as unknown as MemoryBackupPayload;
+}
+
+export async function exportMemories(): Promise<MemoryBackupPayload> {
+  const database = await db();
+  try {
+    const data: Record<string, unknown[]> = {};
+    for (const store of MEMORY_STORES) data[store] = await request(database.transaction(store).objectStore(store).getAll()) as unknown[];
+    return { schemaVersion: 1, exportType: 'memories', exportedAt: now(), appVersion: '0.1.0', data };
+  } finally { database.close(); }
+}
+
+function validNamedMemory(row: unknown): row is NamedMemory { return isRecord(row) && typeof row.name === 'string' && Boolean(cleanName(row.name)); }
+function validMaterialType(row: unknown): row is MaterialType { return isRecord(row) && typeof row.name === 'string' && Boolean(cleanName(row.name)); }
+function normalized(row: object, field = 'name'): string { const value = (row as Record<string, unknown>)[field]; return typeof value === 'string' ? normalizeName(value) : ''; }
+function copyNamedMemory(row: NamedMemory, id: string, stamp: string, tradeTypeId?: string): NamedMemory { return { ...row, id, name: cleanName(row.name), normalizedName: normalizeName(row.name), tradeTypeId, usageCount: Number(row.usageCount) || 0, lastUsedAt: row.lastUsedAt ?? null, createdAt: row.createdAt || stamp, updatedAt: stamp }; }
+
+/** Merges memory master data only; daily drafts, final reports, and water rows are never opened. */
+export async function mergeMemoryBackup(raw: unknown): Promise<MemoryMergeSummary> {
+  const payload = validateMemoryBackup(raw); const summary: MemoryMergeSummary = { added: 0, skipped: 0, invalid: 0 }; const database = await db();
+  try {
+    const tx = database.transaction(MEMORY_STORES as unknown as string[], 'readwrite'); const stamp = now();
+    const storeRows = await Promise.all(MEMORY_STORES.map(async (store) => [store, await request(tx.objectStore(store).getAll()) as Record<string, unknown>[]] as const));
+    const existing = Object.fromEntries(storeRows) as Record<string, Record<string, unknown>[]>;
+    const tradeIdMap = new Map<string, string>(); const materialTypeIdMap = new Map<string, string>();
+    const mergeNamed = (store: 'sites' | 'trade_types' | 'location_memories', incoming: unknown[]) => incoming.forEach((candidate) => {
+      if (!validNamedMemory(candidate)) { summary.invalid += 1; return; }
+      const key = normalizeName(candidate.name); const match = existing[store].find((row) => normalized(row) === key);
+      if (match) { summary.skipped += 1; if (store === 'trade_types') tradeIdMap.set(candidate.id, String(match.id)); return; }
+      const id = crypto.randomUUID(); const saved = copyNamedMemory(candidate, id, stamp); tx.objectStore(store).put(saved); existing[store].push(saved as unknown as Record<string, unknown>); summary.added += 1; if (store === 'trade_types') tradeIdMap.set(candidate.id, id);
+    });
+    mergeNamed('sites', rows(payload.data.sites)); mergeNamed('trade_types', rows(payload.data.trade_types)); mergeNamed('location_memories', rows(payload.data.location_memories));
+    (['trade_vendors', 'trade_tasks'] as const).forEach((store) => rows(payload.data[store]).forEach((candidate) => {
+      if (!validNamedMemory(candidate) || !candidate.tradeTypeId) { summary.invalid += 1; return; }
+      const tradeTypeId = tradeIdMap.get(candidate.tradeTypeId) ?? candidate.tradeTypeId; if (!existing.trade_types.some((row) => row.id === tradeTypeId)) { summary.invalid += 1; return; }
+      const match = existing[store].find((row) => normalized(row) === normalizeName(candidate.name) && row.tradeTypeId === tradeTypeId);
+      if (match) { summary.skipped += 1; return; }
+      const saved = copyNamedMemory(candidate, crypto.randomUUID(), stamp, tradeTypeId); tx.objectStore(store).put(saved); existing[store].push(saved as unknown as Record<string, unknown>); summary.added += 1;
+    }));
+    rows(payload.data.material_types).forEach((candidate) => {
+      if (!validMaterialType(candidate)) { summary.invalid += 1; return; }
+      const key = normalizeName(candidate.name); const match = existing.material_types.find((row) => normalized(row) === key);
+      if (match) { summary.skipped += 1; materialTypeIdMap.set(String(candidate.id), String(match.id)); return; }
+      const id = crypto.randomUUID(); const saved: MaterialType = { id, name: cleanName(candidate.name), normalizedName: key, sortOrder: existing.material_types.length, usageCount: Number(candidate.usageCount) || 0, lastUsedAt: typeof candidate.lastUsedAt === 'string' ? candidate.lastUsedAt : null, recentUnit: typeof candidate.recentUnit === 'string' ? candidate.recentUnit : '', recentSupplierName: typeof candidate.recentSupplierName === 'string' ? candidate.recentSupplierName : '', createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : stamp, updatedAt: stamp }; tx.objectStore('material_types').put(saved); existing.material_types.push(saved as unknown as Record<string, unknown>); materialTypeIdMap.set(String(candidate.id), id); summary.added += 1;
+    });
+    rows(payload.data.material_memory_items).forEach((candidate) => {
+      if (!isRecord(candidate) || typeof candidate.materialTypeId !== 'string' || typeof candidate.fieldType !== 'string' || typeof candidate.value !== 'string' || !cleanName(candidate.value)) { summary.invalid += 1; return; }
+      const materialTypeId = materialTypeIdMap.get(candidate.materialTypeId) ?? candidate.materialTypeId; if (!existing.material_types.some((row) => row.id === materialTypeId)) { summary.invalid += 1; return; }
+      const value = cleanName(candidate.value); const fieldType = candidate.fieldType as MaterialMemoryField; const match = existing.material_memory_items.find((row) => row.materialTypeId === materialTypeId && row.fieldType === fieldType && normalized(row, 'value') === normalizeName(value));
+      if (match) { summary.skipped += 1; return; }
+      const saved: MaterialMemoryItem = { id: crypto.randomUUID(), materialTypeId, fieldType, value, normalizedValue: normalizeName(value), usageCount: Number(candidate.usageCount) || 0, lastUsedAt: typeof candidate.lastUsedAt === 'string' ? candidate.lastUsedAt : stamp, createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : stamp, updatedAt: stamp }; tx.objectStore('material_memory_items').put(saved); existing.material_memory_items.push(saved as unknown as Record<string, unknown>); summary.added += 1;
+    });
+    const importedTemplates = rows(payload.data.app_settings).find((row) => isRecord(row) && row.id === TEMPLATE_KEY) as { templates?: unknown[] } | undefined;
+    if (importedTemplates?.templates) { const current = existing.app_settings.find((row) => row.id === TEMPLATE_KEY) as { id: string; templates?: SpecialTemplate[] } | undefined; const templates = current?.templates ?? []; const additions = importedTemplates.templates.filter((template): template is SpecialTemplate => isRecord(template) && typeof template.text === 'string' && Boolean(cleanName(template.text))).filter((template) => !templates.some((currentTemplate) => currentTemplate.normalizedName === normalizeName(template.text))).map((template) => ({ ...template, id: crypto.randomUUID(), text: cleanName(template.text), normalizedName: normalizeName(template.text), createdAt: template.createdAt || stamp, updatedAt: stamp }));
+      additions.forEach((template) => { templates.push(template); summary.added += 1; }); if (additions.length) tx.objectStore('app_settings').put({ id: TEMPLATE_KEY, templates });
+    }
+    await txDone(tx); return summary;
+  } finally { database.close(); }
+}
+
+const calendarStart = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).valueOf();
+export function isFinalizedReportExpired(finalizedAt: string, reference = new Date()): boolean { const cutoff = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - 7).valueOf(); return calendarStart(new Date(finalizedAt)) <= cutoff; }
+export async function pruneExpiredReports(reference = new Date()): Promise<number> { const database = await db(); try { const tx = database.transaction('daily_reports', 'readwrite'); const reports = await request(tx.objectStore('daily_reports').getAll()) as FinalizedDailyReport[]; const expired = reports.filter((report) => isFinalizedReportExpired(report.finalizedAt, reference)); expired.forEach((report) => tx.objectStore('daily_reports').delete(report.id)); await txDone(tx); return expired.length; } finally { database.close(); } }
+export async function listRecentFinalizedReports(): Promise<FinalizedDailyReport[]> { await pruneExpiredReports(); const database = await db(); try { return (await request(database.transaction('daily_reports').objectStore('daily_reports').getAll()) as FinalizedDailyReport[]).filter((report) => !isFinalizedReportExpired(report.finalizedAt)).sort((a, b) => b.finalizedAt.localeCompare(a.finalizedAt)); } finally { database.close(); } }
+export async function finalizeDailyReport(report: DailyReportV3, outputText: string): Promise<{ snapshot: FinalizedDailyReport; nextDraft: DailyReportV3 }> { const stamp = now(); const snapshot: FinalizedDailyReport = { ...structuredClone(report), id: crypto.randomUUID(), outputText, templateVersion: DAILY_TEMPLATE_VERSION, finalizedAt: stamp, updatedAt: stamp }; const nextDraft = createDailyDraft(report.siteId, report.siteNameSnapshot, localToday()); const database = await db(); try { const tx = database.transaction(['daily_reports', 'live_report_draft'], 'readwrite'); tx.objectStore('daily_reports').put(snapshot); tx.objectStore('live_report_draft').put(nextDraft); await txDone(tx); } finally { database.close(); } await pruneExpiredReports(); return { snapshot, nextDraft }; }
