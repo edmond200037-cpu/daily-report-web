@@ -1,8 +1,53 @@
-.subtabs button.active { border-bottom-color: var(--accent); background: #183531; color: #fff; }
-.water-page { padding-bottom: 13rem; }
-.water-settings { padding-bottom: var(--space-5); }
-.water-preview { position: fixed; right: 1rem; bottom: .75rem; left: 1rem; z-index: 5; }
-.reading-list { display: grid; gap: var(--space-1); }
-.point-list article { display: flex; align-items: center; gap: var(--space-2); border-bottom: 1px solid var(--line); padding: var(--space-3) 0; }
-.point-list strong { margin-right: auto; }
-@media (min-width: 640px) { .water-preview { right: 2rem; left: auto; width: min(410px, 40vw); } }
+.water-page { display: grid; gap: var(--space-3); padding-bottom: 7rem; }
+.water-page .subtabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 var(--space-1); overflow: visible; }
+.water-page .subtabs button { display: flex; align-items: center; justify-content: center; gap: .35rem; min-width: 0; white-space: normal; }
+.water-tab__count { display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); font-size: .6875rem; font-weight: 760; }
+.water-page .subtabs button.active .water-tab__count { background: #e8f2ed; color: var(--success); }
+
+.water-entry__meta { display: grid; gap: var(--space-3); }
+.reading-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin-top: var(--space-4); }
+.reading-list label { margin: 0; }
+.form-actions--single { grid-template-columns: minmax(0, 1fr); }
+
+.water-history-card__summary { grid-template-columns: 3.75rem minmax(0, 1fr) auto; }
+.water-history-card__lead { display: grid; place-items: center; align-self: stretch; min-width: 0; border-radius: var(--radius-sm); background: var(--success-soft); color: var(--success); font-size: .8125rem; font-weight: 760; }
+.water-history-card__copy { display: grid; gap: .15rem; min-width: 0; }
+.water-history-card__copy strong, .water-history-card__copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.water-history-card__copy strong { color: var(--ink); font-size: .9375rem; }
+.water-history-card__copy span { color: var(--ink-soft); font-size: .8125rem; font-weight: 600; }
+.water-history-card__status { flex: none; border: 1px solid #e6bd82; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); padding: .25rem .45rem; font-size: .6875rem; font-weight: 760; }
+.water-history-card__status--complete { border-color: #a8c9b7; background: var(--success-soft); color: var(--success); }
+.water-history-card__content { border-top: 1px solid var(--line); padding: var(--space-3); }
+.water-history-card__content pre { max-height: min(38vh, 18rem); overflow: auto; margin: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-muted); color: var(--ink); padding: var(--space-3); font: inherit; font-size: .875rem; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.water-history-card__actions { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+
+.water-import .form-card { display: grid; gap: var(--space-3); }
+.water-import .form-card textarea { margin: 0; }
+.water-import__result { border-top: 1px solid var(--line); color: var(--ink-soft); font-size: .875rem; padding-top: var(--space-2); }
+.water-import__result ul { margin: 0; padding-left: 1.25rem; }
+
+.water-points-card { display: grid; gap: var(--space-4); }
+.water-point-form { display: grid; gap: var(--space-1); }
+.water-point-form label { margin: 0; }
+.point-list { display: grid; gap: var(--space-2); }
+.water-point-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.water-point-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.water-point-row > div { display: flex; flex: none; gap: var(--space-2); }
+
+.water-output { border-color: var(--field-green); }
+.water-output .output-drawer__content .primary { width: 100%; }
+
+@media (min-width: 640px) {
+  .water-entry__meta { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+}
+
+@media (max-width: 420px) {
+  .water-page .subtabs button { font-size: .8125rem; padding-inline: .15rem; }
+  .water-tab__count { min-width: 1.125rem; height: 1.125rem; }
+  .reading-list { grid-template-columns: minmax(0, 1fr); }
+  .water-history-card__summary { grid-template-columns: 3.25rem minmax(0, 1fr) auto; gap: var(--space-2); padding-inline: var(--space-2); }
+  .water-history-card__status { padding-inline: .35rem; }
+  .water-point-row { align-items: flex-start; flex-direction: column; }
+  .water-point-row > div { width: 100%; }
+  .water-point-row > div button { flex: 1 1 0; }
+}

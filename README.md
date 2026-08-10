@@ -10,7 +10,7 @@
 - `src/data/daily-repository.ts`：日報草稿、定稿、記憶與設定的 repository。
 - `src/daily`：日報領域、驗證、官方文字 formatter 與控制器。
 - `src/format`：日期與名稱格式規則。
-- `src/main.js`：Hash 路由與手機優先的 UI 殼層。
+- `src/main.ts`：Hash 路由與手機優先的 UI 殼層。
 - `src/water-level`：井位、量測、變化量、解析、匯入與三天保留。
 
 ## 開發
