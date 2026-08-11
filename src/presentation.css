@@ -1,4 +1,4 @@
-:root { --entry-height: 60px; --entry-leading: 72px; --field-green: #183531; --field-green-soft: #e8efec; }
+:root { --summary-height: 60px; --entry-height: var(--summary-height); --entry-leading: 72px; --field-green: #183531; --field-green-soft: #e8efec; }
 
 .daily-section, .workflow-section { display: grid; gap: var(--space-3); }
 .daily-section__header, .workflow-section__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding: .25rem 0; }
@@ -12,6 +12,7 @@
 
 .daily-entry, .compact-entry { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-raised); transition: border-color 160ms ease, box-shadow 160ms ease; }
 .daily-entry--expanded, .compact-entry--expanded { border-color: var(--field-green); box-shadow: inset 3px 0 0 var(--field-green), 0 8px 22px rgb(24 53 49 / 9%); }
+.collapsed-summary { height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }
 .compact-entry__summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--entry-height); border: 0; border-radius: 0; background: transparent; padding: var(--space-2) var(--space-3); text-align: left; }
 .compact-entry__summary:hover { border-color: transparent; background: var(--surface-muted); }
 

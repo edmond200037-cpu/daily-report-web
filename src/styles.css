@@ -98,7 +98,7 @@ nav a.active, nav a[aria-current="page"] { border-color: var(--accent); color: v
   padding: var(--space-4);
 }
 .basics { overflow: hidden; padding: 0; }
-.basics__summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%; min-height: 52px; border: 0; border-radius: 0; background: transparent; padding: var(--space-3) var(--space-4); text-align: left; }
+.basics__summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); width: 100%; min-height: var(--summary-height); border: 0; border-radius: 0; background: transparent; padding: var(--space-3) var(--space-4); text-align: left; }
 .basics__summary:hover { background: var(--surface-muted); border-color: transparent; }
 .basics__preview { display: grid; gap: var(--space-1); min-width: 0; }
 .basics__preview strong { font-size: .875rem; }
@@ -165,8 +165,6 @@ textarea { min-height: 4.5rem; resize: vertical; }
   .editor-layout { grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr); }
   .quick-add { grid-template-columns: repeat(4, 1fr); }
   .entry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .material-entry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-3); }
-  .material-entry .danger-text { grid-column: 1 / -1; justify-self: start; }
   .pwa-update-notice { right: 2rem; bottom: 2rem; left: auto; width: min(420px, calc(100vw - 4rem)); }
 }
 

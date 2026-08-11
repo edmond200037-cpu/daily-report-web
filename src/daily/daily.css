@@ -16,19 +16,22 @@
 .swipe-item > article, .swipe-item > section, .trade-swipe > .trade-card { position: relative; transform: translateX(var(--trade-swipe-offset, 0px)); transition: transform 160ms ease-out; }
 .trade-swipe__delete span { font-size: 1.25rem; line-height: 1; }
 
-.trade-card__summary, .material-entry__summary, .contact-card__summary, .contact-card__header, .special-card__summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr) auto; align-items: center; min-height: var(--entry-height); width: 100%; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); padding: 0; text-align: left; }
-.trade-card__summary:hover, .material-entry__summary:hover, .contact-card__summary:hover, .contact-card__header:hover, .special-card__summary:hover { background: var(--surface-muted); }
-.drag-handle { display: inline-flex; align-items: center; justify-content: center; align-self: stretch; gap: .35rem; width: var(--entry-leading); min-height: var(--entry-height); border: 0; border-right: 1px solid var(--line); border-radius: 0; background: var(--surface-muted); color: var(--ink-faint); cursor: grab; font-size: 1rem; line-height: 1; touch-action: none; }
+.entry-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); min-height: var(--entry-height); width: 100%; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); padding: 0; text-align: left; }
+.entry-summary:hover { background: var(--surface-muted); }
+.entry-leading, .drag-handle { grid-column: 1; grid-row: 1 / -1; display: grid; place-items: center; align-self: stretch; width: var(--entry-leading); border: 0; border-right: 1px solid var(--line); border-radius: 0; background: var(--surface-muted); color: var(--ink-faint); font-size: .6875rem; font-weight: 760; line-height: 1.2; padding: .25rem; text-align: center; }
+.drag-handle { display: inline-flex; align-items: center; justify-content: center; gap: .25rem; cursor: grab; font-size: 1rem; touch-action: none; }
 .drag-handle::after { content: '工程'; font-size: .6875rem; font-weight: 760; }
 .drag-handle:active { cursor: grabbing; }
-.trade-card__header, .material-entry__summary > [data-daily-action], .contact-card__summary, .contact-card__header, .special-card__summary { min-width: 0; }
-.trade-card__header { display: grid; grid-template-columns: minmax(0, 1fr); gap: .15rem; min-height: var(--entry-height); padding: .5rem .75rem; }
-.trade-card__title, .trade-card__details, .material-entry__name, .material-entry__details, .contact-card__summary strong, .contact-card__summary-text, .contact-card__header strong, .special-card__summary strong, .special-card__summary span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trade-card__title, .material-entry__name, .contact-card__summary strong, .contact-card__header strong, .special-card__summary strong { font-weight: 760; }
-.trade-card__details, .material-entry__details, .contact-card__summary-text, .special-card__summary span { color: var(--ink-soft); font-size: .8125rem; }
-.trade-card__status, .material-connection { align-self: center; margin-right: .75rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-muted); color: var(--ink-soft); font-size: .6875rem; font-weight: 760; line-height: 1.2; padding: .2rem .42rem; text-align: center; white-space: nowrap; }
-.trade-card--complete .trade-card__status { border-color: #b8d0c4; background: var(--success-soft); color: var(--success); }
-.trade-card--draft .trade-card__status { border-color: #dfc18b; background: var(--accent-soft); color: var(--accent-strong); }
+.entry-copy { grid-column: 2; grid-row: 1 / -1; display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); align-self: stretch; gap: 0; min-width: 0; padding: .5rem .75rem; text-align: left; }
+.trade-card__header.entry-copy { width: 100%; min-height: var(--entry-height); border: 0; border-radius: 0; background: transparent; color: inherit; }
+.trade-card__header.entry-copy:hover { border-color: transparent; background: transparent; }
+.trade-card--drag-placeholder { height: calc(var(--summary-height) + 2px); border-style: dashed; background: transparent; pointer-events: none; }
+.entry-copy strong, .entry-copy > span, .trade-card__title, .trade-card__details, .material-entry__name, .material-entry__details { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-copy strong, .trade-card__title, .material-entry__name { font-weight: 760; }
+.entry-copy > span, .trade-card__details, .material-entry__details { color: var(--ink-soft); font-size: .8125rem; }
+.entry-status { grid-column: 3; grid-row: 2; justify-self: end; align-self: center; margin-right: .75rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-muted); color: var(--ink-soft); font-size: .6875rem; font-weight: 760; line-height: 1.2; padding: .24rem .48rem; text-align: center; white-space: nowrap; }
+.entry-status--complete { border-color: #8cb69d; background: var(--success); color: #fff; }
+.entry-status--attention { border-color: var(--accent-strong); background: var(--accent); color: #fff; }
 .trade-card__content, .material-entry__content, .contact-card__content, .special-card__content { border-top: 1px solid var(--line); padding: var(--space-3) var(--space-4) var(--space-4); }
 .vendor-card { margin: var(--space-3) 0; padding: 0 var(--space-3) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-muted); }
 .subsection-title { margin: 1.25rem 0 .5rem; color: var(--ink); font-size: .9375rem; font-weight: 760; }
@@ -39,25 +42,13 @@
 .work-item-actions button { min-height: 42px; }
 .work-item-order-actions button { min-width: 4.5rem; }
 
-.material-entry__summary { grid-template-columns: var(--entry-leading) minmax(0, 1fr) auto; cursor: pointer; }
-.material-tag { grid-row: 1 / span 2; grid-column: 1; justify-self: stretch; align-self: stretch; display: grid; place-items: center; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: var(--surface-muted); color: var(--ink-faint); font-size: .6875rem; font-weight: 760; line-height: 1.2; padding: .25rem; text-align: center; }
-.material-connection { grid-row: 1 / span 2; grid-column: 3; }
-.material-entry__name { grid-row: 1; grid-column: 2; padding: 0 .75rem; }
-.material-entry__details { grid-row: 2; grid-column: 2; padding: 0 .75rem; }
+.material-entry__summary { width: 100%; cursor: pointer; }
+.material-tag { font-size: .6875rem; }
 .material-entry__divider { height: 0; margin: 0; }
 .material-entry--editing .material-entry__summary { cursor: default; }
 
-.contact-card__summary, .contact-card__header, .special-card__summary { position: relative; padding-left: var(--entry-leading); }
-.contact-card__summary::before, .contact-card__header::before, .special-card__summary::before { position: absolute; inset: 0 auto 0 0; display: grid; place-items: center; width: var(--entry-leading); border-right: 1px solid var(--line); background: var(--surface-muted); color: var(--ink-faint); font-size: .6875rem; font-weight: 760; }
-.contact-card__summary::before, .contact-card__header::before { content: '聯絡'; }
-.special-card__summary::before { content: '特殊'; }
-.contact-card__summary::after, .contact-card__header::after, .special-card__summary::after { content: attr(data-entry-status); justify-self: end; margin-right: .75rem; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface-muted); color: var(--ink-soft); font-size: .6875rem; font-weight: 760; line-height: 1.2; padding: .2rem .42rem; white-space: nowrap; }
-.contact-card__summary { grid-template-columns: minmax(0, 1fr) auto; gap: .12rem; padding-right: 0; }
-.contact-card__summary strong, .contact-card__summary-text { grid-column: 1; padding: 0 .75rem; }
-.contact-card__summary-text { display: block; }
-.contact-card__header { grid-template-columns: minmax(0, 1fr) auto; padding-right: 0; }
-.contact-card__header strong { padding: 0 .75rem; }
-.contact-card--editing .contact-card__header::after { border-color: #dfc18b; background: var(--accent-soft); color: var(--accent-strong); }
+.contact-card__summary, .contact-card__header, .special-card__summary { cursor: pointer; }
+.contact-card__header .entry-copy { padding-block: .5rem; }
 .contact-card__content { padding-top: .25rem; }
 .contact-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
 .contact-search-field { position: relative; z-index: 1; min-width: 0; }
@@ -73,8 +64,6 @@
 .contact-task__handle { display: grid; place-items: center; min-height: 42px; color: var(--ink-faint); cursor: grab; touch-action: none; }
 .contact-task textarea { min-height: 42px; max-height: 10rem; resize: vertical; }
 .contact-dirty { display: inline-block; margin-right: .45rem; color: var(--accent-strong); font-size: .75rem; }
-.special-card__summary { grid-template-columns: minmax(0, 1fr) auto; gap: .12rem; padding-right: 0; }
-.special-card__summary strong, .special-card__summary span { grid-column: 1; padding: 0 .75rem; }
 .special-card__content textarea { min-height: 6rem; resize: vertical; }
 
 .floating-add-trade { position: fixed; right: var(--page-edge-gap); bottom: calc(var(--preview-bottom-gap) + env(safe-area-inset-bottom) + var(--preview-collapsed-height) + var(--floating-control-gap)); z-index: 31; border-color: var(--accent); background: var(--accent); color: #fff; }
