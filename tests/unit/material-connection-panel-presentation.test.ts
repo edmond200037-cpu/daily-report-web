@@ -6,21 +6,44 @@ const css = readFileSync(new URL('../../src/daily/material.css', import.meta.url
 const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
 
 describe('進料接線盤呈現契約', () => {
-  it('桌面進料欄固定 280px，工種欄使用剩餘寬度', () => {
-    expect(css).toContain('grid-template-columns: 280px 2.5rem minmax(0, 1fr)');
-    expect(css).toContain('justify-items: start');
+  it('桌面以兩側 280px 節點欄夾中間可伸展接線區', () => {
+    expect(css).toContain('grid-template-columns: 280px minmax(7rem, 1fr) 280px');
+    expect(css).toContain('.connection-node-section--trades { justify-self: end; }');
   });
 
-  it('獨立進料卡固定填滿同一欄軌，手機才改為單欄全寬', () => {
-    expect(css).toContain('.material-connection-panel__board > section:first-child { width: 280px; }');
-    expect(css).toContain('@media (max-width: 600px) { .material-connection-panel__board { grid-template-columns: 1fr; justify-items: stretch; }');
-    expect(css).toContain('.material-connection-panel__board > section:first-child { width: auto; }');
+  it('進料與工種卡共用 68px 固定高度，手機保留 80px 接線區', () => {
+    expect(css).toContain('height: var(--connection-node-height); min-height: var(--connection-node-height);');
+    expect(css).toContain('@media (max-width: 760px)');
+    expect(css).toContain('height: 80px;');
   });
 
-  it('中間連接符號依第一列端口對齊，不依左右清單高度置中', () => {
-    expect(main).toContain('class="material-connection-panel__line" aria-hidden="true"><span>⟷</span>');
-    expect(css).toContain('--connection-heading-height: 1.21875rem');
-    expect(css).toContain('grid-template-rows: var(--connection-heading-height) var(--space-2) minmax(68px, auto) 1fr');
-    expect(css).toContain('.material-connection-panel__line > span { display: grid; grid-row: 3; place-items: center; }');
+  it('以非互動 SVG 曲線呈現關聯與目前選取狀態', () => {
+    expect(main).toContain('class="material-connection-canvas" aria-hidden="true"');
+    expect(main).toContain('class="connection-curve${active ? \' is-active\' : \'\'}"');
+    expect(css).toContain('pointer-events: none');
+    expect(css).toContain('.connection-curve.is-active');
+    expect(main).toContain('class="material-connection-canvas__mobile" viewBox="0 0 100 80"');
+    expect(css).toContain('.material-connection-canvas__mobile { display: block !important; }');
+    expect(css).toContain('grid-template-columns: repeat(var(--connection-mobile-count), minmax(0, 1fr));');
+    expect(css).toContain('.connection-node--material .connection-port { top: auto; right: auto; bottom: -.42rem; left: 50%;');
+    expect(css).toContain('.connection-node--trade .connection-port { top: -.42rem; right: auto; bottom: auto; left: 50%;');
+    expect(css).toContain('.connection-node-section--trades { display: contents; }');
+    expect(css).toContain('.connection-node-section--trades > header { display: grid;');
+    expect(css).toContain('.connection-node-section--trades > .connection-node-list { order: 3; }');
+    expect(css).toContain('.connection-count { top: -1.75rem; left: 50%; transform: translateX(-50%); }');
+    expect(css).toContain('.connection-count { position: absolute; top: 50%; left: -1.8rem;');
+  });
+
+  it('工種搜尋比對工種與廠商，保留 IME 完成輸入流程', () => {
+    expect(main).toContain('data-material-connection-search');
+    expect(main).toContain('normalizeSearch(`${trade.tradeNameSnapshot} ${trade.vendorNameSnapshot}`)');
+    expect(main).toContain('materialConnectionSearchComposing = false; refreshMaterialConnectionSearch(target);');
+  });
+
+  it('以共用 layout constants 同時驅動節點、間距與曲線幾何', () => {
+    expect(main).toContain('const MATERIAL_CONNECTION_NODE_HEIGHT_PX = 68');
+    expect(main).toContain('const MATERIAL_CONNECTION_NODE_GAP_PX = 8');
+    expect(main).toContain('--connection-node-height:${MATERIAL_CONNECTION_NODE_HEIGHT_PX}px;--connection-node-gap:${MATERIAL_CONNECTION_NODE_GAP_PX}px');
+    expect(css).toContain('gap: var(--connection-node-gap);');
   });
 });
