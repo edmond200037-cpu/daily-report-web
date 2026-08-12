@@ -129,6 +129,13 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .settings-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
 .settings-section-grid > button { width: 100%; min-height: 48px; }
 .settings-section-grid > button.active { border-color: var(--ink); background: var(--ink); color: #fff; }
+.settings-hub__grid { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+.settings-hub__grid a { display: grid; gap: var(--space-1); min-height: 92px; border: 1px solid var(--line-strong); border-left: 5px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); padding: var(--space-4); text-decoration: none; }
+.settings-hub__grid a:hover, .settings-hub__grid a:focus-visible { border-color: var(--ink); box-shadow: 0 5px 0 rgb(24 53 49 / 16%); }
+.settings-hub__grid span, .memory-candidate .hint { color: var(--ink-faint); font-size: .875rem; line-height: 1.5; }
+.memory-candidate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-2); }
+.memory-candidate .hint { grid-column: 2; }
+.memory-candidate .danger-text { grid-column: 3; grid-row: 1 / span 2; }
 .settings-list { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
 .settings-item { border-bottom: 1px solid var(--line); padding: var(--space-3) 0; }
 .settings-item:last-child { border-bottom: 0; }
@@ -168,6 +175,6 @@ textarea { min-height: 4.5rem; resize: vertical; }
   .pwa-update-notice { right: 2rem; bottom: 2rem; left: auto; width: min(420px, calc(100vw - 4rem)); }
 }
 
-@media (min-width: 768px) { .settings-section-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 768px) { .settings-section-grid, .settings-hub__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 420px) { .quick-add { grid-template-columns: 1fr; } .card-actions button { font-size: .75rem; padding: .5rem; } .top h1 { font-size: 1.35rem; } .settings-item-actions { align-items: stretch; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 1ms !important; animation-duration: 1ms !important; } }
