@@ -18,10 +18,36 @@ describe('日報收合摘要高度契約', () => {
 
   it('將四類條目、填報資訊與日報預覽接到共同摘要列', () => {
     expect(daily.match(/collapsed-summary/g)).toHaveLength(7);
+    expect(daily).toContain('type DailyEntrySummary');
+    expect(daily).toContain('function dailyEntrySummary');
+    expect(daily).toContain("kind: 'engineering'");
+    expect(daily).toContain("kind: 'material'");
+    expect(daily).toContain("kind: 'contact'");
+    expect(daily).toContain("kind: 'special'");
     expect(styles).toContain('min-height: var(--summary-height)');
     expect(dialog).toContain('min-height: var(--summary-height)');
     expect(dialog).not.toContain('min-height: 58px');
     expect(dialog).not.toContain('min-height: 62px');
+  });
+
+  it('讓所有日報摘要使用相同的四欄資訊骨架', () => {
+    expect(daily).toContain('summary__leading');
+    expect(daily).toContain('summary__primary');
+    expect(daily).toContain('summary__secondary');
+    expect(daily).toContain('summary__status');
+    expect(dailyCss).toContain('.daily-entry-summary');
+    expect(dailyCss).toContain('.daily-entry-summary__primary');
+    expect(dailyCss).toContain('.daily-entry-summary__secondary');
+  });
+
+  it('以共用字體 token 隔離按鈕預設字重與行高', () => {
+    expect(dailyCss).toContain('--daily-summary-font-weight: 400');
+    expect(dailyCss).toContain('--daily-summary-line-height: 1.5');
+    expect(dailyCss).toContain('--daily-summary-primary-weight: 760');
+    expect(dailyCss).toContain('--daily-summary-label-weight: 700');
+    expect(dailyCss).toContain('.daily-entry-summary__toggle { font: inherit; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height);');
+    expect(dailyCss).toContain('.daily-entry-summary__primary, .entry-copy strong, .trade-card__title, .material-entry__name { font-weight: var(--daily-summary-primary-weight); }');
+    expect(dailyCss).toContain('.daily-entry-summary__secondary, .entry-copy > span, .trade-card__details, .material-entry__details { color: var(--ink-soft); font-size: .8125rem; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height); }');
   });
 
   it('讓工程拖曳佔位與有邊框的收合卡同高', () => {
