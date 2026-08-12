@@ -28,7 +28,8 @@
 .daily-output__toggle > span:last-child { flex: none; color: #f2bb58; font-size: .8125rem; }
 .daily-output__content { padding: 0 1rem 1rem; border-top: 1px solid #3d4b53; }
 .daily-output__content pre { max-height: min(42vh, 24rem); overflow: auto; margin: .85rem 0; border: 1px solid #3d4b53; border-radius: var(--radius-sm); background: #182126; color: #e6ebed; font-family: inherit; font-size: .875rem; line-height: 1.65; padding: .75rem; white-space: pre-wrap; word-break: break-word; }
-.daily-output__content .primary { width: 100%; }
+.daily-output__actions { display: grid; gap: var(--space-2); }
+.daily-output__actions .primary { width: 100%; }
 .daily-output__warning { margin: .85rem 0 0; color: #f2bb58; font-size: .875rem; }
 .daily-output__feedback { margin: .7rem 0 0; color: #b9dbc9; font-size: .875rem; font-weight: 700; text-align: center; }
 @media (min-width: 640px) { .daily-page { padding-bottom: 6rem; } .daily-output { left: auto; right: 2rem; width: min(520px, calc(100vw - 2rem)); } }

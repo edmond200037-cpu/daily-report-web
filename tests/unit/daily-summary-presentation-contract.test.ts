@@ -54,4 +54,11 @@ describe('日報收合摘要高度契約', () => {
     expect(daily).toContain('trade-card--drag-placeholder');
     expect(dailyCss).toContain('height: calc(var(--summary-height) + 2px)');
   });
+
+  it('將相鄰的工種與預覽操作放入具間距的 action container', () => {
+    expect(daily).toContain('class="action-row"><button type="button" data-daily-action="add-work"');
+    expect(daily).toContain('data-daily-action="manage-material-connections"');
+    expect(daily).toContain('class="daily-output__actions"');
+    expect(dialog).toContain('.daily-output__actions { display: grid; gap: var(--space-2); }');
+  });
 });
