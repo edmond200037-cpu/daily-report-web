@@ -1,6 +1,7 @@
 import type { DailyReportV3, TradeSection, WorkItem, MaterialEntry } from '../domain/daily';
 import { normalizeName } from '../format/normalization';
 import { floorRange, normalizeFloor } from './floor';
+import { duplicateVendorTradeIds } from './daily-output-model';
 export interface DailyIssue { field: string; message: string; }
 export function validateWorkerCount(value: string): boolean { return /^[1-9]\d*$/.test(value); }
 export function validateMaterialEntry(entry: MaterialEntry): string[] { const issues: string[] = []; if (!entry.materialTypeSnapshot.trim()) issues.push('請填寫材料類型。'); if (!entry.itemName.trim()) issues.push('請填寫品名。'); if (!entry.supplierNameSnapshot.trim()) issues.push('請填寫供應商。'); if (!/^((?:[1-9]\d*)(?:\.\d+)?)$/.test(entry.quantity.trim())) issues.push('數量只能輸入大於 0 的數字。'); if (!entry.unit.trim()) issues.push('請填寫單位。'); return issues; }
@@ -31,6 +32,8 @@ export function validateDailyForFinalization(report: DailyReportV3): string[] {
   if (!report.tradeSections.length) issues.push('請至少完成一個工種。');
   if (report.tradeSections.some((trade) => trade.status !== 'complete')) issues.push('尚有工種草稿，請完成或刪除後再定稿。');
   if (!report.tradeSections.some((trade) => trade.status === 'complete')) issues.push('請至少完成一個工種。');
+  if (report.standaloneMaterialEntries.some((entry) => entry.entryType === 'independent' && !entry.connectedTradeSectionId)) issues.push('尚有未連結的獨立進料，請先連接至施工工種。');
+  if (duplicateVendorTradeIds(report).size) issues.push('同一工種不可有重複廠商施工卡，請整理後再定稿。');
   report.tradeSections.filter((trade) => trade.status === 'complete').forEach((trade) => validateTrade(trade, report.standaloneMaterialEntries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId === trade.id)).forEach((issue) => issues.push(`${trade.tradeNameSnapshot || '工種'}：${issue.message}`)));
   return [...new Set(issues)];
 }

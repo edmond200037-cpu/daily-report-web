@@ -9,7 +9,7 @@ export interface ContactTask { id: string; content: string; sortOrder: number; c
 export interface ContactItem { id: string; tradeTypeId: string | null; tradeNameSnapshot: string; vendorId: string | null; vendorNameSnapshot: string; items: ContactTask[]; sortOrder: number; createdAt: string; updatedAt: string; }
 export interface SpecialItem { id: string; content: string; sortOrder: number; createdAt: string; updatedAt: string; }
 export interface DailyReportV3 { id: 'current'; date: string; siteId: string | null; siteNameSnapshot: string; activeTab: 'engineering' | 'supplies' | 'contacts' | 'special'; tradeSections: TradeSection[]; standaloneMaterialEntries: MaterialEntry[]; supplies: SupplyItem[]; contacts: ContactItem[]; specialItems: SpecialItem[]; createdAt: string; updatedAt: string; }
-export const DAILY_TEMPLATE_VERSION = 1;
+export const DAILY_TEMPLATE_VERSION = 2;
 export interface FinalizedDailyReport extends Omit<DailyReportV3, 'id'> { id: string; outputText: string; templateVersion: number; finalizedAt: string; }
 export const timestamp = (): string => new Date().toISOString();
 export const createDailyDraft = (siteId: string | null = null, siteNameSnapshot = '', date = new Date().toISOString().slice(0, 10)): DailyReportV3 => { const now = timestamp(); return { id: 'current', date, siteId, siteNameSnapshot, activeTab: 'engineering', tradeSections: [], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now }; };
