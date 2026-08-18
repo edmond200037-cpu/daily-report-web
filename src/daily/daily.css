@@ -109,12 +109,22 @@
 
 /* Phase 1: scoped paper-form foundations. Structure and data workflows remain unchanged. */
 .daily-page { background: var(--daily-paper); color: var(--daily-ink); }
+.daily-page__header { align-items: flex-end; margin-bottom: var(--space-3); padding-top: var(--space-1); }
+.daily-page__save-status { min-height: 1.2rem; margin: 0 0 var(--space-1); color: var(--daily-ink-faint); font-size: var(--daily-meta-size); font-weight: 700; letter-spacing: 0; }
+.daily-page__save-status[data-state="saving"] { color: var(--daily-orange-strong); }
+.daily-page__save-status[data-state="error"] { color: var(--danger); }
+.daily-page__module-tabs .top-tabs { margin-bottom: var(--space-3); }
+.daily-workspace { display: grid; gap: var(--space-3); min-width: 0; }
 .daily-page .top { border-color: var(--daily-line-strong); }
 .daily-page .top h1 { color: var(--daily-ink); font-size: 1.5rem; }
 .daily-page .app-header__meta, .daily-page .eyebrow { color: var(--daily-ink-faint); font-size: var(--daily-meta-size); letter-spacing: .06em; }
 .daily-page .settings-button { border-color: var(--daily-line-strong); color: var(--daily-ink); }
 .daily-page .settings-button:hover { background: var(--daily-paper-muted); border-color: var(--daily-orange); }
 .daily-page .basics, .daily-page .daily-entry, .daily-page .compact-entry, .daily-page .daily-section__empty, .daily-page .work-section__empty { background: var(--daily-paper-raised); }
+.daily-page .daily-basics { margin: 0; border-inline: 0; border-radius: 0; border-color: var(--daily-line-strong); box-shadow: none; }
+.daily-page .daily-basics .basics__summary { padding-inline: 0; }
+.daily-page .daily-basics .basics__fields { border-color: var(--daily-line); padding-inline: 0; }
+.daily-page .daily-basics .basics__action { color: var(--daily-orange-strong); }
 .daily-page .daily-entry, .daily-page .compact-entry { border-color: var(--daily-line); }
 .daily-page .daily-entry--expanded, .daily-page .compact-entry--expanded { border-color: var(--daily-orange); box-shadow: inset 3px 0 0 var(--daily-orange); }
 .daily-page .daily-tabs { background: var(--daily-paper); border-color: var(--daily-line); }
