@@ -95,6 +95,24 @@ function dailyEntrySummary(summary: DailyEntrySummary): string {
   return `${leading}${summary.contentButtonAttributes ? `<button type="button" class="daily-entry-summary__toggle" ${summary.contentButtonAttributes}>${content}</button>` : content}`;
 }
 
+function formatWorkLocation(work?: TradeSection['workItems'][number]): string {
+  if (!work) return '';
+  const start = work.startFloorNormalized || work.startFloorRaw.trim();
+  const end = work.endFloorNormalized || work.endFloorRaw.trim();
+  return [end ? `${start} → ${end}` : start, work.locationTextSnapshot.trim()].filter(Boolean).join('｜');
+}
+
+function tradeRowSummary(trade: TradeSection, expanded: boolean, handle: string, interactive = true): string {
+  const firstWork = trade.workItems[0];
+  const location = formatWorkLocation(firstWork);
+  const task = firstWork?.taskTextSnapshot.trim() || '尚未新增工項';
+  const vendor = [trade.vendorNameSnapshot || '未填廠商', trade.workerCount ? `${trade.workerCount} 人` : '人數未填'].join('｜');
+  const status = trade.status === 'complete' ? '已完成' : '草稿';
+  const content = `<span class="trade-row-summary__location" title="${escapeHtml(location || '位置未填')}">${escapeHtml(location || '位置未填')}</span><strong class="trade-row-summary__task" title="${escapeHtml(task)}">${escapeHtml(task)}</strong><span class="trade-row-summary__vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</span><span class="trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}">${status}</span>`;
+  const control = interactive ? `<button type="button" class="trade-row-summary__toggle" data-daily-action="toggle-trade" data-id="${trade.id}" aria-expanded="${expanded}" aria-controls="trade-content-${trade.id}" aria-label="${escapeHtml(`${expanded ? '收合' : '展開'}工程條目：${trade.tradeNameSnapshot}`)}">${content}</button>` : `<div class="trade-row-summary__toggle">${content}</div>`;
+  return `<div class="trade-row-summary collapsed-summary">${handle}${control}</div>`;
+}
+
 function parseRoute(hash: string): AppRoute {
   const normalized = hash || '#daily';
   if (normalized === '#settings') return { module: 'settings', page: 'home' };
@@ -113,7 +131,7 @@ function parseRoute(hash: string): AppRoute {
 function tabCount(tab: DailyReportV3['activeTab']): number { if (tab === 'engineering') return daily.report.tradeSections.length; if (tab === 'supplies') return daily.report.standaloneMaterialEntries.length + (materialEditor && !materialEditor.originalId ? 1 : 0); if (tab === 'contacts') return daily.report.contacts.length + (contactEditor && !contactEditor.originalId ? 1 : 0); return daily.report.specialItems.length; }
 function dailyTabs(): string { return `<section class="daily-tabs" role="tablist" aria-label="施工日報分類">${tabs.map(([id, label]) => { const count = tabCount(id); return `<button type="button" role="tab" data-daily-tab="${id}" aria-selected="${daily.report.activeTab === id}" class="${daily.report.activeTab === id ? 'active' : ''}">${label}${count ? `<span class="daily-tab__count" aria-label="${count} 個項目">${count}</span>` : ''}</button>`; }).join('')}</section>`; }
 function workItemView(trade: TradeSection, work: TradeSection['workItems'][number]): string {
-  const start = work.startFloorNormalized || work.startFloorRaw.trim(); const end = work.endFloorNormalized || work.endFloorRaw.trim(); const location = [end ? `${start} → ${end}` : start, work.locationTextSnapshot.trim()].filter(Boolean).join('｜');
+  const location = formatWorkLocation(work);
   const hasLocation = Boolean(location); const hasNote = Boolean(work.note.trim()); const active = activeWorkAuxEditor?.workItemId === work.id ? activeWorkAuxEditor.kind : null;
   const locationEditor = active === 'location' ? `<section class="work-item__aux-editor" data-work-aux-editor="location"><div class="work-item-location-row"><input data-daily-field="startFloorRaw" aria-label="起始樓層" placeholder="起始樓層" value="${escapeHtml(work.startFloorRaw)}"><input data-daily-field="endFloorRaw" aria-label="結束樓層" placeholder="結束樓層" value="${escapeHtml(work.endFloorRaw)}"><input data-daily-field="locationTextSnapshot" aria-label="位置（選填）" placeholder="位置（選填）" value="${escapeHtml(work.locationTextSnapshot)}"></div></section>` : '';
   const noteEditor = active === 'note' ? `<section class="work-item__aux-editor" data-work-aux-editor="note"><label>備註<textarea data-daily-field="note" rows="2">${escapeHtml(work.note)}</textarea></label></section>` : '';
@@ -157,7 +175,7 @@ function tradeCard(trade: TradeSection, index: number): string {
   const handle = `<button type="button" class="drag-handle" data-drag-trade="${trade.id}" aria-label="拖曳排序">⠿</button>`;
   if (tradeDrag.active && tradeDrag.id === trade.id) return `<div class="trade-swipe" data-trade-swipe="${trade.id}"><article class="daily-entry trade-card trade-card--drag-placeholder" data-trade="${trade.id}"></article></div>`;
   const sortableIndex = daily.report.tradeSections.filter((item) => item.id !== tradeDrag.id).findIndex((item) => item.id === trade.id); const indicator = tradeDrag.active && tradeDrag.activeDropSlotIndex === sortableIndex ? '<div class="trade-drop-indicator" style="height:4px;border-radius:2px;background:#df9c2e;margin:-.75rem 0 .55rem;pointer-events:none"></div>' : '';
-  const summary = `<div class="daily-entry-summary collapsed-summary trade-card__summary">${dailyEntrySummary({ kind: 'engineering', leadingControl: handle, contentButtonAttributes: `data-daily-action="toggle-trade" data-id="${trade.id}" aria-expanded="${expanded}" aria-controls="trade-content-${trade.id}"`, primary: `${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot || '未填廠商'}`, secondary: `工項 ${trade.workItems.length} 項${daily.linkedMaterialEntries(trade.id).length ? `｜進料 ${daily.linkedMaterialEntries(trade.id).length} 筆` : ''}`, status: trade.status === 'complete' ? '已完成' : '草稿', statusTone: tradeStatusTone(trade.status) })}</div>`;
+  const summary = tradeRowSummary(trade, expanded, handle);
   const deleteUnderlay = '<div class="trade-swipe__delete" aria-hidden="true"><span>🗑</span></div>';
   if (!expanded) return `${indicator}<div class="trade-swipe swipe-item" data-swipe-item="true" data-swipe-kind="trade" data-swipe-id="${trade.id}">${deleteUnderlay}<article class="daily-entry trade-card trade-card--${trade.status}" data-trade="${trade.id}" data-sortable-trade data-trade-index="${index}">${summary}</article></div>`;
   const linked = daily.linkedMaterialEntries(trade.id); const linkedSummary = linked.length ? `<div class="linked-material-summary">${linked.map((entry) => `<span>${escapeHtml(entry.itemName || entry.materialTypeSnapshot || '未命名進料')}</span>`).join('')}</div>` : '<p class="hint">尚未連接獨立進料。</p>'; return `${indicator}<div class="trade-swipe swipe-item" data-swipe-item="true" data-swipe-kind="trade" data-swipe-id="${trade.id}">${deleteUnderlay}<article class="daily-entry daily-entry--expanded trade-card trade-card--${trade.status}" data-trade="${trade.id}" data-sortable-trade data-trade-index="${index}">${summary}<section class="trade-card__content" id="trade-content-${trade.id}"><section class="vendor-card">${field('廠商', 'vendorNameSnapshot', trade.vendorNameSnapshot)}${field('施工人數', 'workerCount', trade.workerCount, 'text')}<h3 class="subsection-title">施工工項</h3>${workItemsView(trade)}<div class="work-item-add-row"><button type="button" data-daily-action="add-work" data-trade-id="${trade.id}">＋ 新增工項</button></div><h3 class="subsection-title">獨立進料</h3>${linkedSummary}<div class="action-row"><button type="button" data-daily-action="manage-material-connections" data-trade-id="${trade.id}">管理進料連接</button></div></section><div class="action-row">${trade.status === 'draft' ? `<button type="button" class="primary" data-daily-action="complete" data-id="${trade.id}">完成工種</button>` : ''}</div></section></article></div>`;
@@ -424,7 +442,7 @@ document.addEventListener('click', (event) => {
   if (contactDirty() && !window.confirm('目前聯絡事項尚未儲存，是否放棄這次修改？')) return;
   contactEditor = null; void renderApp();
 });
-function tradeSummary(id: string): string { const trade = daily.trade(id)!; return `<article class="trade-card trade-card--${trade.status}"><div class="entry-summary trade-card__summary"><span class="drag-handle" aria-hidden="true">⠿</span><span class="entry-copy trade-card__header"><span class="trade-card__title">${escapeHtml(trade.tradeNameSnapshot)}｜${escapeHtml(trade.vendorNameSnapshot || '未填廠商')}</span></span><span class="entry-status entry-status--${tradeStatusTone(trade.status)} trade-card__status">${trade.status === 'complete' ? '已完成' : '草稿'}</span></div></article>`; }
+function tradeSummary(id: string): string { const trade = daily.trade(id)!; return `<article class="trade-card trade-card--${trade.status}">${tradeRowSummary(trade, false, '<span class="drag-handle" aria-hidden="true">⠿</span>', false)}</article>`; }
 function clearTradeSwipe(restorePosition = true): void { if (restorePosition) tradeSwipe.root?.style.setProperty('--trade-swipe-offset', '0px'); if (tradeSwipe.root?.hasPointerCapture(tradeSwipe.pointerId ?? -1)) tradeSwipe.root.releasePointerCapture(tradeSwipe.pointerId ?? -1); tradeSwipe.active = false; tradeSwipe.eligible = false; tradeSwipe.id = null; tradeSwipe.kind = null; tradeSwipe.pointerId = null; tradeSwipe.offset = 0; tradeSwipe.root = null; }
 async function persistWorkItemReorder(tradeId: string, from: number, to: number): Promise<boolean> { const trade = daily.trade(tradeId); if (!trade) return false; const originalWorkItems = structuredClone(trade.workItems); const originalStatus = trade.status; if (!daily.reorderWorkItems(tradeId, from, to)) return false; try { await daily.flush(); return true; } catch { trade.workItems = originalWorkItems; trade.status = originalStatus; try { await daily.flush(); } catch { /* preserve restored in-memory data for the next automatic save */ } alert('工項排序儲存失敗，已恢復原順序。'); return false; } }
 function pruneTradeUndoQueue(now = Date.now()): void { const active: TradeUndoEntry[] = []; tradeUndoQueue.forEach((entry) => { if (entry.expiresAt > now) active.push(entry); else window.clearTimeout(entry.timer); }); tradeUndoQueue = active; }
