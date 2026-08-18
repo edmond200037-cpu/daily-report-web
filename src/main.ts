@@ -108,7 +108,7 @@ function tradeRowSummary(trade: TradeSection, expanded: boolean, handle: string,
   const task = firstWork?.taskTextSnapshot.trim() || '尚未新增工項';
   const vendor = [trade.vendorNameSnapshot || '未填廠商', trade.workerCount ? `${trade.workerCount} 人` : '人數未填'].join('｜');
   const status = trade.status === 'complete' ? '已完成' : '草稿';
-  const content = `<span class="trade-row-summary__location" title="${escapeHtml(location || '位置未填')}">${escapeHtml(location || '位置未填')}</span><strong class="trade-row-summary__task" title="${escapeHtml(task)}">${escapeHtml(task)}</strong><span class="trade-row-summary__vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</span><span class="trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}">${status}</span>`;
+  const content = `<div class="trade-row-summary__location" title="${escapeHtml(location || '位置未填')}">${escapeHtml(location || '位置未填')}</div><div class="trade-row-summary__task" title="${escapeHtml(task)}">${escapeHtml(task)}</div><div class="trade-row-summary__vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</div><div class="trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}">${status}</div>`;
   const control = interactive ? `<button type="button" class="trade-row-summary__toggle" data-daily-action="toggle-trade" data-id="${trade.id}" aria-expanded="${expanded}" aria-controls="trade-content-${trade.id}" aria-label="${escapeHtml(`${expanded ? '收合' : '展開'}工程條目：${trade.tradeNameSnapshot}`)}">${content}</button>` : `<div class="trade-row-summary__toggle">${content}</div>`;
   return `<div class="trade-row-summary collapsed-summary">${handle}${control}</div>`;
 }
