@@ -55,10 +55,23 @@ describe('日報收合摘要高度契約', () => {
     expect(dailyCss).toContain('height: calc(var(--summary-height) + 2px)');
   });
 
-  it('將相鄰的工種與預覽操作放入具間距的 action container', () => {
-    expect(daily).toContain('class="action-row"><button type="button" data-daily-action="add-work"');
+  it('讓工項名稱使用輸入框浮水印，並以對齊輸入區的完整新增列承接下一筆', () => {
+    expect(daily).toContain('class="work-item__task" data-daily-field="taskTextSnapshot" aria-label="工項" placeholder="工項"');
+    expect(daily).toContain('class="work-item-add-row"><button type="button" data-daily-action="add-work"');
+    expect(dailyCss).toContain('.work-item-list { display: grid; gap: var(--work-item-stack-gap, var(--space-2)); }');
+    expect(dailyCss).toContain('.work-item-add-row { margin: var(--work-item-stack-gap, var(--space-2)) 0 0 calc(32px + .35rem + var(--space-2)); }');
     expect(daily).toContain('data-daily-action="manage-material-connections"');
     expect(daily).toContain('class="daily-output__actions"');
     expect(dialog).toContain('.daily-output__actions { display: grid; gap: var(--space-2); }');
+  });
+
+  it('工項拖曳具有浮動預覽、原位佔位、插入提示與操作提醒', () => {
+    expect(daily).toContain('class="work-item work-item--drag-placeholder"');
+    expect(daily).toContain("placeholder.classList.add('work-item--drag-placeholder')");
+    expect(daily).toContain('workItemDrag.placeholderMarkup = placeholder.outerHTML');
+    expect(daily).toContain('class="work-item-drop-indicator"');
+    expect(daily).toContain('class="work-item-drag-hint" role="status" aria-live="polite">拖曳到目標位置後放開');
+    expect(daily).toContain("preview.className = 'work-item-drag-preview'");
+    expect(dailyCss).toContain('.work-item-drag-preview > .work-item');
   });
 });
