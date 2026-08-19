@@ -29,7 +29,9 @@
   --daily-orange: #b84e16;
   --daily-orange-strong: #8f380e;
   --daily-orange-soft: #fff0e4;
-  --daily-incomplete: #c14f46;
+  --daily-incomplete-bg: #f5deda;
+  --daily-incomplete-ink: #7a302b;
+  --daily-incomplete-border: #d7a29b;
   --daily-title-size: 1.125rem;
   --daily-body-size: .9375rem;
   --daily-meta-size: .8125rem;
