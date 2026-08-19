@@ -1,3 +1,4 @@
+.water-page-shell .module-page__tabs .top-tabs a.active, .water-page-shell .module-page__tabs .top-tabs a[aria-current="page"] { border-color: var(--field-green); }
 .water-page { display: grid; gap: var(--space-3); padding-bottom: 7rem; }
 .water-page .subtabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 var(--space-1); overflow: visible; }
 .water-page .subtabs button { display: flex; align-items: center; justify-content: center; gap: .35rem; min-width: 0; white-space: normal; }

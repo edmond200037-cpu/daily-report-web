@@ -101,11 +101,11 @@
 
 /* Phase 1: scoped paper-form foundations. Structure and data workflows remain unchanged. */
 .daily-page { background: var(--daily-paper); color: var(--daily-ink); }
-.daily-page__header { align-items: flex-end; margin-bottom: var(--space-3); padding-top: var(--space-1); }
+.daily-page__header { align-items: flex-end; }
 .daily-page__save-status { min-height: 1.2rem; margin: 0 0 var(--space-1); color: var(--daily-ink-faint); font-size: var(--daily-meta-size); font-weight: 700; letter-spacing: 0; }
 .daily-page__save-status[data-state="saving"] { color: var(--daily-orange-strong); }
 .daily-page__save-status[data-state="error"] { color: var(--danger); }
-.daily-page__module-tabs .top-tabs { margin-bottom: var(--space-3); }
+.daily-page .module-page__tabs .top-tabs { margin-bottom: var(--space-3); }
 .daily-workspace { display: grid; gap: var(--space-3); min-width: 0; }
 .daily-page .top { border-color: var(--daily-line-strong); }
 .daily-page .top h1 { color: var(--daily-ink); font-size: 1.5rem; }
@@ -154,8 +154,8 @@
 
 /* Phase 3: engineering remains sortable and expandable, but reads as a paper data row. */
 .daily-page .trade-swipe { border-radius: 0; }
-.daily-page .trade-card { border-inline: 0; border-radius: 0; background: transparent; box-shadow: inset 1px 0 var(--daily-line), inset -1px 0 var(--daily-line); }
-.daily-page .trade-card--drag-placeholder { border-inline: 0; box-shadow: inset 1px 0 var(--daily-line-strong), inset -1px 0 var(--daily-line-strong); }
+.daily-page .trade-card { border-inline: 0; border-radius: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line), inset -1px 0 var(--daily-line); }
+.daily-page .trade-card--drag-placeholder { border-inline: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line-strong), inset -1px 0 var(--daily-line-strong); }
 .daily-page .trade-row-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr); width: 100%; height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }
 .daily-page .trade-row-summary > .drag-handle { grid-column: 1; grid-row: 1; }
 .daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto; align-items: stretch; min-width: 0; border: 0; border-radius: 0; background: transparent; color: var(--daily-ink); font: inherit; padding: 0; text-align: left; }

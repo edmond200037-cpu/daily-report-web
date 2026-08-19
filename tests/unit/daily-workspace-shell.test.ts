@@ -14,7 +14,7 @@ describe('日報共用工作區骨架', () => {
   });
 
   it('把主要功能頁籤與日報分類包在明確的工作區語意中', () => {
-    expect(main).toContain('class="daily-page__module-tabs"');
+    expect(main).toContain('class="module-page__tabs"');
     expect(main).toContain('<section class="daily-workspace" aria-label="日報內容">');
     expect(main).toContain('${dailyTabs()}${activeTabContent()}</section>');
   });
@@ -26,9 +26,12 @@ describe('日報共用工作區骨架', () => {
     expect(dailyCss).toContain('border-radius: 0;');
   });
 
-  it('共用骨架只在日報頁套用，不改變水位 module header', () => {
+  it('日報與水位共用模組頁首與主要頁籤骨架，保留各自作業色', () => {
     expect(dailyCss).toContain('.daily-page__header');
-    expect(dailyCss).toContain('.daily-page__module-tabs');
+    expect(dailyCss).toContain('.daily-page .module-page__tabs');
+    expect(main).toContain('class="app-shell module-page daily-page"');
+    expect(main).toContain('class="app-shell module-page water-page-shell"');
+    expect(main).toContain("moduleHeader('水位變化', '本機量測資料'");
     expect(main).toContain("function waterShell(settings: boolean)");
   });
 });

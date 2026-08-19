@@ -100,6 +100,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .app-header__meta { min-height: 1.05rem; }
 .status, .hint, .empty { color: var(--ink-soft); }
 
+/* 日報與水位共用同一個模組框架；各自的作業色僅在內容與目前頁籤保留。 */
+.module-page { background: var(--daily-paper); color: var(--daily-ink); }
+.module-page__header { align-items: flex-end; margin-bottom: var(--space-3); padding-top: var(--space-1); border-color: var(--daily-line-strong); }
+.module-page__header h1 { color: var(--daily-ink); font-size: 1.5rem; }
+.module-page__header .app-header__meta { margin: 0 0 var(--space-1); color: var(--daily-ink-faint); font-size: var(--daily-meta-size); font-weight: 700; letter-spacing: 0; }
+.module-page__header .settings-button { border-color: var(--daily-line-strong); color: var(--daily-ink); }
+.module-page__header .settings-button:hover { border-color: var(--daily-orange); background: var(--daily-paper-muted); }
+.module-page__tabs .top-tabs { margin-bottom: var(--space-3); border-color: var(--daily-line); }
+.module-page__tabs .top-tabs a { color: var(--daily-ink-soft); }
+.module-page__tabs .top-tabs a:hover { background: var(--daily-paper-muted); color: var(--daily-ink); }
+.module-page__tabs .top-tabs a.active, .module-page__tabs .top-tabs a[aria-current="page"] { border-color: var(--daily-orange); color: var(--daily-ink); }
+
 nav { display: flex; gap: var(--space-1); overflow: auto; padding: var(--space-4) 0; scrollbar-width: thin; }
 nav a { border-bottom: 2px solid transparent; color: var(--ink-soft); font-size: .875rem; font-weight: 700; padding: .5rem .75rem; text-decoration: none; white-space: nowrap; }
 nav a:hover { color: var(--ink); }
