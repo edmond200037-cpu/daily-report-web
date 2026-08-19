@@ -162,7 +162,7 @@
 
 /* Phase 3: engineering remains sortable and expandable, but reads as a paper data row. */
 .daily-page .trade-swipe { border-radius: 0; }
-.daily-page .trade-card { border-inline: 0; border-radius: 0; background: transparent; }
+.daily-page .trade-card { border-inline: 1px solid var(--daily-line); border-radius: 0; background: transparent; }
 .daily-page .trade-card--drag-placeholder { border-inline: 1px solid var(--daily-line-strong); }
 .daily-page .trade-row-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr); width: 100%; height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }
 .daily-page .trade-row-summary > .drag-handle { grid-column: 1; grid-row: 1; }
@@ -172,9 +172,9 @@
 .daily-page .trade-row-summary__trade, .daily-page .trade-row-summary__task, .daily-page .trade-row-summary__vendor { display: flex; align-items: center; min-width: 0; overflow: hidden; border-left: 1px solid var(--daily-line); padding: .5rem .75rem; text-overflow: ellipsis; white-space: nowrap; }
 .daily-page .trade-row-summary__trade, .daily-page .trade-row-summary__vendor { color: var(--daily-ink-soft); font-size: var(--daily-meta-size); }
 .daily-page .trade-row-summary__task { font-size: var(--daily-body-size); font-weight: var(--daily-summary-primary-weight); }
-.daily-page .trade-row-summary__status { display: flex; align-items: center; align-self: stretch; border: 0; border-left: 2px solid currentColor; border-radius: 0; background: transparent; color: var(--daily-ink-soft); font-size: var(--daily-meta-size); font-weight: var(--daily-summary-label-weight); padding: .5rem .75rem; white-space: nowrap; }
+.daily-page .trade-row-summary__status { display: flex; align-items: center; align-self: stretch; border: 0; border-left: 1px solid currentColor; border-radius: 0; background: transparent; color: var(--daily-ink-soft); font-size: var(--daily-meta-size); font-weight: var(--daily-summary-label-weight); padding: .5rem .75rem; white-space: nowrap; }
 .daily-page .trade-row-summary__status.entry-status--complete { color: var(--success); }
-.daily-page .trade-row-summary__status.entry-status--attention { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.daily-page .trade-row-summary__status.entry-status--attention { border-color: var(--daily-incomplete); background: var(--daily-incomplete); color: #fff; }
 
 @media (max-width: 639px) {
   .daily-page .trade-row-summary { height: 102px; min-height: 102px; max-height: 102px; }

@@ -7,6 +7,7 @@ const source = (path: string) => readFileSync(new URL(`../../${path}`, import.me
 describe('工程資料列呈現契約', () => {
   const daily = source('src/main.ts');
   const styles = source('src/daily/daily.css');
+  const tokens = source('src/styles.css');
 
   it('以工程專用摘要列呈現工種、代表工項、廠商人數與狀態', () => {
     expect(daily).toContain('function tradeRowSummary');
@@ -28,8 +29,10 @@ describe('工程資料列呈現契約', () => {
   });
 
   it('桌面使用四欄，手機改為三層資料列，紅色僅存在未完成狀態欄', () => {
+    expect(tokens).toContain('--daily-incomplete: #c14f46');
+    expect(styles).toContain('.daily-page .trade-card { border-inline: 1px solid var(--daily-line);');
     expect(styles).toContain('.daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto;');
-    expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }');
+    expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: var(--daily-incomplete); background: var(--daily-incomplete); color: #fff; }');
     expect(styles).toContain('@media (max-width: 639px)');
     expect(styles).toContain('.daily-page .trade-row-summary__trade { grid-column: 1; grid-row: 1; border-bottom: 1px solid var(--daily-line); }');
     expect(styles).toContain('.daily-page .trade-row-summary__status { grid-column: 2; grid-row: 1;');
