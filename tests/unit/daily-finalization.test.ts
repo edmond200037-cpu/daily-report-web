@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isFinalizedReportExpired } from '../../src/data/daily-repository';
+import { isFinalizedReportExpired, outputFingerprint, recentConfirmedVendor, type NamedMemory } from '../../src/data/daily-repository';
 import { validateDailyForFinalization } from '../../src/daily/daily-validator';
 import type { DailyReportV3 } from '../../src/domain/daily';
 
@@ -18,5 +18,20 @@ describe('日報定稿契約', () => {
     const reference = new Date('2026-08-10T12:00:00+08:00');
     expect(isFinalizedReportExpired('2026-08-03T08:00:00+08:00', reference)).toBe(true);
     expect(isFinalizedReportExpired('2026-08-04T08:00:00+08:00', reference)).toBe(false);
+  });
+
+  it('以完整輸出產生穩定且內容敏感的 SHA-256 指紋', async () => {
+    await expect(outputFingerprint('模板工程：施工。')).resolves.toBe(await outputFingerprint('模板工程：施工。'));
+    await expect(outputFingerprint('模板工程：施工。')).resolves.not.toBe(await outputFingerprint('模板工程：進料。'));
+  });
+
+  it('最近正式廠商依時間、使用次數與名稱穩定排序，忽略候選', () => {
+    const memory = (id: string, name: string, lastUsedAt: string | null, usageCount: number, status: 'candidate' | 'confirmed' = 'confirmed'): NamedMemory => ({ id, name, normalizedName: name.toLowerCase(), tradeTypeId: 'trade-1', lastUsedAt, usageCount, finalizedUsageCount: 0, createdAt: '', updatedAt: '', status });
+    expect(recentConfirmedVendor([
+      memory('candidate', '候選廠商', '2026-08-12T00:00:00.000Z', 99, 'candidate'),
+      memory('beta', 'Beta', '2026-08-11T00:00:00.000Z', 3),
+      memory('alpha', 'Alpha', '2026-08-11T00:00:00.000Z', 3),
+      memory('old', '舊廠商', '2026-08-10T00:00:00.000Z', 99),
+    ], 'trade-1')?.id).toBe('alpha');
   });
 });

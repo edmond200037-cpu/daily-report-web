@@ -75,15 +75,13 @@ describe('日報紙本表單重整前功能基線', () => {
     expect(branch).not.toContain('daily.flush');
   });
 
-  it('定稿 repository 直接保存呼叫端產生的 outputText', () => {
-    // IndexedDB integration is intentionally out of this unit suite; this protects
-    // the snapshot ownership boundary while the visual work changes no repository code.
+  it('定稿 repository 保存呼叫端產生的 outputText，並以單一交易保留草稿與提交紀錄', () => {
     const source = readFileSync(new URL('../../src/data/daily-repository.ts', import.meta.url), 'utf8');
-    const finalize = source.match(/export async function finalizeDailyReport[\s\S]+?return \{ snapshot, nextDraft \}; \}/)?.[0] ?? '';
+    const finalize = source.slice(source.indexOf('export async function finalizeDailyReport'));
 
     expect(finalize).toContain('outputText, templateVersion: DAILY_TEMPLATE_VERSION');
-    expect(finalize).toContain("transaction(['daily_reports', 'live_report_draft'], 'readwrite')");
+    expect(finalize).toContain("'daily_memory_commits'");
     expect(finalize).toContain("objectStore('daily_reports').put(snapshot)");
-    expect(finalize).toContain("objectStore('live_report_draft').put(nextDraft)");
+    expect(finalize).toContain("objectStore('live_report_draft').put(retainedDraft)");
   });
 });

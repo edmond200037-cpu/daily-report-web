@@ -1,11 +1,11 @@
 # 資料模型與 Migration
 
-資料庫名稱為 `construction-daily-report`，目前 `DB_VERSION = 7`。所有 IndexedDB 連線必須經過 `src/data/db.js` 的 `openDatabase()`；日報、記憶與水位不得自行以不同版本開啟資料庫。
+資料庫名稱為 `construction-daily-report`，目前 `DB_VERSION = 9`。所有 IndexedDB 連線必須經過 `src/data/db.js` 的 `openDatabase()`；日報、記憶與水位不得自行以不同版本開啟資料庫。
 
 ## Bounded contexts
 
 - **Daily Reporting**：`live_report_draft` 是唯一可編輯草稿；`daily_reports` 是定稿快照，包含結構、官方模板輸出文字、模板版本與 `finalizedAt`。
-- **Reusable Memories**：工地、工種、工項、廠商、位置、材料類型、材料候選及特殊模板。每筆有 `candidate` 或 `confirmed` 狀態；名稱以標準化欄位去重。
+- **Reusable Memories**：工地、工種、工項、廠商、位置、材料類型、材料候選及特殊模板。每筆有 `candidate` 或 `confirmed` 狀態，並以 `finalizedUsageCount` 記錄不同定稿的出現次數；名稱以標準化欄位去重。
 - **Water Level**：井位、量測、讀值；不會寫入日報或記憶備份。
 - **App Platform**：PWA、路由、診斷與 migration metadata。
 
@@ -14,3 +14,4 @@
 - 定稿快照不可被主檔重命名、刪除或草稿編輯回寫；在第 7 個日曆日自動清除。
 - 記憶備份的 schema 為 `memories@2`，並相容讀取 `memories@1`；匯入採合併去重，絕不覆蓋草稿、定稿或水位資料。
 - schema 變更必須提高 `DB_VERSION`，並由 `runMigration()` 開啟資料庫以執行唯一的 `onupgradeneeded` 路徑。無法安全轉換的資料不得靜默刪除。
+- `daily_memory_commits/current` 保存最近一次成功定稿的 SHA-256 指紋與快照 ID；即使七日快照清理後也不得刪除，以避免保留草稿再次複製時重複計次。
