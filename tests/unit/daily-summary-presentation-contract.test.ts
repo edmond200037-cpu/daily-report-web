@@ -50,9 +50,17 @@ describe('日報收合摘要高度契約', () => {
     expect(dailyCss).toContain('.daily-entry-summary__secondary, .entry-copy > span, .trade-card__details, .material-entry__details { color: var(--ink-soft); font-size: .8125rem; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height); }');
   });
 
-  it('讓工程拖曳佔位與有邊框的收合卡同高', () => {
+  it('讓工程拖曳佔位與預覽完整沿用收合工程列骨架', () => {
     expect(daily).toContain('trade-card--drag-placeholder');
+    expect(daily).toContain('aria-hidden="true">${tradeRowSummary(trade, false');
+    expect(daily).toContain('function tradeDragPreview(id: string): string');
+    expect(daily).toContain('class="daily-page trade-drag-preview__surface"');
+    expect(daily).toContain("const summaryHeight = card.querySelector<HTMLElement>('.trade-row-summary')?.getBoundingClientRect().height ?? rect.height");
+    expect(daily).toContain('preview.style.height = `${summaryHeight + 2}px`');
+    expect(daily).toContain('preview.innerHTML = tradeDragPreview(id)');
     expect(dailyCss).toContain('height: calc(var(--summary-height) + 2px)');
+    expect(dailyCss).toContain('.trade-drag-preview { position: fixed; z-index: 1000; overflow: hidden; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }');
+    expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder');
   });
 
   it('將相鄰的工種與預覽操作放入具間距的 action container', () => {

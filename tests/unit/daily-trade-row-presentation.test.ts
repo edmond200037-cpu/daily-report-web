@@ -32,7 +32,7 @@ describe('工程資料列呈現契約', () => {
     expect(tokens).toContain('--daily-incomplete-bg: #f5deda');
     expect(tokens).toContain('--daily-incomplete-ink: #7a302b');
     expect(tokens).toContain('--daily-incomplete-border: #d7a29b');
-    expect(styles).toContain('.daily-page .trade-card { border-inline: 0;');
+    expect(styles).toContain('.daily-page .trade-card { border-inline: 0; border-radius: 0; background: var(--daily-paper-raised);');
     expect(styles).toContain('box-shadow: inset 1px 0 var(--daily-line), inset -1px 0 var(--daily-line);');
     expect(styles).toContain('.daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto;');
     expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: transparent; background: var(--daily-incomplete-bg); box-shadow: inset 0 0 0 1px var(--daily-incomplete-border); color: var(--daily-incomplete-ink); }');

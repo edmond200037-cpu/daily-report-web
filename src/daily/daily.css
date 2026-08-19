@@ -29,7 +29,7 @@
 .daily-entry-summary__toggle .daily-entry-summary__copy { grid-column: 1; grid-row: 1 / -1; }
 .trade-card__header.entry-copy { width: 100%; min-height: var(--entry-height); border: 0; border-radius: 0; background: transparent; color: inherit; }
 .trade-card__header.entry-copy:hover { border-color: transparent; background: transparent; }
-.trade-card--drag-placeholder { height: calc(var(--summary-height) + 2px); border-style: dashed; background: transparent; pointer-events: none; }
+.trade-card--drag-placeholder { height: calc(var(--summary-height) + 2px); border-style: dashed; pointer-events: none; }
 .daily-entry-summary__primary, .daily-entry-summary__secondary, .entry-copy strong, .entry-copy > span, .trade-card__title, .trade-card__details, .material-entry__name, .material-entry__details { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .daily-entry-summary__primary, .entry-copy strong, .trade-card__title, .material-entry__name { font-weight: var(--daily-summary-primary-weight); }
 .daily-entry-summary__secondary, .entry-copy > span, .trade-card__details, .material-entry__details { color: var(--ink-soft); font-size: .8125rem; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height); }
@@ -76,6 +76,15 @@
 .contact-search-field { position: relative; z-index: 1; min-width: 0; }
 .contact-search-field:focus-within { z-index: 10; }
 .contact-search-field label { min-width: 0; }
+.site-search-field { position: relative; z-index: 1; }
+.site-search-field:focus-within { z-index: 10; }
+.site-search-field label { min-width: 0; }
+.site-search-field__label { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.site-search-field__label a { color: var(--daily-orange-strong); font-size: .75rem; font-weight: 760; text-decoration: none; }
+.site-search-field__label a:hover { text-decoration: underline; }
+.site-search-field__suggestions { top: calc(100% - var(--space-3)); }
+.site-search-field__suggestions strong, .site-search-field__suggestions .hint { display: block; }
+.site-search-field__create { color: var(--daily-orange-strong); font-weight: 760; }
 .contact-search-field__input { display: block; width: 100%; height: 44px; min-height: 44px; padding: 0 .75rem; border-width: 1px; box-sizing: border-box; font-size: inherit; line-height: 1.4; }
 .contact-suggestions { position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 100; display: grid; gap: 1px; width: 100%; max-height: 220px; margin: 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-raised); box-shadow: 0 8px 24px rgb(24 33 38 / 16%); box-sizing: border-box; }
 .contact-suggestions__option { display: flex; align-items: center; min-height: 42px; border: 0; border-radius: 0; padding: .5rem .75rem; text-align: left; }
@@ -114,6 +123,7 @@
 .daily-page .settings-button:hover { background: var(--daily-paper-muted); border-color: var(--daily-orange); }
 .daily-page .basics, .daily-page .daily-entry, .daily-page .compact-entry, .daily-page .daily-section__empty, .daily-page .work-section__empty { background: var(--daily-paper-raised); }
 .daily-page .daily-basics { margin: 0; border-inline: 0; border-radius: 0; border-color: var(--daily-line-strong); box-shadow: none; }
+.daily-page .daily-basics.basics--expanded { position: relative; z-index: 40; overflow: visible; }
 .daily-page .daily-basics .basics__summary { padding-inline: 0; }
 .daily-page .daily-basics .basics__fields { border-color: var(--daily-line); padding-inline: 0; }
 .daily-page .daily-basics .basics__action { color: var(--daily-orange-strong); }
@@ -155,7 +165,11 @@
 /* Phase 3: engineering remains sortable and expandable, but reads as a paper data row. */
 .daily-page .trade-swipe { border-radius: 0; }
 .daily-page .trade-card { border-inline: 0; border-radius: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line), inset -1px 0 var(--daily-line); }
-.daily-page .trade-card--drag-placeholder { border-inline: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line-strong), inset -1px 0 var(--daily-line-strong); }
+.daily-page .trade-card--drag-placeholder { border-inline: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line-strong), inset -1px 0 var(--daily-line-strong); opacity: .38; }
+.trade-drag-preview { position: fixed; z-index: 1000; overflow: hidden; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }
+.trade-drag-preview__surface { background: transparent; }
+.trade-drag-preview .trade-card { margin: 0; }
+.trade-drag-preview .drag-handle { cursor: grabbing; }
 .daily-page .trade-row-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr); width: 100%; height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }
 .daily-page .trade-row-summary > .drag-handle { grid-column: 1; grid-row: 1; }
 .daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto; align-items: stretch; min-width: 0; border: 0; border-radius: 0; background: transparent; color: var(--daily-ink); font: inherit; padding: 0; text-align: left; }

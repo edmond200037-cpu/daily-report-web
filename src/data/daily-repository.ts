@@ -113,6 +113,23 @@ export async function saveMemory(kind: 'sites' | 'trades' | 'vendors' | 'tasks' 
     await txDone(tx);
   } finally { database.close(); }
 }
+/** Selects an existing site or creates a confirmed site, then persists the daily draft atomically. */
+export async function selectSiteMemory(report: DailyReportV3, value: string): Promise<{ report: DailyReportV3; site: NamedMemory }> {
+  const error = validateText(value, 50); if (error) throw new Error(error);
+  const database = await db();
+  try {
+    const tx = database.transaction(['sites', 'live_report_draft'], 'readwrite');
+    const store = tx.objectStore('sites'); const records = await request(store.getAll()) as NamedMemory[];
+    const normalizedName = normalizeName(value); const stamp = now(); const current = records.find((row) => row.normalizedName === normalizedName);
+    const site: NamedMemory = current
+      ? { ...current, name: cleanName(value), status: 'confirmed', usageCount: current.usageCount + 1, lastUsedAt: stamp, updatedAt: stamp }
+      : { id: crypto.randomUUID(), name: cleanName(value), normalizedName, usageCount: 1, lastUsedAt: stamp, createdAt: stamp, updatedAt: stamp, status: 'confirmed', manuallyCreated: true, manuallyConfirmed: true, firstUsedAt: stamp };
+    store.put(site);
+    const next = structuredClone(report); next.siteId = site.id; next.siteNameSnapshot = site.name; next.updatedAt = stamp;
+    tx.objectStore('live_report_draft').put(next);
+    await txDone(tx); return { report: next, site };
+  } finally { database.close(); }
+}
 function syncRename(draft: DailyReportV3, kind: string, id: string, name: string): void { if (kind === 'sites' && draft.siteId === id) draft.siteNameSnapshot = name; draft.tradeSections.forEach((trade) => { if (kind === 'trades' && trade.tradeTypeId === id) trade.tradeNameSnapshot = name; if (kind === 'vendors' && trade.vendorId === id) trade.vendorNameSnapshot = name; trade.workItems.forEach((work) => { if (kind === 'tasks' && work.taskId === id) work.taskTextSnapshot = name; if (kind === 'locations' && work.locationId === id) work.locationTextSnapshot = name; }); }); }
 export async function confirmMemory(kind: 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations', id: string): Promise<void> { const store = ({ sites: 'sites', trades: 'trade_types', vendors: 'trade_vendors', tasks: 'trade_tasks', locations: 'location_memories' } as const)[kind]; const database = await db(); try { const tx = database.transaction(store, 'readwrite'); const row = await request(tx.objectStore(store).get(id)) as NamedMemory | undefined; if (!row) return; tx.objectStore(store).put({ ...row, status: 'confirmed', manuallyConfirmed: true, updatedAt: now() }); await txDone(tx); } finally { database.close(); } }
 export async function deleteMemory(kind: 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations', id: string): Promise<DailyReportV3 | undefined> { const store = ({ sites: 'sites', trades: 'trade_types', vendors: 'trade_vendors', tasks: 'trade_tasks', locations: 'location_memories' } as const)[kind]; const stores = kind === 'trades' ? [store, 'trade_vendors', 'trade_tasks', 'live_report_draft'] : [store, 'live_report_draft']; const database = await db(); try { const tx = database.transaction(stores, 'readwrite'); const removed = await request(tx.objectStore(store).get(id)) as NamedMemory | undefined; tx.objectStore(store).delete(id); if (kind === 'trades') { const vendors = await request(tx.objectStore('trade_vendors').getAll()) as NamedMemory[]; vendors.filter((item) => item.tradeTypeId === id).forEach((item) => tx.objectStore('trade_vendors').delete(item.id)); const tasks = await request(tx.objectStore('trade_tasks').getAll()) as NamedMemory[]; tasks.filter((item) => item.tradeTypeId === id).forEach((item) => tx.objectStore('trade_tasks').delete(item.id)); }
