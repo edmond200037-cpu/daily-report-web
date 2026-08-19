@@ -8,13 +8,15 @@ describe('工程資料列呈現契約', () => {
   const daily = source('src/main.ts');
   const styles = source('src/daily/daily.css');
 
-  it('以工程專用摘要列呈現位置、工項、廠商人數與狀態', () => {
+  it('以工程專用摘要列呈現工種、代表工項、廠商人數與狀態', () => {
     expect(daily).toContain('function tradeRowSummary');
-    expect(daily).toContain('trade-row-summary__location');
+    expect(daily).toContain('trade-row-summary__trade');
     expect(daily).toContain('trade-row-summary__task');
     expect(daily).toContain('trade-row-summary__vendor');
     expect(daily).toContain('trade-row-summary__status');
-    expect(daily).toContain('function formatWorkLocation');
+    expect(daily).toContain('const nonEmptyWorkItems = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).filter');
+    expect(daily).toContain('另 ${nonEmptyWorkItems.length - 1} 項');
+    expect(daily).toContain("trade.status === 'complete' ? '已完成' : '未完成'");
   });
 
   it('保留原有拖曳與展開按鈕的分離語意', () => {
@@ -22,13 +24,14 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain('data-daily-action="toggle-trade"');
     expect(daily).toContain('aria-controls="trade-content-');
     expect(daily).toContain("${expanded ? '收合' : '展開'}工程條目");
-    expect(daily).toContain('title="${escapeHtml(task)}"');
+    expect(daily).toContain('title="${escapeHtml(taskSummary)}"');
   });
 
-  it('桌面使用四欄，手機改為三層資料列且狀態不再是膠囊', () => {
+  it('桌面使用四欄，手機改為三層資料列，紅色僅存在未完成狀態欄', () => {
     expect(styles).toContain('.daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto;');
-    expect(styles).toContain('.daily-page .trade-row-summary__status { display: flex; align-items: center; align-self: stretch; border: 0; border-left: 2px solid currentColor; border-radius: 0; background: transparent;');
+    expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }');
     expect(styles).toContain('@media (max-width: 639px)');
-    expect(styles).toContain('.daily-page .trade-row-summary__toggle { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: repeat(3, minmax(0, auto)); }');
+    expect(styles).toContain('.daily-page .trade-row-summary__trade { grid-column: 1; grid-row: 1; border-bottom: 1px solid var(--daily-line); }');
+    expect(styles).toContain('.daily-page .trade-row-summary__status { grid-column: 2; grid-row: 1;');
   });
 });
