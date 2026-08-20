@@ -30,7 +30,7 @@ describe('日報共用工作區骨架', () => {
     expect(dailyCss).toContain('.daily-page__header');
     expect(dailyCss).toContain('.daily-page .module-page__tabs');
     expect(main).toContain('class="app-shell module-page daily-page"');
-    expect(main).toContain('class="app-shell module-page water-page-shell"');
+    expect(main).toContain("'app-shell module-page water-page-shell'");
     expect(main).toContain("moduleHeader('水位變化', '本機量測資料'");
     expect(main).toContain("function waterShell(settings: boolean)");
   });

@@ -35,4 +35,10 @@ describe('設定端直達導覽契約', () => {
     expect(main).not.toContain("['backup', '備份與還原']");
     expect(main).not.toContain("['debug', '偵錯資訊']");
   });
+
+  it('水位設定使用設定端容器，水位填報才保留模組紙色容器', () => {
+    expect(main).toContain("const shellClass = settings ? 'app-shell settings-page water-settings-shell' : 'app-shell module-page water-page-shell';");
+    expect(main).toContain("const header = settings ? settingsHeader('WATER SETTINGS', '水位設定')");
+    expect(main).toContain('<main class="${shellClass}">');
+  });
 });
