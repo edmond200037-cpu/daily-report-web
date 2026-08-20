@@ -19,6 +19,12 @@ describe('設定端直達導覽契約', () => {
     expect(css).toContain('.settings-context-tabs a.active { border-color: var(--accent); background: var(--surface-raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }');
   });
 
+  it('四個設定領域共用紙質淡黃色工作台，不影響填報模組容器', () => {
+    expect(css).toContain('.settings-page { background: var(--daily-paper); color: var(--daily-ink); }');
+    expect(css).toContain('.settings-page .settings-context-tabs a { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }');
+    expect(css).toContain('.settings-page .settings-work-area { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); }');
+  });
+
   it('日報主檔以兩個暫態工作面與直列管理清單呈現既有內容', () => {
     expect(main).toContain("type DailySettingsArea = 'foundation' | 'materials';");
     expect(main).toContain("const dailySettingsAreas: Array<{ id: DailySettingsArea;");

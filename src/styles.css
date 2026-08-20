@@ -112,6 +112,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .module-page__tabs .top-tabs a:hover { background: var(--daily-paper-muted); color: var(--daily-ink); }
 .module-page__tabs .top-tabs a.active, .module-page__tabs .top-tabs a[aria-current="page"] { border-color: var(--daily-orange); color: var(--daily-ink); }
 
+/* 設定區沿用日報的紙質工作台；填報模組仍由 .module-page 獨立控制。 */
+.settings-page { background: var(--daily-paper); color: var(--daily-ink); }
+.settings-page .top { border-color: var(--daily-line-strong); }
+.settings-page .top h1 { color: var(--daily-ink); }
+.settings-page .eyebrow, .settings-page .hint, .settings-page .empty { color: var(--daily-ink-faint); }
+.settings-page .settings-button { border-color: var(--daily-line-strong); color: var(--daily-ink); }
+.settings-page .settings-button:hover { border-color: var(--daily-orange); background: var(--daily-paper-muted); }
+.settings-page .settings-context-tabs a { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }
+.settings-page .settings-context-tabs a.active { border-color: var(--daily-orange); background: var(--daily-paper-raised); color: var(--daily-ink); box-shadow: inset 0 -3px 0 var(--daily-orange); }
+.settings-page .settings-work-area { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); }
+.settings-page .settings-work-area.expanded { border-color: var(--daily-ink); }
+.settings-page .settings-work-area__toggle:hover, .settings-page .settings-management-list__item:hover { background: var(--daily-paper-muted); border-color: var(--daily-line); }
+.settings-page .settings-work-area__toggle small, .settings-page .settings-management-list__item small { color: var(--daily-ink-faint); }
+.settings-page .settings-work-area__toggle > span:last-child, .settings-page .settings-management-list__item > span:last-child { color: var(--daily-orange-strong); }
+.settings-page .settings-work-area__content, .settings-page .settings-edit-form { border-color: var(--daily-line); }
+.settings-page .settings-management-list__item.active { border-color: var(--daily-line-strong); background: var(--daily-orange-soft); color: var(--daily-ink); }
+.settings-page .form-card, .settings-page .manage, .settings-page .backup { border-color: var(--daily-line); background: var(--daily-paper-raised); }
+.settings-page input, .settings-page textarea, .settings-page select { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }
+.settings-page label, .settings-page .settings-item { color: var(--daily-ink-soft); border-color: var(--daily-line); }
+
 nav { display: flex; gap: var(--space-1); overflow: auto; padding: var(--space-4) 0; scrollbar-width: thin; }
 nav a { border-bottom: 2px solid transparent; color: var(--ink-soft); font-size: .875rem; font-weight: 700; padding: .5rem .75rem; text-decoration: none; white-space: nowrap; }
 nav a:hover { color: var(--ink); }
