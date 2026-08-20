@@ -39,7 +39,8 @@ describe('工程資料列呈現契約', () => {
     expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: transparent; background: var(--daily-incomplete-bg); box-shadow: inset 0 0 0 1px var(--daily-incomplete-border); color: var(--daily-incomplete-ink); }');
     expect(styles).toContain('@media (max-width: 639px)');
     expect(styles).toContain('.daily-page .trade-row-summary { height: 72px; min-height: 72px; max-height: 72px; }');
-    expect(styles).toContain('.daily-page .trade-row-summary__meta { display: flex; grid-column: 1; grid-row: 1; align-items: center; min-width: 0; }');
+    expect(daily).toContain('trade-row-summary__mobile-meta');
+    expect(styles).toContain('.daily-page .trade-row-summary__mobile-meta { display: flex; grid-column: 1; grid-row: 1; align-items: center; min-width: 0;');
     expect(styles).toContain('.daily-page .trade-row-summary__status { grid-column: 2; grid-row: 1;');
   });
 });
