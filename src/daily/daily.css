@@ -104,8 +104,8 @@
 .preview-tags { display: flex; gap: var(--space-1); margin: var(--space-2) 0; overflow: auto; }
 .preview-tags button { border-color: #47565e; background: #2a373e; color: #edf1f2; padding: .35rem .55rem; white-space: nowrap; }
 @media (min-width: 640px) { .bottom-preview { left: auto; right: 2rem; width: min(420px, calc(100vw - 4rem)); } .floating-add-trade { right: 2rem; } .trade-undo-notice { right: 2rem; left: auto; width: min(420px, calc(100vw - 4rem)); } }
-@media (max-width: 420px) { .daily-section__header { align-items: stretch; flex-direction: column; } .daily-section__actions { display: grid; grid-template-columns: minmax(0, 1fr); } .daily-section__actions--pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } .daily-section__actions > button, .daily-section__actions--pair > button { width: 100%; min-width: 0; } .work-item-actions { align-items: stretch; flex-direction: column; } .work-item-order-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); } .work-item__desktop-tools { display: none; } .work-item__mobile-tools { display: inline-flex; } .work-item__aux-summary { flex-wrap: wrap; } .work-item__aux-summary button { max-width: 100%; } .work-item-location-row { grid-template-columns: 1fr 1fr; } .work-item-location-row input:last-child { grid-column: 1 / -1; } }
-@media (min-width: 361px) and (max-width: 420px) { .work-item__desktop-tools { display: inline-flex; } .work-item__mobile-tools { display: none; } }
+@media (max-width: 420px) { .daily-section__header { align-items: stretch; flex-direction: column; } .daily-section__actions { display: grid; grid-template-columns: minmax(0, 1fr); } .daily-section__actions--pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } .daily-section__actions > button, .daily-section__actions--pair > button { width: 100%; min-width: 0; } .work-item-actions { align-items: stretch; flex-direction: column; } .work-item-order-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); } .work-item__aux-summary { flex-wrap: wrap; } .work-item__aux-summary button { max-width: 100%; } .work-item-location-row { grid-template-columns: 1fr 1fr; } .work-item-location-row input:last-child { grid-column: 1 / -1; } }
+@media (max-width: 639px) { .work-item__desktop-tools, .work-item__order-tools { display: none; } .work-item__mobile-tools { display: inline-flex; } }
 @media (max-width: 360px) { .daily-tabs button { font-size: .75rem; } .daily-tab__count { margin-left: .08rem; } .contact-grid { grid-template-columns: 1fr; } .material-entry__content, .trade-card__content, .contact-card__content, .special-card__content { padding-right: .75rem; padding-left: .75rem; } }
 
 /* Phase 1: scoped paper-form foundations. Structure and data workflows remain unchanged. */
@@ -143,8 +143,9 @@
 .daily-page input::placeholder, .daily-page textarea::placeholder { color: var(--daily-ink-faint); }
 .daily-page input:focus, .daily-page select:focus, .daily-page textarea:focus { border-color: var(--daily-orange); outline-color: color-mix(in srgb, var(--daily-orange) 24%, transparent); }
 .daily-page button:focus-visible, .daily-page a:focus-visible { outline-color: var(--daily-orange); }
-.daily-page .primary { border-color: var(--daily-orange); background: var(--daily-orange); color: #fff; }
-.daily-page .primary:hover { border-color: var(--daily-orange-strong); background: var(--daily-orange-strong); }
+/* Keep primary actions above the generic daily-page button reset. */
+.daily-page button.primary { border-color: var(--daily-orange); background: var(--daily-orange); color: #fff; }
+.daily-page button.primary:hover { border-color: var(--daily-orange-strong); background: var(--daily-orange-strong); color: #fff; }
 .daily-page .daily-entry-summary, .daily-page .entry-summary, .daily-page .daily-entry-summary__toggle { color: var(--daily-ink); }
 .daily-page .daily-entry-summary:hover, .daily-page .entry-summary:hover { background: var(--daily-paper-muted); }
 .daily-page .daily-entry-summary__leading, .daily-page .entry-leading, .daily-page .drag-handle { border-color: var(--daily-line); background: var(--daily-paper-muted); color: var(--daily-ink-faint); }
@@ -165,13 +166,18 @@
 /* Phase 3: engineering remains sortable and expandable in the shared article-card shell. */
 .daily-page .trade-card { background: var(--daily-paper-raised); }
 .daily-page .trade-card--drag-placeholder { border-style: dashed; background: var(--daily-paper-raised); opacity: .38; }
-.trade-drag-preview { position: fixed; z-index: 1000; overflow: hidden; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }
+.trade-drag-preview { position: fixed; z-index: 1000; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }
 .trade-drag-preview__surface { background: transparent; }
 .trade-drag-preview .trade-card { margin: 0; }
 .trade-drag-preview .drag-handle { cursor: grabbing; }
 .daily-page .trade-row-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr); width: 100%; height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }
 .daily-page .trade-row-summary > .drag-handle { grid-column: 1; grid-row: 1; }
 .daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto; align-items: stretch; min-width: 0; border: 0; border-radius: 0; background: transparent; color: var(--daily-ink); font: inherit; padding: 0; text-align: left; }
+.daily-page .trade-row-summary__meta { display: contents; }
+.daily-page .trade-row-summary__trade { grid-column: 1; }
+.daily-page .trade-row-summary__task { grid-column: 2; }
+.daily-page .trade-row-summary__vendor { grid-column: 3; }
+.daily-page .trade-row-summary__status { grid-column: 4; }
 .daily-page .trade-row-summary__toggle:hover { background: var(--daily-paper-muted); }
 .daily-page .trade-row-summary__toggle:focus-visible { outline: 2px solid var(--daily-orange); outline-offset: -2px; }
 .daily-page .trade-row-summary__trade, .daily-page .trade-row-summary__task, .daily-page .trade-row-summary__vendor { display: flex; align-items: center; min-width: 0; overflow: hidden; border-left: 1px solid var(--daily-line); padding: .5rem .75rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -182,11 +188,14 @@
 .daily-page .trade-row-summary__status.entry-status--attention { border-color: transparent; background: var(--daily-incomplete-bg); box-shadow: inset 0 0 0 1px var(--daily-incomplete-border); color: var(--daily-incomplete-ink); }
 
 @media (max-width: 639px) {
-  .daily-page .trade-row-summary { height: 102px; min-height: 102px; max-height: 102px; }
-  .daily-page .trade-row-summary__toggle { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: repeat(3, minmax(0, auto)); }
-  .daily-page .trade-row-summary__trade, .daily-page .trade-row-summary__task, .daily-page .trade-row-summary__vendor { border-left: 0; padding-block: .28rem; }
-  .daily-page .trade-row-summary__trade { grid-column: 1; grid-row: 1; border-bottom: 1px solid var(--daily-line); }
+  .daily-page .trade-card--drag-placeholder { height: 74px; }
+  .daily-page .trade-row-summary { height: 72px; min-height: 72px; max-height: 72px; }
+  .daily-page .trade-row-summary__toggle { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .daily-page .trade-row-summary__meta { display: flex; grid-column: 1; grid-row: 1; align-items: center; min-width: 0; }
+  .daily-page .trade-row-summary__meta .trade-row-summary__trade, .daily-page .trade-row-summary__meta .trade-row-summary__vendor, .daily-page .trade-row-summary__task { border-left: 0; padding-block: .2rem; }
+  .daily-page .trade-row-summary__meta .trade-row-summary__trade { flex: 0 1 auto; max-width: 58%; }
+  .daily-page .trade-row-summary__meta .trade-row-summary__vendor { flex: 1 1 auto; padding-left: .15rem; }
+  .daily-page .trade-row-summary__meta .trade-row-summary__vendor::before { content: '・'; }
   .daily-page .trade-row-summary__task { grid-column: 1 / -1; grid-row: 2; }
-  .daily-page .trade-row-summary__vendor { grid-column: 1 / -1; grid-row: 3; }
   .daily-page .trade-row-summary__status { grid-column: 2; grid-row: 1; align-items: center; padding-block: .28rem; }
 }

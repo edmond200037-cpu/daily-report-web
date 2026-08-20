@@ -58,8 +58,11 @@ describe('日報收合摘要高度契約', () => {
     expect(daily).toContain("const summaryHeight = card.querySelector<HTMLElement>('.trade-row-summary')?.getBoundingClientRect().height ?? rect.height");
     expect(daily).toContain('preview.style.height = `${summaryHeight + 2}px`');
     expect(daily).toContain('preview.innerHTML = tradeDragPreview(id)');
+    expect(daily).toContain('function positionTradeDragPreview(preview: HTMLElement, pointerX: number, pointerY: number): void');
+    expect(daily).toContain('const maxTop = Math.max(edge, window.innerHeight - rect.height - edge)');
     expect(dailyCss).toContain('height: calc(var(--summary-height) + 2px)');
-    expect(dailyCss).toContain('.trade-drag-preview { position: fixed; z-index: 1000; overflow: hidden; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }');
+    expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder { height: 74px; }');
+    expect(dailyCss).toContain('.trade-drag-preview { position: fixed; z-index: 1000; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }');
     expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder');
   });
 

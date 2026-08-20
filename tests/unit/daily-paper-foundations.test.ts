@@ -42,4 +42,9 @@ describe('日報紙本表單基礎 tokens', () => {
   it('把正文 token 實際套用到日報資料內容', () => {
     expect(dailyCss).toContain('.daily-page .daily-entry-summary__primary, .daily-page .entry-copy strong { font-size: var(--daily-body-size); }');
   });
+
+  it('主操作按鈕覆蓋日報通用按鈕文字色，維持橘底白字對比', () => {
+    expect(dailyCss).toContain('.daily-page button.primary { border-color: var(--daily-orange); background: var(--daily-orange); color: #fff; }');
+    expect(dailyCss).toContain('.daily-page button.primary:hover { border-color: var(--daily-orange-strong); background: var(--daily-orange-strong); color: #fff; }');
+  });
 });
