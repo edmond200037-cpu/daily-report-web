@@ -8,7 +8,8 @@ const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8')
 describe('進料接線盤呈現契約', () => {
   it('桌面以兩側 280px 節點欄夾中間可伸展接線區', () => {
     expect(css).toContain('grid-template-columns: 280px minmax(7rem, 1fr) 280px');
-    expect(css).toContain('.connection-node-section--trades { justify-self: end; }');
+    expect(css).toContain('.connection-node-section--trades { grid-column: 3; justify-self: end; }');
+    expect(css).toContain('.connection-node-section--trades input { box-sizing: border-box;');
   });
 
   it('進料與工種卡共用 68px 固定高度，手機保留 80px 接線區', () => {
@@ -20,6 +21,11 @@ describe('進料接線盤呈現契約', () => {
   it('以非互動 SVG 曲線呈現關聯與目前選取狀態', () => {
     expect(main).toContain('class="material-connection-canvas" aria-hidden="true"');
     expect(main).toContain('class="connection-curve${active ? \' is-active\' : \'\'}"');
+    expect(main).toContain('data-connection-curve data-material-id="${entry.id}" data-trade-id="${entry.connectedTradeSectionId}"');
+    expect(main).toContain('function syncMaterialConnectionCurves(): void');
+    expect(main).toContain('getBoundingClientRect()');
+    expect(main).toContain(".connection-node[data-material-id]");
+    expect(main).toContain(".connection-node[data-trade-id]");
     expect(css).toContain('pointer-events: none');
     expect(css).toContain('.connection-curve.is-active');
     expect(main).toContain('class="material-connection-canvas__mobile" viewBox="0 0 100 80"');
@@ -45,5 +51,12 @@ describe('進料接線盤呈現契約', () => {
     expect(main).toContain('const MATERIAL_CONNECTION_NODE_GAP_PX = 8');
     expect(main).toContain('--connection-node-height:${MATERIAL_CONNECTION_NODE_HEIGHT_PX}px;--connection-node-gap:${MATERIAL_CONNECTION_NODE_GAP_PX}px');
     expect(css).toContain('gap: var(--connection-node-gap);');
+    expect(css).toContain('column-gap: 0;');
+    expect(css).toContain('.material-connection-canvas { position: absolute; inset: 0; z-index: 0;');
+    expect(css).toContain('.connection-node-section--trades { grid-column: 3; justify-self: end; }');
+    expect(css).toContain('.material-connection-canvas { position: static; inset: auto; order: 2; height: 80px;');
+    expect(css).toContain('.connection-node--material .connection-port { right: -.35rem; }');
+    expect(css).toContain('.connection-node--trade .connection-port { left: -.35rem; }');
+    expect(main).not.toContain('連接後會退回草稿');
   });
 });

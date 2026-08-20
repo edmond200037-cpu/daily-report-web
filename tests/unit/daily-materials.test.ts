@@ -28,20 +28,22 @@ describe('叫料格式與驗證', () => {
     draft.contacts = [{ id: 'c1', tradeTypeId: 't1', tradeNameSnapshot: '鋼筋工程', vendorId: 'v1', vendorNameSnapshot: '萬大禾', items: [{ id: 'i2', content: '門窗開口補強', sortOrder: 1, createdAt: '', updatedAt: '' }, { id: 'i1', content: '1FL～3FL門窗角隅補強', sortOrder: 0, createdAt: '', updatedAt: '' }], sortOrder: 0, createdAt: '', updatedAt: '' }];
     expect(formatDailyReport(draft)).toContain('鋼筋工程－萬大禾：1FL～3FL門窗角隅補強；門窗開口補強。');
   });
-  it('連接、改接與解除會讓受影響工種回到草稿，且一筆進料只保留一個工種', () => {
+  it('連接、改接與解除不改變已完成工項狀態，且一筆進料只保留一個工種', () => {
     const draft = report();
     draft.tradeSections.push({ ...draft.tradeSections[0], id: 't2', tradeNameSnapshot: '土方工程', status: 'complete', sortOrder: 1 });
     draft.standaloneMaterialEntries = [material({ id: 'm4', entryType: 'independent', connectedTradeSectionId: null })];
     const controller = new DailyController(draft);
     controller.connectMaterial('t1', 'm4');
     expect(controller.materialEntry('m4')?.connectedTradeSectionId).toBe('t1');
-    expect(controller.trade('t1')?.status).toBe('draft');
+    expect(controller.trade('t1')?.status).toBe('complete');
     controller.connectMaterial('t2', 'm4');
     expect(controller.materialEntry('m4')?.connectedTradeSectionId).toBe('t2');
-    expect(controller.trade('t2')?.status).toBe('draft');
+    expect(controller.trade('t1')?.status).toBe('complete');
+    expect(controller.trade('t2')?.status).toBe('complete');
     const undo = controller.disconnectMaterial('m4');
     expect(undo).toEqual({ materialId: 'm4', tradeId: 't2' });
     expect(controller.materialEntry('m4')?.connectedTradeSectionId).toBeNull();
+    expect(controller.trade('t2')?.status).toBe('complete');
     expect(controller.undoDisconnectMaterial(undo!)).toBe(true);
     const editorSnapshot = structuredClone(controller.materialEntry('m4')!);
     expect(editorSnapshot.connectedTradeSectionId).toBe('t2');

@@ -34,7 +34,6 @@ let materialConnectionSelectionId: string | null = null;
 let materialConnectionTradeSearch = '';
 const MATERIAL_CONNECTION_NODE_HEIGHT_PX = 68;
 const MATERIAL_CONNECTION_NODE_GAP_PX = 8;
-const MATERIAL_CONNECTION_PORT_CENTER_Y_PX = MATERIAL_CONNECTION_NODE_HEIGHT_PX / 2;
 type MaterialConnectionUndoNotice = { materialId: string; tradeId: string; expiresAt: number; timer: number };
 let materialConnectionUndo: MaterialConnectionUndoNotice | null = null;
 let dailyTrades: NamedMemory[] = []; let dailyVendors: NamedMemory[] = []; let dailyTasks: NamedMemory[] = [];
@@ -216,15 +215,14 @@ function materialConnectionPanel(): string {
   const tradeNodes = visibleTrades.map((trade) => {
     const count = linkCount(trade.id);
     const title = `${trade.tradeNameSnapshot}${trade.vendorNameSnapshot ? `｜${trade.vendorNameSnapshot}` : ''}`;
-    return `<button type="button" class="connection-node connection-node--trade ${focus === trade.id ? 'is-focused' : ''}" data-daily-action="select-connection-trade" data-trade-id="${trade.id}" ${selected ? '' : 'disabled'} title="${escapeHtml(title)}"><span class="connection-port" aria-hidden="true"></span><strong>${escapeHtml(trade.tradeNameSnapshot)}</strong><small>${trade.status === 'complete' ? '已完成；連接後會退回草稿' : '草稿'}${count ? `｜已連接 ${count} 筆` : ''}</small>${count ? `<b class="connection-count" aria-label="${count} 筆進料已連接">${count}</b>` : ''}</button>`;
+    return `<button type="button" class="connection-node connection-node--trade ${focus === trade.id ? 'is-focused' : ''}" data-daily-action="select-connection-trade" data-trade-id="${trade.id}" ${selected ? '' : 'disabled'} title="${escapeHtml(title)}"><span class="connection-port" aria-hidden="true"></span><strong>${escapeHtml(trade.tradeNameSnapshot)}</strong><small>${trade.status === 'complete' ? '已完成' : '草稿'}${count ? `｜已連接 ${count} 筆` : ''}</small>${count ? `<b class="connection-count" aria-label="${count} 筆進料已連接">${count}</b>` : ''}</button>`;
   }).join('') || '<p class="empty">找不到符合的工種。</p>';
-  const sourceY = (index: number) => MATERIAL_CONNECTION_PORT_CENTER_Y_PX + index * (MATERIAL_CONNECTION_NODE_HEIGHT_PX + MATERIAL_CONNECTION_NODE_GAP_PX);
   const tradeIndex = new Map(visibleTrades.map((trade, index) => [trade.id, index]));
-  const curves = materials.flatMap((entry, materialIndex) => {
+  const curves = materials.flatMap((entry) => {
     const targetIndex = entry.connectedTradeSectionId ? tradeIndex.get(entry.connectedTradeSectionId) : undefined;
     if (targetIndex === undefined) return [];
     const active = entry.id === materialConnectionSelectionId;
-    return [`<path class="connection-curve${active ? ' is-active' : ''}" d="M 0 ${sourceY(materialIndex)} C 28 ${sourceY(materialIndex)}, 72 ${sourceY(targetIndex)}, 100 ${sourceY(targetIndex)}" vector-effect="non-scaling-stroke"/>`];
+    return [`<path class="connection-curve${active ? ' is-active' : ''}" data-connection-curve data-material-id="${entry.id}" data-trade-id="${entry.connectedTradeSectionId}" vector-effect="non-scaling-stroke"/>`];
   }).join('');
   const mobileCurves = materials.flatMap((entry, materialIndex) => {
     const targetIndex = entry.connectedTradeSectionId ? tradeIndex.get(entry.connectedTradeSectionId) : undefined;
@@ -235,9 +233,31 @@ function materialConnectionPanel(): string {
     return [`<path class="connection-curve${active ? ' is-active' : ''}" d="M ${startX} 0 C ${startX} 28, ${endX} 52, ${endX} 80" vector-effect="non-scaling-stroke"/>`];
   }).join('');
   const height = Math.max(materials.length, visibleTrades.length, 1) * (MATERIAL_CONNECTION_NODE_HEIGHT_PX + MATERIAL_CONNECTION_NODE_GAP_PX) - MATERIAL_CONNECTION_NODE_GAP_PX;
-  const canvas = `<div class="material-connection-canvas" aria-hidden="true" style="--connection-canvas-height:${height}px"><svg class="material-connection-canvas__desktop" viewBox="0 0 100 ${height}" preserveAspectRatio="none">${curves}</svg><svg class="material-connection-canvas__mobile" viewBox="0 0 100 80" preserveAspectRatio="none">${mobileCurves}</svg></div>`;
+  const canvas = `<div class="material-connection-canvas" aria-hidden="true" style="--connection-canvas-height:${height}px"><svg class="material-connection-canvas__desktop" viewBox="0 0 1 1" preserveAspectRatio="none">${curves}</svg><svg class="material-connection-canvas__mobile" viewBox="0 0 100 80" preserveAspectRatio="none">${mobileCurves}</svg></div>`;
   return `<section class="material-connection-panel" aria-label="進料接線盤" style="--connection-node-height:${MATERIAL_CONNECTION_NODE_HEIGHT_PX}px;--connection-node-gap:${MATERIAL_CONNECTION_NODE_GAP_PX}px"><header><div><p class="eyebrow">MATERIAL PATCH PANEL</p><h3>進料接線盤</h3><p class="hint" aria-live="polite">${selected ? `已選取「${escapeHtml(selected.itemName || selected.materialTypeSnapshot || '未命名進料')}」，請點選工種端口。` : '先點選已儲存的獨立進料，再點選工種。'}</p></div>${selected ? '<button type="button" data-daily-action="clear-connection-selection">取消選取</button>' : ''}</header><div class="material-connection-panel__board"><section class="connection-node-section" style="--connection-mobile-count:${Math.max(materials.length, 1)}"><header><h4>獨立進料</h4></header><div class="connection-node-list">${materialNodes}</div></section>${canvas}<section class="connection-node-section connection-node-section--trades" style="--connection-mobile-count:${Math.max(visibleTrades.length, 1)}"><header><h4>工種</h4><input data-material-connection-search aria-label="搜尋工種或廠商" placeholder="搜尋工種或廠商" value="${escapeHtml(materialConnectionTradeSearch)}" autocomplete="off"></header><div class="connection-node-list">${tradeNodes}</div></section></div></section>`;
 }
+function syncMaterialConnectionCurves(): void {
+  if (window.matchMedia('(max-width: 760px)').matches) return;
+  app.querySelectorAll<HTMLElement>('.material-connection-panel__board').forEach((board) => {
+    const svg = board.querySelector<SVGSVGElement>('.material-connection-canvas__desktop');
+    if (!svg) return;
+    const boardRect = board.getBoundingClientRect();
+    if (!boardRect.width || !boardRect.height) return;
+    svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
+    board.querySelectorAll<SVGPathElement>('[data-connection-curve]').forEach((path) => {
+      const materialId = path.dataset.materialId; const tradeId = path.dataset.tradeId;
+      const sourcePort = [...board.querySelectorAll<HTMLElement>('.connection-node[data-material-id]')].find((node) => node.dataset.materialId === materialId)?.querySelector<HTMLElement>('.connection-port');
+      const targetPort = [...board.querySelectorAll<HTMLElement>('.connection-node[data-trade-id]')].find((node) => node.dataset.tradeId === tradeId)?.querySelector<HTMLElement>('.connection-port');
+      if (!sourcePort || !targetPort) { path.removeAttribute('d'); return; }
+      const source = sourcePort.getBoundingClientRect(); const target = targetPort.getBoundingClientRect();
+      const startX = source.left - boardRect.left + source.width / 2; const startY = source.top - boardRect.top + source.height / 2;
+      const endX = target.left - boardRect.left + target.width / 2; const endY = target.top - boardRect.top + target.height / 2;
+      const control = Math.max(32, Math.abs(endX - startX) * .34);
+      path.setAttribute('d', `M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`);
+    });
+  });
+}
+window.addEventListener('resize', () => requestAnimationFrame(syncMaterialConnectionCurves));
 function moduleHeader(title: string, meta: string, settingsHref: string, settingsLabel: string, settingsAriaLabel: string, metaAttributes = ''): string {
   return `<header class="top app-header app-header--module module-page__header"><div class="app-header__title"><p class="app-header__meta"${metaAttributes}>${escapeHtml(meta)}</p><h1>${escapeHtml(title)}</h1></div><a class="settings-button" href="${settingsHref}" aria-label="${settingsAriaLabel}">${settingsLabel}</a></header>`;
 }
@@ -325,7 +345,7 @@ async function renderApp(): Promise<void> {
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
   const token = ++renderToken; const route = parseRoute(location.hash); water = undefined;
   if (route.module === 'settings') { if (route.page === 'home') { app.innerHTML = `${settingsHubView()}${pwaUpdateNotice()}`; return; } if (route.page === 'memory') memoryCandidates = await listMemoryCandidates(); else { settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? `<main class="app-shell settings-page"><header class="top app-header"><div><p class="eyebrow">DATA & SYSTEM</p><h1>資料與系統</h1></div><a class="settings-button" href="#settings">設定中心</a></header>${settingsContextTabs('data')}${settingsItems()}</main>` : memoryReviewView()}${pwaUpdateNotice()}`; return; }
-  if (route.module === 'daily') { if (route.page === 'settings') await refreshSettings(); else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports(); if (token !== renderToken) return; app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`; return; }
+  if (route.module === 'daily') { if (route.page === 'settings') await refreshSettings(); else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports(); if (token !== renderToken) return; app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`; requestAnimationFrame(syncMaterialConnectionCurves); return; }
   try { await mountWater(route, token); } catch (error) { if (token !== renderToken) return; const summary = error instanceof Error ? error.message : '無法讀取本機水位資料。'; app.innerHTML = `<main class="app-shell"><section class="form-card"><h1>水位功能暫時無法開啟</h1><p>錯誤摘要：${escapeHtml(summary)}</p><p><a href="#water-level">重新載入</a>　<a href="#daily">返回施工日報</a></p></section></main>${pwaUpdateNotice()}`; }
 }
 async function refreshSettings(): Promise<void> { const section = settingsState.activeSection; settingsTrades = await listMemories('trades'); if (section === 'materials') materialTypes = await listMaterialTypes(); else if (section === 'templates') settingsTemplates = await listTemplates(); else if (section === 'debug') settingsDebug = await databaseSummary(); else if (section === 'trade-tasks') { settingsAllTasks = await listMemories('tasks'); settingsRows = settingsAllTasks.filter((row) => row.tradeTypeId === settingsState.selectedTradeTypeId); } else if (section === 'vendors') settingsRows = settingsState.selectedTradeTypeId ? await listMemories('vendors', settingsState.selectedTradeTypeId) : []; else if (section !== 'backup') settingsRows = await listMemories(section); }

@@ -2,7 +2,7 @@
 
 ## 決策
 
-產品維持 local-first：無帳號、無後端、無多人同步。`live_report_draft` 是唯一可編輯草稿；使用者選擇「定稿並複製」後，建立不可回寫的 `daily_reports` 快照，並建立新的當日草稿。
+產品維持 local-first：無帳號、無後端、無多人同步。`live_report_draft` 是唯一可編輯草稿；使用者選擇「定稿並複製」後，建立不可回寫的 `daily_reports` 快照。定稿後建立新草稿的舊規則由 ADR-011 取代。
 
 ## 後果
 

@@ -122,10 +122,10 @@
 .daily-page .settings-button { border-color: var(--daily-line-strong); color: var(--daily-ink); }
 .daily-page .settings-button:hover { background: var(--daily-paper-muted); border-color: var(--daily-orange); }
 .daily-page .basics, .daily-page .daily-entry, .daily-page .compact-entry, .daily-page .daily-section__empty, .daily-page .work-section__empty { background: var(--daily-paper-raised); }
-.daily-page .daily-basics { margin: 0; border-inline: 0; border-radius: 0; border-color: var(--daily-line-strong); box-shadow: none; }
+.daily-page .daily-basics { margin: 0; border-color: var(--daily-line-strong); box-shadow: none; }
 .daily-page .daily-basics.basics--expanded { position: relative; z-index: 40; overflow: visible; }
-.daily-page .daily-basics .basics__summary { padding-inline: 0; }
-.daily-page .daily-basics .basics__fields { border-color: var(--daily-line); padding-inline: 0; }
+.daily-page .daily-basics .basics__summary { padding-inline: var(--space-4); }
+.daily-page .daily-basics .basics__fields { border-color: var(--daily-line); padding-inline: var(--space-4); }
 .daily-page .daily-basics .basics__action { color: var(--daily-orange-strong); }
 .daily-page .daily-entry, .daily-page .compact-entry { border-color: var(--daily-line); }
 .daily-page .daily-entry--expanded, .daily-page .compact-entry--expanded { border-color: var(--daily-orange); box-shadow: inset 3px 0 0 var(--daily-orange); }
@@ -162,10 +162,9 @@
 .daily-page .work-item-add-row button:hover { border-color: var(--daily-orange); background: var(--daily-orange-soft); color: var(--daily-orange-strong); }
 .daily-page .work-item-drop-indicator { background: var(--daily-orange); }
 
-/* Phase 3: engineering remains sortable and expandable, but reads as a paper data row. */
-.daily-page .trade-swipe { border-radius: 0; }
-.daily-page .trade-card { border-inline: 0; border-radius: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line), inset -1px 0 var(--daily-line); }
-.daily-page .trade-card--drag-placeholder { border-inline: 0; background: var(--daily-paper-raised); box-shadow: inset 1px 0 var(--daily-line-strong), inset -1px 0 var(--daily-line-strong); opacity: .38; }
+/* Phase 3: engineering remains sortable and expandable in the shared article-card shell. */
+.daily-page .trade-card { background: var(--daily-paper-raised); }
+.daily-page .trade-card--drag-placeholder { border-style: dashed; background: var(--daily-paper-raised); opacity: .38; }
 .trade-drag-preview { position: fixed; z-index: 1000; overflow: hidden; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }
 .trade-drag-preview__surface { background: transparent; }
 .trade-drag-preview .trade-card { margin: 0; }
