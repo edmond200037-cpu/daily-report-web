@@ -56,12 +56,15 @@ describe('記憶例外收件匣 workflow', () => {
 describe('記憶審核呈現契約', () => {
   const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
-  it('使用單一展開分區、區內全選與固定批次操作列', () => {
+  it('沿用設定中心工作區骨架，提供全選全部、區內全選與條件式批次操作列', () => {
     expect(main).toContain('data-memory-group-toggle');
     expect(main).toContain('data-memory-select-group');
+    expect(main).toContain('data-memory-select-all');
+    expect(main).toContain('settings-work-area memory-review__group');
+    expect(main).toContain('settings-work-area__toggle');
     expect(main).toContain('memory-review__action-bar');
     expect(css).toContain('.memory-review__action-bar { position: fixed;');
-    expect(css).toContain('.memory-review.has-selection');
+    expect(css).toContain('background: var(--daily-paper-raised);');
   });
   it('候選列顯示定稿進度並可按需展開詳細資料', () => {
     expect(main).toContain('data-memory-detail-toggle');
@@ -75,5 +78,10 @@ describe('記憶審核呈現契約', () => {
     expect(main).toContain('選取內容已保留');
     expect(main).toContain("memoryReviewState.feedbackTone === 'error' ? 'alert' : 'status'");
     expect(css).toContain('.memory-review__feedback--error');
+  });
+
+  it('批次駁回會先揭露選取摘要，再要求第二次確認', () => {
+    expect(main).toContain('已選 ${selected.length} 筆');
+    expect(main).toContain('再次確認：駁回後無法還原');
   });
 });
