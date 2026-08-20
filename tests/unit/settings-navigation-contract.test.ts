@@ -6,6 +6,10 @@ const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8')
 const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
 
 describe('設定端直達導覽契約', () => {
+  it('不同內容高度切換時保留穩定的頁面中心線', () => {
+    expect(css).toContain('scrollbar-gutter: stable;');
+  });
+
   it('舊設定網址直接導向日報主檔，不再渲染設定中心', () => {
     expect(main).toContain("if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }");
     expect(main).not.toContain('function settingsHubView()');

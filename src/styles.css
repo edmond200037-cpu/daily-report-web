@@ -1,5 +1,6 @@
 :root {
   color-scheme: light;
+  scrollbar-gutter: stable;
   --canvas: #eef1f3;
   --canvas-strong: #e4e9ec;
   --surface: #f9fafb;
