@@ -122,7 +122,7 @@
 .daily-page .settings-button { border-color: var(--daily-line-strong); color: var(--daily-ink); }
 .daily-page .settings-button:hover { background: var(--daily-paper-muted); border-color: var(--daily-orange); }
 .daily-page .basics, .daily-page .daily-entry, .daily-page .compact-entry, .daily-page .daily-section__empty, .daily-page .work-section__empty { background: var(--daily-paper-raised); }
-.daily-page .daily-basics { margin: 0; border-color: var(--daily-line-strong); box-shadow: none; }
+.daily-page .daily-basics { margin: 0; border-color: var(--daily-line-strong); border-inline: 0; border-radius: 0; box-shadow: none; }
 .daily-page .daily-basics.basics--expanded { position: relative; z-index: 40; overflow: visible; }
 .daily-page .daily-basics .basics__summary { padding-inline: var(--space-4); }
 .daily-page .daily-basics .basics__fields { border-color: var(--daily-line); padding-inline: var(--space-4); }
