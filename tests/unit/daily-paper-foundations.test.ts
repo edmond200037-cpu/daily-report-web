@@ -35,7 +35,7 @@ describe('日報紙本表單基礎 tokens', () => {
     expect(dailyCss).toContain('.daily-page input, .daily-page select, .daily-page textarea {');
     expect(dailyCss).toContain('min-height: var(--daily-touch-target);');
     expect(dailyCss).toContain('.daily-page .work-item__drag-handle');
-    expect(dailyCss).toContain('.daily-page .work-item__desktop-tools button');
+    expect(dailyCss).toContain('.daily-page .work-item__actions-trigger');
     expect(dailyCss).toContain('.daily-page .contact-task__handle, .daily-page .contact-suggestions__option { min-height: var(--daily-touch-target); }');
   });
 
