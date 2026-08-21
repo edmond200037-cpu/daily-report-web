@@ -76,7 +76,7 @@ describe('日報收合摘要高度契約', () => {
     expect(dailyCss).toContain('--work-item-stack-gap: var(--space-2)');
     expect(dailyCss).toContain('grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-utility-column);');
     expect(dailyCss).toContain('.work-item-composer { position: relative;');
-    expect(dailyCss).toContain('.work-item-composer > button { min-height: 44px;');
+    expect(dailyCss).toContain('.work-item-composer > button { width: 44px; min-height: 44px;');
     expect(daily).toContain('data-daily-action="manage-material-connections"');
     expect(daily).toContain('class="daily-output__actions"');
     expect(dialog).toContain('.daily-output__actions { display: grid; gap: var(--space-2); }');

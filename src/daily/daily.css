@@ -1,4 +1,4 @@
-:root { --page-edge-gap: 1rem; --preview-bottom-gap: .75rem; --preview-collapsed-height: 4.5rem; --floating-control-gap: .75rem; --daily-summary-font-weight: 400; --daily-summary-line-height: 1.5; --daily-summary-primary-weight: 760; --daily-summary-label-weight: 700; --work-item-stack-gap: var(--space-2); --work-item-leading-column: var(--daily-touch-target); --work-item-utility-column: 4.5rem; }
+:root { --page-edge-gap: 1rem; --preview-bottom-gap: .75rem; --preview-collapsed-height: 4.5rem; --floating-control-gap: .75rem; --daily-summary-font-weight: 400; --daily-summary-line-height: 1.5; --daily-summary-primary-weight: 760; --daily-summary-label-weight: 700; --work-item-stack-gap: var(--space-2); --work-item-leading-column: var(--daily-touch-target); --work-item-utility-column: 44px; }
 .settings-button { border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink); font-weight: 700; padding: .55rem .7rem; text-decoration: none; }
 .settings-button:hover { background: var(--surface-muted); }
 .daily-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 1rem 0 var(--space-4); overflow: visible; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
@@ -49,10 +49,10 @@
 .work-item__drag-handle:active { cursor: grabbing; }
 .work-item__actions { position: relative; grid-column: 3; display: inline-flex; justify-content: flex-end; min-width: 0; }
 .work-item__actions-trigger, .work-item__aux-menu button, .work-item__aux-summary button { min-height: 32px; border: 0; background: transparent; color: var(--ink-soft); font-size: .8125rem; padding: .25rem; }
-.work-item-composer { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .5rem; margin: 0 0 var(--work-item-stack-gap); }
+.work-item-composer { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: start; gap: .5rem; margin: 0 0 var(--work-item-stack-gap); }
 .work-item-composer__field { position: relative; z-index: 5; min-width: 0; }
 .work-item-composer__field input { display: block; width: 100%; min-height: 44px; box-sizing: border-box; }
-.work-item-composer > button { min-height: 44px; }
+.work-item-composer > button { width: 44px; min-height: 44px; padding-inline: 0; }
 .work-item-composer > button:disabled { cursor: not-allowed; opacity: .55; }
 .work-item__error { grid-column: 2 / -1; margin: .2rem 0 0; }
 .work-item--invalid { border-color: var(--daily-orange); }
@@ -108,7 +108,7 @@
 @media (min-width: 640px) { .bottom-preview { left: auto; right: 2rem; width: min(420px, calc(100vw - 4rem)); } .floating-add-trade { right: 2rem; } .trade-undo-notice { right: 2rem; left: auto; width: min(420px, calc(100vw - 4rem)); } }
 @media (max-width: 420px) { .daily-section__header { align-items: stretch; flex-direction: column; } .daily-section__actions { display: grid; grid-template-columns: minmax(0, 1fr); } .daily-section__actions--pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } .daily-section__actions > button, .daily-section__actions--pair > button { width: 100%; min-width: 0; } .work-item__aux-summary { flex-wrap: wrap; } .work-item__aux-summary button { max-width: 100%; } .work-item-location-row { grid-template-columns: 1fr 1fr; } .work-item-location-row input:last-child { grid-column: 1 / -1; } }
 @media (max-width: 639px) { :root { --work-item-utility-column: var(--daily-touch-target); } }
-@media (max-width: 360px) { .daily-tabs button { font-size: .75rem; } .daily-tab__count { margin-left: .08rem; } .contact-grid { grid-template-columns: 1fr; } .material-entry__content, .trade-card__content, .contact-card__content, .special-card__content { padding-right: .75rem; padding-left: .75rem; } .work-item-composer { grid-template-columns: 1fr; } .work-item-composer > button { width: 100%; } }
+@media (max-width: 360px) { .daily-tabs button { font-size: .75rem; } .daily-tab__count { margin-left: .08rem; } .contact-grid { grid-template-columns: 1fr; } .material-entry__content, .trade-card__content, .contact-card__content, .special-card__content { padding-right: .75rem; padding-left: .75rem; } }
 
 /* Phase 1: scoped paper-form foundations. Structure and data workflows remain unchanged. */
 .daily-page { background: var(--daily-paper); color: var(--daily-ink); }

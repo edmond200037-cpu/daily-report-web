@@ -36,7 +36,9 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain("if (action === 'close-work-aux')");
     expect(styles).toContain('.work-item__main-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-utility-column);');
     expect(styles).toContain('.work-item__actions { position: relative; grid-column: 3;');
-    expect(styles).toContain('--work-item-utility-column: 4.5rem');
+    expect(styles).toContain('--work-item-utility-column: 44px');
+    expect(styles).toContain('.work-item-composer { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) 44px;');
+    expect(styles).not.toContain('.work-item-composer { grid-template-columns: 1fr; }');
   });
 
   it('搜尋建議只在輸入非空文字時顯示，加入後清空即可收合建議', () => {
