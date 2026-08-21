@@ -66,8 +66,19 @@ describe('日報收合摘要高度契約', () => {
     expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder');
   });
 
-  it('將相鄰的工種與預覽操作放入具間距的 action container', () => {
-    expect(daily).toContain('class="action-row"><button type="button" data-daily-action="add-work"');
+  it('將新增工項設為對齊輸入欄的列表尾端操作', () => {
+    expect(daily).toContain('class="work-item-list"');
+    expect(daily).toContain('class="work-item-add-row"');
+    expect(daily).toContain('data-work-item-input');
+    expect(daily).toContain("if (action === 'add-work') {");
+    expect(daily).toContain('focusWorkItemId');
+    expect(daily).not.toContain('data-daily-action="move-work-item"');
+    expect(daily).not.toContain('work-item__order-tools');
+    expect(dailyCss).toContain('--work-item-stack-gap: var(--space-2)');
+    expect(dailyCss).toContain('grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-utility-column) var(--work-item-delete-column)');
+    expect(dailyCss).toContain('.work-item-add-row { margin-top: var(--work-item-stack-gap); padding-inline: .55rem; }');
+    expect(dailyCss).toContain('.work-item-add-row > button { grid-column: 2; width: 100%;');
+    expect(dailyCss).toContain('.work-item-add-row > button { grid-column: 2 / -1; }');
     expect(daily).toContain('data-daily-action="manage-material-connections"');
     expect(daily).toContain('class="daily-output__actions"');
     expect(dialog).toContain('.daily-output__actions { display: grid; gap: var(--space-2); }');
