@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DailyController } from '../../src/daily/daily-controller';
+import { duplicateWorkItemIds } from '../../src/daily/daily-validator';
 import type { DailyReportV3, TradeSection } from '../../src/domain/daily';
 
 beforeAll(() => { Object.assign(globalThis, { window: { clearTimeout, setTimeout } }); });
@@ -23,5 +24,14 @@ describe('工項排序', () => {
     expect(controller.reorderWorkItems('t1', -1, 1)).toBe(false);
     expect(controller.reorderWorkItems('t1', 0, 3)).toBe(false);
     expect(controller.trade('t1')?.status).toBe('complete');
+  });
+
+  it('輸入器加入文字與記憶關聯，並只標記後加入的重複工項', () => {
+    const controller = new DailyController({ ...report(), tradeSections: [{ ...trade(), workItems: [] }] });
+    const first = controller.addWorkItem('t1', '模板組立', 'task-1');
+    const second = controller.addWorkItem('t1', ' 模板組立 ', null);
+    expect(first?.taskTextSnapshot).toBe('模板組立');
+    expect(first?.taskId).toBe('task-1');
+    expect(duplicateWorkItemIds(controller.trade('t1')!)).toEqual(new Set([second?.id]));
   });
 });

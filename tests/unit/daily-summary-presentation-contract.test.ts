@@ -68,7 +68,6 @@ describe('日報收合摘要高度契約', () => {
 
   it('將新增工項設為對齊輸入欄的列表尾端操作', () => {
     expect(daily).toContain('class="work-item-list"');
-    expect(daily).toContain('class="work-item-add-row"');
     expect(daily).toContain('data-work-item-input');
     expect(daily).toContain("if (action === 'add-work') {");
     expect(daily).toContain('focusWorkItemId');
@@ -76,11 +75,23 @@ describe('日報收合摘要高度契約', () => {
     expect(daily).not.toContain('work-item__order-tools');
     expect(dailyCss).toContain('--work-item-stack-gap: var(--space-2)');
     expect(dailyCss).toContain('grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-utility-column) var(--work-item-delete-column)');
-    expect(dailyCss).toContain('.work-item-add-row { margin-top: var(--work-item-stack-gap); padding-inline: .55rem; }');
-    expect(dailyCss).toContain('.work-item-add-row > button { grid-column: 2; width: 100%;');
-    expect(dailyCss).toContain('.work-item-add-row > button { grid-column: 2 / -1; }');
+    expect(dailyCss).toContain('.work-item-composer { position: relative;');
+    expect(dailyCss).toContain('.work-item-composer > button { min-height: 44px;');
     expect(daily).toContain('data-daily-action="manage-material-connections"');
     expect(daily).toContain('class="daily-output__actions"');
     expect(dialog).toContain('.daily-output__actions { display: grid; gap: var(--space-2); }');
+  });
+
+  it('將施工工項改為輸入器加已加入清單', () => {
+    expect(daily).toContain('data-work-item-composer');
+    expect(daily).toContain('placeholder="輸入工項"');
+    expect(daily).toContain('data-daily-action="add-work-item"');
+    expect(daily).toContain('data-work-item-suggestions');
+    expect(daily).not.toContain('class="work-item-add-row"');
+    expect(daily).not.toContain('<label class="work-item__task">工項');
+    expect(daily).toContain('aria-label="工項 ${index + 1}"');
+    expect(daily).toContain('workItemComposerByTrade');
+    expect(dailyCss).toContain('.work-item-composer');
+    expect(dailyCss).toContain('@media (max-width: 360px)');
   });
 });

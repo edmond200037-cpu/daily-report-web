@@ -5,7 +5,8 @@ import { duplicateVendorTradeIds } from './daily-output-model';
 export interface DailyIssue { field: string; message: string; }
 export function validateWorkerCount(value: string): boolean { return /^[1-9]\d*$/.test(value); }
 export function validateMaterialEntry(entry: MaterialEntry): string[] { const issues: string[] = []; if (!entry.materialTypeSnapshot.trim()) issues.push('請填寫材料類型。'); if (!entry.itemName.trim()) issues.push('請填寫品名。'); if (!entry.supplierNameSnapshot.trim()) issues.push('請填寫供應商。'); if (!/^((?:[1-9]\d*)(?:\.\d+)?)$/.test(entry.quantity.trim())) issues.push('數量只能輸入大於 0 的數字。'); if (!entry.unit.trim()) issues.push('請填寫單位。'); return issues; }
-const workKey = (item: WorkItem): string => `${normalizeName(floorRange(item.startFloorNormalized ?? '', item.endFloorNormalized ?? ''))}|${normalizeName(item.locationTextSnapshot)}|${normalizeName(item.taskTextSnapshot)}`;
+export const workKey = (item: WorkItem): string => `${normalizeName(floorRange(item.startFloorNormalized ?? '', item.endFloorNormalized ?? ''))}|${normalizeName(item.locationTextSnapshot)}|${normalizeName(item.taskTextSnapshot)}`;
+export function duplicateWorkItemIds(trade: TradeSection): Set<string> { const ids = new Set<string>(); const seen = new Set<string>(); trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).forEach((item) => { if (!item.taskTextSnapshot.trim()) return; const key = workKey(item); if (seen.has(key)) ids.add(item.id); seen.add(key); }); return ids; }
 export function validateTrade(trade: TradeSection, linkedMaterials: MaterialEntry[] = []): DailyIssue[] {
   const issues: DailyIssue[] = [];
   if (!trade.tradeNameSnapshot.trim()) issues.push({ field: 'trade', message: '請填寫工種。' });
