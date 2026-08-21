@@ -29,6 +29,16 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain('title="${escapeHtml(taskSummary)}"');
   });
 
+  it('輔助編輯器可明確收合，且工項輸入欄與上方搜尋欄使用同一內容欄', () => {
+    expect(daily).toContain('data-daily-action="close-work-aux"');
+    expect(daily).toContain('class="work-item__tools-row"');
+    expect(daily).toContain('const closeEditor =');
+    expect(daily).toContain("if (action === 'close-work-aux')");
+    expect(styles).toContain('.work-item__main-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr);');
+    expect(styles).toContain('.work-item__tools-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-delete-column);');
+    expect(styles).toContain('.work-item__desktop-tools, .work-item__mobile-tools { grid-column: 2;');
+  });
+
   it('使用與聯絡事項一致的外框卡片；桌面使用四欄，手機改為兩層資料列，淡紅提示僅存在未完成狀態欄', () => {
     expect(tokens).toContain('--daily-incomplete-bg: #f5deda');
     expect(tokens).toContain('--daily-incomplete-ink: #7a302b');
