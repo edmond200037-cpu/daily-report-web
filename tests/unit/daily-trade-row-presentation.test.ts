@@ -39,6 +39,11 @@ describe('工程資料列呈現契約', () => {
     expect(styles).toContain('.work-item__desktop-tools, .work-item__mobile-tools { grid-column: 2;');
   });
 
+  it('搜尋建議只在輸入非空文字時顯示，加入後清空即可收合建議', () => {
+    expect(daily).toContain('active && trade.tradeTypeId && composer.query.trim() ?');
+    expect(daily).toContain('composer.query = \'\'; composer.taskId = null;');
+  });
+
   it('使用與聯絡事項一致的外框卡片；桌面使用四欄，手機改為兩層資料列，淡紅提示僅存在未完成狀態欄', () => {
     expect(tokens).toContain('--daily-incomplete-bg: #f5deda');
     expect(tokens).toContain('--daily-incomplete-ink: #7a302b');

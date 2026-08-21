@@ -156,7 +156,7 @@ function dailyTabs(): string { return `<section class="daily-tabs" role="tablist
 function workItemComposerView(trade: TradeSection): string {
   const composer = workItemComposerByTrade.get(trade.id) ?? { query: '', taskId: null };
   const active = activeWorkItemComposerTradeId === trade.id;
-  const suggestions = active && trade.tradeTypeId ? memoryOrder(dailyTasks.filter((row) => row.tradeTypeId === trade.tradeTypeId)).filter((row) => !composer.query.trim() || row.normalizedName.includes(normalizeName(composer.query))).slice(0, 5) : [];
+  const suggestions = active && trade.tradeTypeId && composer.query.trim() ? memoryOrder(dailyTasks.filter((row) => row.tradeTypeId === trade.tradeTypeId)).filter((row) => row.normalizedName.includes(normalizeName(composer.query))).slice(0, 5) : [];
   const listId = `work-item-suggestions-${trade.id}`;
   const suggestionList = suggestions.length ? `<div class="contact-suggestions" id="${listId}" role="listbox" data-work-item-suggestions="${trade.id}">${suggestions.map((row) => `<button type="button" role="option" class="contact-suggestions__option" data-daily-action="pick-work-item-memory" data-trade-id="${trade.id}" data-memory-id="${row.id}">${escapeHtml(row.name)}</button>`).join('')}</div>` : '';
   const disabled = !composer.query.trim();
