@@ -29,15 +29,18 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain('title="${escapeHtml(taskSummary)}"');
   });
 
-  it('輔助編輯器可明確收合，且工項輸入欄與上方搜尋欄使用同一內容欄', () => {
+  it('輔助編輯器可明確收合，且工項輸入欄、摘要與上方搜尋欄共用對齊基準', () => {
     expect(daily).toContain('data-daily-action="close-work-aux"');
     expect(daily).toContain('class="work-item__actions"');
     expect(daily).toContain('const closeEditor =');
     expect(daily).toContain("if (action === 'close-work-aux')");
-    expect(styles).toContain('.work-item__main-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-utility-column);');
+    expect(styles).toContain('--work-item-action-column: var(--daily-touch-target)');
+    expect(styles).toContain('--work-item-column-gap: .5rem');
+    expect(styles).toContain('.work-item { padding: .55rem 0;');
+    expect(styles).toContain('.work-item__main-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-action-column); align-items: center; gap: var(--work-item-column-gap);');
     expect(styles).toContain('.work-item__actions { position: relative; grid-column: 3;');
-    expect(styles).toContain('--work-item-utility-column: 44px');
-    expect(styles).toContain('.work-item-composer { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) 44px;');
+    expect(styles).toContain('.work-item-composer { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) var(--work-item-action-column); align-items: start; gap: var(--work-item-column-gap);');
+    expect(styles).toContain('padding-inline-start: calc(var(--work-item-leading-column) + var(--work-item-column-gap));');
     expect(styles).not.toContain('.work-item-composer { grid-template-columns: 1fr; }');
   });
 
@@ -48,8 +51,14 @@ describe('工程資料列呈現契約', () => {
 
   it('所有尺寸共用單一工項操作入口，選單包含位置、備註與刪除', () => {
     expect(daily).toContain('aria-label="工項操作"');
+    expect(daily).toContain('aria-controls="\${menuId}"');
+    expect(daily).toContain('data-work-aux-menu="\${work.id}"');
     expect(daily).toContain('>⋯</button>');
     expect(daily).toContain('>刪除工項</button>');
+    expect(daily).toContain('function focusWorkAuxMenu');
+    expect(daily).toContain('function focusWorkActionsTrigger');
+    expect(daily).toContain("if (workAuxMenuId) { const id = workAuxMenuId;");
+    expect(daily).toContain('title="位置：\${escapeHtml(location)}"');
     expect(daily).not.toContain('work-item__desktop-tools');
     expect(daily).not.toContain('work-item__mobile-tools');
   });
