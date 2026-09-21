@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="drawio">
+  <diagram id="shared-backend" name="多人共用後端提案">
+    <mxGraphModel page="1" pageWidth="1500" pageHeight="1280" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="devices" value="每人自己的帳號 × 手機 / 電腦&#10;登入後選擇同一工地" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DBEAFE;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="530" y="110" width="440" height="90" />
+        </mxCell>
+        <mxCell id="ui" value="現有 PWA 介面&#10;施工日報 · 記憶主檔 · 水位" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DBEAFE;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="530" y="260" width="440" height="100" />
+        </mxCell>
+        <mxCell id="pages" value="保留 GitHub Pages&#10;提供前端靜態檔案" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#F1F5F9;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="60" y="260" width="350" height="100" />
+        </mxCell>
+        <mxCell id="auth" value="新增 Supabase Auth&#10;個人登入 / 工作階段&#10;首次登入須獲准加入工地" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#FEF3C7;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="1090" y="260" width="350" height="100" />
+        </mxCell>
+        <mxCell id="sync" value="新增同步層 Sync Engine&#10;送出待同步變更 / 拉取雲端更新&#10;重試去重 / 版本衝突處理" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#EDE9FE;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="530" y="450" width="440" height="115" />
+        </mxCell>
+        <mxCell id="local" value="保留並升級 IndexedDB&#10;本機資料 + 待同步佇列&#10;依帳號與工地隔離" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DBEAFE;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="60" y="450" width="350" height="115" />
+        </mxCell>
+        <mxCell id="conflict" value="版本不一致時&#10;保留本機與雲端兩份&#10;使用者確認後再提交" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#FEF3C7;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="1090" y="450" width="350" height="115" />
+        </mxCell>
+        <mxCell id="api" value="新增 Supabase Data API + RPC&#10;驗證身分與工地權限&#10;原子版本更新 / 定稿 / 水位重算" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DCFCE7;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="530" y="675" width="440" height="115" />
+        </mxCell>
+        <mxCell id="membership" value="工地成員 + RLS 權限&#10;管理員 / 編輯者 / 檢視者&#10;非成員不可讀寫" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#FEF3C7;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="1090" y="675" width="350" height="115" />
+        </mxCell>
+        <mxCell id="cloud" value="新增 PostgreSQL 共用資料庫&#10;工地記憶 · 當日草稿 · 定稿 · 井位 / 量測&#10;版本 revision · 變更序號 · 刪除標記" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DCFCE7;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="340" y="900" width="820" height="115" />
+        </mxCell>
+        <mxCell id="backup" value="備份與保留政策&#10;管理員匯出完整工地資料&#10;本機清快取 ≠ 刪除雲端" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#F1F5F9;strokeColor=#64748b;spacing=12;">
+          <mxGeometry as="geometry" x="530" y="1100" width="440" height="100" />
+        </mxCell>
+        <mxCell id="title" value="多人共用施工日報｜免費後端架構提案" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=32;fillColor=#ffffff;strokeColor=none;spacing=12;">
+          <mxGeometry as="geometry" x="30" y="15" width="1440" height="65" />
+        </mxCell>
+        <mxCell id="footer" value="藍：既有系統改造　紫：新增同步邏輯　綠：Supabase 後端　黃：帳號 / 權限 / 衝突" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=18;fillColor=#ffffff;strokeColor=none;spacing=12;">
+          <mxGeometry as="geometry" x="30" y="1210" width="1440" height="50" />
+        </mxCell>
+        <mxCell id="devices-ui" source="devices" target="ui" value="操作" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="pages-ui" source="pages" target="ui" value="載入" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=1.0;exitY=0.5;entryX=0.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="ui-auth" source="ui" target="auth" value="登入" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=1.0;exitY=0.5;entryX=0.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="ui-sync" source="ui" target="sync" value="資料操作" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="sync-local" source="sync" target="local" value="本機讀寫" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.0;exitY=0.4956521739130435;entryX=1.0;entryY=0.4956521739130435;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="sync-conflict" source="sync" target="conflict" value="衝突" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=1.0;exitY=0.4956521739130435;entryX=0.0;entryY=0.4956521739130435;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="sync-api" source="sync" target="api" value="HTTPS + 登入憑證" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="membership-api" source="membership" target="api" value="權限檢查" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.0;exitY=0.4956521739130435;entryX=1.0;entryY=0.4956521739130435;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="api-cloud" source="api" target="cloud" value="讀寫 / 交易" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="cloud-backup" source="cloud" target="backup" value="授權匯出" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;labelBackgroundColor=#ffffff;fontFamily=Microsoft JhengHei;fontSize=18;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

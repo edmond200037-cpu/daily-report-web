@@ -15,6 +15,8 @@
 
 ## 開發
 
+新增功能規劃：[工地共用後端與跨裝置同步](docs/plans/shared-site-backend.md)（規劃階段，尚未實作）。
+
 執行 `npm run dev`，並透過 Vite 顯示的網址開啟 `/#daily`；不要直接雙擊 `index.html` 或使用舊的靜態伺服器。
 
 ## GitHub Pages
