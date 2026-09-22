@@ -102,7 +102,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .status, .hint, .empty { color: var(--ink-soft); }
 
 /* 日報與水位共用同一個模組框架；各自的作業色僅在內容與目前頁籤保留。 */
-.module-page { background: var(--daily-paper); color: var(--daily-ink); }
+.module-page { min-height: 100vh; min-height: 100dvh; background: var(--daily-paper); color: var(--daily-ink); }
 .module-page__header { align-items: flex-end; margin-bottom: var(--space-3); padding-top: var(--space-1); border-color: var(--daily-line-strong); }
 .module-page__header h1 { color: var(--daily-ink); font-size: 1.5rem; }
 .module-page__header .app-header__meta { margin: 0 0 var(--space-1); color: var(--daily-ink-faint); font-size: var(--daily-meta-size); font-weight: 700; letter-spacing: 0; }
@@ -112,6 +112,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .module-page__tabs .top-tabs a { color: var(--daily-ink-soft); }
 .module-page__tabs .top-tabs a:hover { background: var(--daily-paper-muted); color: var(--daily-ink); }
 .module-page__tabs .top-tabs a.active, .module-page__tabs .top-tabs a[aria-current="page"] { border-color: var(--daily-orange); color: var(--daily-ink); }
+.module-page button:focus-visible, .module-page a:focus-visible, .module-page input:focus-visible, .module-page textarea:focus-visible, .module-page select:focus-visible { outline-color: var(--daily-orange); }
+.module-page input:focus, .module-page textarea:focus, .module-page select:focus { border-color: var(--daily-orange); outline-color: color-mix(in srgb, var(--daily-orange) 22%, transparent); }
 
 /* 設定區沿用日報的紙質工作台；填報模組仍由 .module-page 獨立控制。 */
 .settings-page { background: var(--daily-paper); color: var(--daily-ink); }
@@ -137,7 +139,7 @@ nav { display: flex; gap: var(--space-1); overflow: auto; padding: var(--space-4
 nav a { border-bottom: 2px solid transparent; color: var(--ink-soft); font-size: .875rem; font-weight: 700; padding: .5rem .75rem; text-decoration: none; white-space: nowrap; }
 nav a:hover { color: var(--ink); }
 nav a.active, nav a[aria-current="page"] { border-color: var(--accent); color: var(--ink); }
-.top-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0 0 var(--space-4); overflow: hidden; padding: 0; border-bottom: 1px solid var(--line); }
+.top-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 0 var(--space-4); overflow: hidden; padding: 0; border-bottom: 1px solid var(--line); }
 .top-tabs a { display: grid; place-items: center; min-width: 0; min-height: 46px; border-radius: 0; padding: .75rem 1rem .625rem; text-align: center; }
 
 .editor-layout { display: grid; gap: var(--space-5); }

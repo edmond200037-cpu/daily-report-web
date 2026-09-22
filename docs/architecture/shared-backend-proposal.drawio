@@ -26,13 +26,13 @@
         <mxCell id="conflict" value="版本不一致時&#10;保留本機與雲端兩份&#10;使用者確認後再提交" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#FEF3C7;strokeColor=#64748b;spacing=12;">
           <mxGeometry as="geometry" x="1090" y="450" width="350" height="115" />
         </mxCell>
-        <mxCell id="api" value="新增 Supabase Data API + RPC&#10;驗證身分與工地權限&#10;原子版本更新 / 定稿 / 水位重算" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DCFCE7;strokeColor=#64748b;spacing=12;">
+        <mxCell id="api" value="Supabase Data API + RPC&#10;驗證身分與工地權限&#10;mutation 去重 / revision CAS / 增量拉取" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DCFCE7;strokeColor=#64748b;spacing=12;">
           <mxGeometry as="geometry" x="530" y="675" width="440" height="115" />
         </mxCell>
         <mxCell id="membership" value="工地成員 + RLS 權限&#10;管理員 / 編輯者 / 檢視者&#10;非成員不可讀寫" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#FEF3C7;strokeColor=#64748b;spacing=12;">
           <mxGeometry as="geometry" x="1090" y="675" width="350" height="115" />
         </mxCell>
-        <mxCell id="cloud" value="新增 PostgreSQL 共用資料庫&#10;工地記憶 · 當日草稿 · 定稿 · 井位 / 量測&#10;版本 revision · 變更序號 · 刪除標記" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DCFCE7;strokeColor=#64748b;spacing=12;">
+        <mxCell id="cloud" value="PostgreSQL 共用資料庫&#10;當日草稿 · 記憶快照 · 水位快照&#10;site_id 隔離 · revision · 變更序號" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#DCFCE7;strokeColor=#64748b;spacing=12;">
           <mxGeometry as="geometry" x="340" y="900" width="820" height="115" />
         </mxCell>
         <mxCell id="backup" value="備份與保留政策&#10;管理員匯出完整工地資料&#10;本機清快取 ≠ 刪除雲端" vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Microsoft JhengHei;fontSize=22;fillColor=#F1F5F9;strokeColor=#64748b;spacing=12;">

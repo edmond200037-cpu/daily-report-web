@@ -1,6 +1,6 @@
 # 資料模型與 Migration
 
-資料庫名稱為 `construction-daily-report`，目前 `DB_VERSION = 9`。所有 IndexedDB 連線必須經過 `src/data/db.js` 的 `openDatabase()`；日報、記憶與水位不得自行以不同版本開啟資料庫。
+資料庫名稱為 `construction-daily-report`，目前 `DB_VERSION = 13`。所有 IndexedDB 連線必須經過 `src/data/db.js` 的 `openDatabase()`；日報、記憶、水位與同步引擎不得自行以不同版本開啟資料庫。
 
 ## Bounded contexts
 
@@ -8,6 +8,7 @@
 - **Reusable Memories**：工地、工種、工項、廠商、位置、材料類型、材料候選及特殊模板。每筆有 `candidate` 或 `confirmed` 狀態，並以 `finalizedUsageCount` 記錄不同定稿的出現次數；名稱以標準化欄位去重。
 - **Water Level**：井位、量測、讀值；不會寫入日報或記憶備份。
 - **App Platform**：PWA、路由、診斷與 migration metadata。
+- **Shared Sync（第一版施工中）**：`shared_context` 保存目前帳號／工地選擇；`draft_partitions`、`memory_partitions`、`water_partitions` 隔離各帳號／工地的本機快取；`sync_outbox` 保存固定 mutation ID 的待送操作；`sync_cursors` 保存每帳號／工地的增量游標；`sync_conflicts` 保留本機與雲端版本。日報草稿、記憶快照與水位快照均已接入。
 
 ## 保存與遷移規則
 

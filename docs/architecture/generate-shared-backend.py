@@ -14,9 +14,9 @@ nodes = [
  ('sync', '新增同步層 Sync Engine\n送出待同步變更 / 拉取雲端更新\n重試去重 / 版本衝突處理',530,450,440,115,'#EDE9FE'),
  ('local', '保留並升級 IndexedDB\n本機資料 + 待同步佇列\n依帳號與工地隔離',60,450,350,115,'#DBEAFE'),
  ('conflict', '版本不一致時\n保留本機與雲端兩份\n使用者確認後再提交',1090,450,350,115,'#FEF3C7'),
- ('api', '新增 Supabase Data API + RPC\n驗證身分與工地權限\n原子版本更新 / 定稿 / 水位重算',530,675,440,115,'#DCFCE7'),
+ ('api', 'Supabase Data API + RPC\n驗證身分與工地權限\nmutation 去重 / revision CAS / 增量拉取',530,675,440,115,'#DCFCE7'),
  ('membership', '工地成員 + RLS 權限\n管理員 / 編輯者 / 檢視者\n非成員不可讀寫',1090,675,350,115,'#FEF3C7'),
- ('cloud', '新增 PostgreSQL 共用資料庫\n工地記憶 · 當日草稿 · 定稿 · 井位 / 量測\n版本 revision · 變更序號 · 刪除標記',340,900,820,115,'#DCFCE7'),
+ ('cloud', 'PostgreSQL 共用資料庫\n當日草稿 · 記憶快照 · 水位快照\nsite_id 隔離 · revision · 變更序號',340,900,820,115,'#DCFCE7'),
  ('backup', '備份與保留政策\n管理員匯出完整工地資料\n本機清快取 ≠ 刪除雲端',530,1100,440,100,'#F1F5F9'),
 ]
 # Explicit straight paths keep overview readable and match both outputs.

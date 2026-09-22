@@ -1,5 +1,8 @@
 import { DAILY_TEMPLATE_VERSION, timestamp, type DailyReportV3, type FinalizedDailyReport, type TradeSection, type WorkItem, type MaterialEntry, type ContactItem } from '../domain/daily';
 import { openDatabase, STORES } from './db.js';
+import { loadActiveSharedScope } from '../sync/context';
+import { buildSyncOperation } from '../sync/outbox';
+import type { SyncOperation } from '../sync/types';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
 export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; }
@@ -21,6 +24,7 @@ export type MemoryKind = 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations' 
 export type MemoryCandidateKey = `${MemoryKind}:${string}`;
 export const memoryCandidateKey = (kind: MemoryKind, id: string): MemoryCandidateKey => `${kind}:${id}`;
 export interface MemoryCandidate { key: MemoryCandidateKey; kind: MemoryKind; id: string; name: string; parentName?: string; parentKey?: MemoryCandidateKey; fieldType?: MaterialMemoryField; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; }
+interface DraftPartition { id: string; userId: string | null; siteId: string | null; reportDate: string; report: DailyReportV3; updatedAt: string; }
 async function db(): Promise<IDBDatabase> { return openDatabase() as Promise<IDBDatabase>; }
 function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undefined {
   if (!value) return value;
@@ -46,8 +50,47 @@ function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undef
   });
   return value;
 }
-export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> { const database = await db(); try { return normalizeDraft(await request(database.transaction('live_report_draft').objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined); } finally { database.close(); } }
-export async function saveDailyDraft(report: DailyReportV3): Promise<void> { const database = await db(); try { const tx = database.transaction('live_report_draft', 'readwrite'); tx.objectStore('live_report_draft').put(report); await txDone(tx); } finally { database.close(); } }
+const partitionId = (userId: string | null, siteId: string | null, date: string): string => userId && siteId ? `${userId}:${siteId}:${date}` : 'local';
+export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> {
+  const scope = await loadActiveSharedScope().catch(() => null);
+  const database = await db();
+  try {
+    const tx = database.transaction(['draft_partitions', 'live_report_draft']);
+    const partitions = await request(tx.objectStore('draft_partitions').getAll()) as DraftPartition[];
+    const matching = scope
+      ? partitions.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
+      : partitions.find((row) => row.id === 'local');
+    if (matching) return normalizeDraft(structuredClone(matching.report));
+    if (scope) return undefined;
+    return normalizeDraft(await request(tx.objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined);
+  } finally { database.close(); }
+}
+export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
+  // Shared context lookup must never prevent the local-first save path.
+  const scope = await loadActiveSharedScope().catch(() => null);
+  if (scope && (!report.shared || report.shared.userId !== scope.userId || report.shared.siteId !== scope.siteId || report.shared.reportDate !== report.date)) {
+    report.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: crypto.randomUUID(), reportDate: report.date, revision: 0 };
+  }
+  if (!scope) delete report.shared;
+  const database = await db();
+  try {
+    const stores = scope ? ['live_report_draft', 'draft_partitions', 'sync_outbox'] : ['live_report_draft', 'draft_partitions'];
+    const tx = database.transaction(stores, 'readwrite');
+    tx.objectStore('live_report_draft').put(report);
+    const partition: DraftPartition = { id: partitionId(scope?.userId ?? null, scope?.siteId ?? null, report.date), userId: scope?.userId ?? null, siteId: scope?.siteId ?? null, reportDate: report.date, report: structuredClone(report), updatedAt: now() };
+    tx.objectStore('draft_partitions').put(partition);
+    if (scope && report.shared) {
+      const queue = tx.objectStore('sync_outbox');
+      const existing = await request(queue.getAll()) as SyncOperation[];
+      existing.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'daily-draft' && row.entityId === report.shared?.cloudId && row.status === 'pending' && row.attempts === 0).forEach((row) => queue.delete(row.id));
+      const payload = structuredClone(report) as DailyReportV3;
+      payload.activeTab = 'engineering';
+      delete payload.shared;
+      queue.put(buildSyncOperation({ ...scope, entity: 'daily-draft', entityId: report.shared.cloudId, baseRevision: report.shared.revision, payload }));
+    }
+    await txDone(tx);
+  } finally { database.close(); }
+}
 
 /** A normal contact save changes only the live draft; automatic learning happens on finalization. */
 export async function saveContactEntry(report: DailyReportV3, contact: ContactItem): Promise<{ report: DailyReportV3; contact: ContactItem }> {

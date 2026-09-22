@@ -103,9 +103,9 @@ tests/e2e/                 兩帳號／兩裝置／斷線瀏覽器驗收
 
 ### P0 — 建立基線與契約
 
-- [ ] 執行既有 `npm test`、`npm run build`，記錄既有問題。
+- [x] 執行既有 `npm test`、`npm run build`，記錄既有問題（2026-09-21：原基線 98 tests；第一個共享切片後 102 tests，build 通過）。
 - [ ] 建立現有主檔、候選、材料連接、定稿與水位的匿名 fixture；不得使用真實工地資料提交版本庫。
-- [ ] 定義 local-only / shared 模式介面與資料映射；雲端 key 未設定時舊模式可正常使用。
+- [x] 定義 local-only / shared 模式設定與第一批帳號、工地、日報 outbox 契約；雲端 key 未設定時維持舊本機模式。
 - [ ] 定義官方 formatter 與候選統計的服務端執行方案：優先共用 TypeScript 純函式；若需要 Edge Function，僅作驗證／格式化入口，原子寫入留在受權限保護的 RPC。
 - [ ] 核實日期、資料保留、草稿粒度與衝突規格，補足契約測試。
 
@@ -113,8 +113,8 @@ tests/e2e/                 兩帳號／兩裝置／斷線瀏覽器驗收
 
 ### P1 — 帳號、工地與權限
 
-- [ ] 建立可重跑的 schema migrations、RLS 與權限 helper。
-- [ ] 加入登入、建立／選取工地、加入申請、owner 審核與成員管理。
+- [x] 建立第一批可重跑的 schema migrations、RLS helper、共用資料表及日報推送／拉取 RPC；尚待實際 Supabase 執行 SQL 測試。
+- [x] 加入登入、建立／選取工地、加入申請、owner 審核與成員管理。
 - [ ] 加入 owner/editor/viewer 權限矩陣測試，涵蓋 Data API、RPC 與外鍵跨工地存取。
 - [ ] 加入 Supabase 設定範例與 OAuth 操作說明；第一次可用本機測試後端，不依賴正式專案。
 
@@ -122,9 +122,9 @@ tests/e2e/                 兩帳號／兩裝置／斷線瀏覽器驗收
 
 ### P2 — 同步引擎與共用記憶
 
-- [ ] 非破壞性 IndexedDB migration：分區、outbox、cursor、conflicts；版本號實作時以當前 DB_VERSION + 1 決定。
-- [ ] 實作 mutation 去重、CAS、序號、全量初始化、增量拉取、重試與多分頁 sender 協調。
-- [ ] 記憶 Repository 接入；保留 confirmed/candidate、父子關係與人工審核語義。
+- [x] 非破壞性 IndexedDB v13 migration：新增 shared_context、outbox、cursor、conflicts、日報／記憶／水位分區；舊 stores 不刪除。
+- [x] 實作 mutation 去重、CAS、序號、全量初始化、增量拉取、退避重試與 Web Locks 多分頁 sender 協調。
+- [x] 記憶快照接入；保留 confirmed/candidate、父子關係、特殊模板與人工審核語義。
 - [ ] 匯入只從一台來源裝置開始；其他裝置預覽去重後再合併，不互相覆蓋。
 - [ ] 最早此階段提供完整雲端資料匯出，作為進入日常試用前的復原手段。
 
@@ -132,8 +132,8 @@ tests/e2e/                 兩帳號／兩裝置／斷線瀏覽器驗收
 
 ### P3 — 共用日報草稿
 
-- [ ] 固定 current 改為 site_id / 日期 / 草稿 UUID；UI 狀態與共享內容拆開。
-- [ ] 保存完整業務內容、排序、材料連接與完成狀態；以版本衝突保護整份草稿。
+- [x] 固定 current 改為帳號／site_id／日期分區與草稿 UUID；UI 頁籤不寫入共享 payload。
+- [x] 保存完整業務內容、排序、材料連接與完成狀態；以版本衝突保護整份草稿。
 - [ ] 新增同步狀態與衝突比對畫面；尚未同步離線版本可單獨匯出。
 - [ ] 處理跨日、切工地、關頁／重開、兩裝置同時建立當日草稿。
 
@@ -151,6 +151,7 @@ tests/e2e/                 兩帳號／兩裝置／斷線瀏覽器驗收
 
 ### P5 — 水位共享
 
+- [x] 第一版以工地水位快照接入固定 mutation ID、CAS、離線 outbox、增量拉取與工地分區；保留現有三日 UI 行為。
 - [ ] 將本機整份 replaceRecords 路徑改為雲端逐筆寫入、刪除與重算。
 - [ ] 測試插入較早量測、修改歷史量測、刪除量測、同時段衝突與跨日。
 - [ ] 貼上匯入先解析預覽，再使用固定 mutation_id 提交；重送不重複。

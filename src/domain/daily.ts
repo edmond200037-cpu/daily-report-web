@@ -8,7 +8,8 @@ export interface SupplyItem { id: string; type: SupplyType; name: string; streng
 export interface ContactTask { id: string; content: string; sortOrder: number; createdAt: string; updatedAt: string; }
 export interface ContactItem { id: string; tradeTypeId: string | null; tradeNameSnapshot: string; vendorId: string | null; vendorNameSnapshot: string; items: ContactTask[]; sortOrder: number; createdAt: string; updatedAt: string; }
 export interface SpecialItem { id: string; content: string; sortOrder: number; createdAt: string; updatedAt: string; }
-export interface DailyReportV3 { id: 'current'; date: string; siteId: string | null; siteNameSnapshot: string; activeTab: 'engineering' | 'supplies' | 'contacts' | 'special'; tradeSections: TradeSection[]; standaloneMaterialEntries: MaterialEntry[]; supplies: SupplyItem[]; contacts: ContactItem[]; specialItems: SpecialItem[]; createdAt: string; updatedAt: string; }
+export interface SharedDraftMetadata { userId: string; siteId: string; cloudId: string; reportDate: string; revision: number; }
+export interface DailyReportV3 { id: 'current'; date: string; siteId: string | null; siteNameSnapshot: string; activeTab: 'engineering' | 'supplies' | 'contacts' | 'special'; tradeSections: TradeSection[]; standaloneMaterialEntries: MaterialEntry[]; supplies: SupplyItem[]; contacts: ContactItem[]; specialItems: SpecialItem[]; createdAt: string; updatedAt: string; shared?: SharedDraftMetadata; }
 export const DAILY_TEMPLATE_VERSION = 2;
 export interface FinalizedDailyReport extends Omit<DailyReportV3, 'id'> { id: string; outputText: string; templateVersion: number; finalizedAt: string; }
 export const timestamp = (): string => new Date().toISOString();

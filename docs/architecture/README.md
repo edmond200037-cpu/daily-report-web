@@ -4,7 +4,7 @@
 
 ## 架構與介面
 
-這是一套 Vite + TypeScript / JavaScript 的純前端 PWA，使用原生 DOM 與 Hash 路由。沒有業務 HTTP API、帳號服務或遠端資料庫；Repository 函式是應用內的資料介面。
+這是一套 Vite + TypeScript / JavaScript 的 local-first PWA，使用原生 DOM 與 Hash 路由。未設定環境變數時維持純本機模式；設定 Supabase 後提供 Google 登入、共用工地、權限與增量同步。
 
 | 模組 | 責任與來源 |
 |---|---|
@@ -14,7 +14,9 @@
 | 記憶與設定 | `src/settings/*`：工種管理與候選審核；實際畫面仍由 main.ts 編排 |
 | 日報資料介面 | `src/data/daily-repository.ts`：草稿、定稿、主檔、記憶、JSON 合併匯入 |
 | 水位 | `src/water-level/controller.js`：按需載入；parser / calculator / formatter / repository 處理解析、重算與保存 |
-| 共用資料邊界 | `src/data/db.js`：唯一 IndexedDB opener，DB_VERSION = 9，管理 migration 與 object stores |
+| 共用資料邊界 | `src/data/db.js`：唯一 IndexedDB opener，DB_VERSION = 13，管理既有資料、帳號／工地分區與同步 stores 的 migration |
+| 雲端同步 | `src/sync/*`、`src/data/remote/*`：固定 mutation ID、CAS revision、outbox 重試、增量游標、日報草稿、記憶與水位快照同步 |
+| 免費後端 | `supabase/migrations/*`：Auth、Postgres、RLS、成員管理與寫入 RPC；可部署在 Supabase Free Plan |
 | 離線殼層 | `src/service-worker.ts`：Workbox 預快取；導航先走網路，失敗回退快取 index.html |
 | 部署 | `.github/workflows/deploy.yml`：main push / 手動觸發 → npm ci → npm test → npm run build → dist → GitHub Pages |
 
@@ -25,6 +27,7 @@
 3. 記憶備份：exportMemories → JSON 下載；匯入 → 驗證 → mergeMemoryBackup 合併。排除日報草稿、定稿與水位資料。
 4. 水位：手動輸入或貼上文字解析 → saveLog → recalculate → 保存 water_level_logs → 清理三天範圍外紀錄。
 5. 更新：GitHub Pages 提供新版資源 → Service Worker 檢查更新 → UI 提示；快取不承載業務資料。
+6. 共用同步：本機 transaction 寫入資料與 outbox → RPC 以 mutation ID 去重及 revision CAS → `site_changes` 序號拉取 → 套用到目前工地分區；衝突保留本機與雲端 payload。
 
 ## 維護觀察
 

@@ -6,7 +6,7 @@ import type { BackupPayload, Draft, Entity, ReportSnapshot } from '../types/doma
 import { STORES, get, list, put, remove, withTransaction } from '../data/db.js';
 
 export const STORE_NAMES = STORES as readonly string[];
-export type StoreName = 'sites' | 'trade_types' | 'trade_vendors' | 'trade_tasks' | 'location_memories' | 'material_types' | 'material_memory_items' | 'material_memories' | 'supplier_memories' | 'floor_options' | 'daily_reports' | 'daily_memory_commits' | 'app_settings' | 'live_report_draft' | 'water_level_points' | 'water_level_logs' | 'water_level_readings' | 'debug_logs' | 'reports' | 'drafts' | 'vendor_tasks' | 'materials' | 'material_specifications' | 'special_categories' | 'special_templates' | 'special_template_variables' | 'migration_metadata';
+export type StoreName = 'sites' | 'trade_types' | 'trade_vendors' | 'trade_tasks' | 'location_memories' | 'material_types' | 'material_memory_items' | 'material_memories' | 'supplier_memories' | 'floor_options' | 'daily_reports' | 'daily_memory_commits' | 'app_settings' | 'live_report_draft' | 'water_level_points' | 'water_level_logs' | 'water_level_readings' | 'debug_logs' | 'reports' | 'drafts' | 'vendor_tasks' | 'materials' | 'material_specifications' | 'special_categories' | 'special_templates' | 'special_template_variables' | 'migration_metadata' | 'shared_context' | 'sync_outbox' | 'sync_cursors' | 'sync_conflicts' | 'draft_partitions' | 'memory_partitions' | 'water_partitions';
 
 export class Database {
   async get<T>(store: StoreName, id: string): Promise<T | undefined> { return get(store, id) as Promise<T | undefined>; }
