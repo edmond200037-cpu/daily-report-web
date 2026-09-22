@@ -43,7 +43,7 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('待同步 2 筆');
     expect(html).toContain('data-account-form="request-join"');
     expect(html).toContain('account-site active');
-    expect(html).toContain('加入碼：</span><code>a1b2c3d4e5f6</code>');
+    expect(html).toContain('<div class="account-join-code"><span>加入碼</span><code>a1b2c3d4e5f6</code>');
     expect(html).toContain('data-account-action="copy-join-code" data-site-id="site-1"');
     expect(html).not.toContain('data-join-code=');
   });
@@ -68,7 +68,7 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('data-account-action="approve-editor"');
     expect(html).toContain('data-account-action="role-owner"');
     expect(html).toContain('data-account-action="remove-member"');
-    expect(html).toContain(' · 編輯者');
+    expect(html).toContain('<small>編輯者</small>');
     expect(html).toContain('data-account-action="role-editor"');
     expect(html).toContain('aria-pressed="true"');
   });
@@ -93,6 +93,7 @@ describe('共用工地帳號頁', () => {
     expect(accountCss).toContain('.account-page-shell .primary { border-color: var(--daily-orange); background: var(--daily-orange); }');
     expect(accountCss).toContain('.account-join-code code');
     expect(accountCss).toContain('min-height: 44px');
+    expect(accountCss).toContain('border-left: 1px solid var(--daily-line-strong)');
   });
 
   it('複製操作只用工地 ID 從記憶體查找加入碼，並保留成功與失敗回饋', () => {
@@ -101,6 +102,31 @@ describe('共用工地帳號頁', () => {
     expect(main).toContain('navigator.clipboard.writeText(site.joinCode)');
     expect(main).toContain('已複製「${site.name}」加入碼');
     expect(main).toContain('無法自動複製，請手動選取加入碼');
+  });
+
+  it('管理員依工地分組申請與成員，群組內不重複工地名稱', () => {
+    const html = renderAccountPage({
+      auth: { enabled: true, session: null, user: { id: 'owner-1', email: 'owner@example.com' } as never },
+      sites: [
+        { id: 'site-1', name: '甲工地', joinCode: 'a1b2c3d4e5f6', role: 'owner', createdAt: '' },
+        { id: 'site-2', name: '乙工地', joinCode: 'f6e5d4c3b2a1', role: 'owner', createdAt: '' },
+      ],
+      activeSiteId: null, pendingCount: 0,
+      requests: [{ id: 'request-1', siteId: 'site-1', siteName: '甲工地', userId: 'requester-1', requestedAt: '' }],
+      members: [
+        { siteId: 'site-1', userId: 'member-1', role: 'editor', createdAt: '' },
+        { siteId: 'site-2', userId: 'member-2', role: 'viewer', createdAt: '' },
+      ], feedback: '', error: '',
+    });
+    expect(html).toContain('<h2>甲工地</h2>');
+    expect(html).toContain('<h2>乙工地</h2>');
+    expect(html).toContain('requester-1');
+    expect(html).toContain('member-1');
+    expect(html).toContain('member-2');
+    expect(html).not.toContain('甲工地 · 編輯者');
+    expect(html).not.toContain('乙工地 · 檢視者');
+    expect(html).toContain('data-site-id="site-1" data-user-id="member-1"');
+    expect(html).toContain('data-site-id="site-2" data-user-id="member-2"');
   });
 
 });

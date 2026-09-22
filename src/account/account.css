@@ -26,11 +26,13 @@
 .account-sites__header small { color: var(--daily-ink-faint); }
 .account-site { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--daily-line); padding: var(--space-3); }
 .account-site__details { display: grid; gap: .2rem; min-width: 0; }
-.account-site__primary { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); min-width: 0; }
-.account-site__primary > strong { min-width: 0; overflow-wrap: anywhere; }
-.account-join-code { display: flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
-.account-join-code code { border: 1px solid var(--daily-line-strong); border-radius: var(--radius-sm); background: var(--daily-paper-muted); color: var(--daily-ink); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .875rem; letter-spacing: .04em; padding: .35rem .5rem; user-select: all; }
-.account-join-code button { min-height: 44px; flex: none; }
+.account-site__primary { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.account-site__primary > strong { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-join-code { display: inline-flex; align-items: center; min-height: 44px; flex: none; overflow: hidden; border: 1px solid var(--daily-line-strong); border-radius: var(--radius-sm); background: var(--daily-paper-muted); white-space: nowrap; }
+.account-join-code > span { color: var(--daily-ink-soft); font-size: var(--daily-meta-size); padding-left: .65rem; }
+.account-join-code code { color: var(--daily-ink); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .875rem; letter-spacing: .04em; padding: .35rem .5rem; user-select: all; }
+.account-page-shell .account-join-code button { align-self: stretch; min-height: 42px; border: 0; border-left: 1px solid var(--daily-line-strong); border-radius: 0; background: transparent; color: var(--daily-ink); padding-inline: .75rem; }
+.account-page-shell .account-join-code button:hover { background: var(--daily-orange-soft); }
 .account-site.active { border-left: 4px solid var(--daily-orange); background: var(--daily-orange-soft); padding-left: calc(var(--space-3) - 4px); }
 .account-member { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--daily-line); padding: var(--space-3) 0; }
 .account-member > div { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
@@ -47,4 +49,5 @@
 .account-member-group + .account-member-group { border-top: 1px solid var(--daily-line); padding-top: var(--space-4); }
 .account-feedback { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--daily-line)); border-radius: var(--radius-sm); background: var(--success-soft); color: var(--success); padding: var(--space-3); }
 @media (min-width: 760px) { .account-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .account-identity, .account-site, .account-member { align-items: stretch; flex-direction: column; } .account-site__primary { align-items: flex-start; flex-direction: column; } .account-join-code { max-width: 100%; } .account-join-code code { min-width: 0; overflow: hidden; text-overflow: ellipsis; } .account-identity > button, .account-site > button { width: 100%; } .account-member > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .account-member > div:last-child button { width: 100%; min-width: 0; padding-inline: var(--space-2); } }
+@media (max-width: 759px) { .account-site__primary { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 520px) { .account-identity, .account-site, .account-member { align-items: stretch; flex-direction: column; } .account-identity > button, .account-site > button { width: 100%; } .account-member > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .account-member > div:last-child button { width: 100%; min-width: 0; padding-inline: var(--space-2); } }

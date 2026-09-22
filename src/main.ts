@@ -6,6 +6,7 @@ import './daily/daily.css';
 import './water-level/water.css';
 import './account/account.css';
 import { registerSW } from 'virtual:pwa-register';
+import { consumePwaUpdateSuccess, PWA_UPDATE_SUCCESS_MARKER, transitionPwaUpdateState, type PwaUpdateState } from './pwa/update-state';
 import { DailyController, type DailyDeleteUndo, type DailySaveState } from './daily/daily-controller';
 import { formatDailyReport } from './daily/daily-formatter';
 import { clearDebugLogs, confirmMemory, confirmMemoryCandidates, createMaterialType, databaseSummary, deleteMemory, deleteMaterialType, exportMemories, finalizeDailyReport, listMaterialMemory, listMaterialTypes, listMemories, listMemoryCandidates, listRecentFinalizedReports, listTemplates, loadDailyDraft, mergeMemoryBackup, pruneExpiredReports, rejectMaterialMemoryItem, renameMaterialType, reorderMaterialTypes, saveContactEntry, saveMaterialEntry, saveMemory, saveTemplate, type DailySettingsSection, type MaterialMemoryItem, type MaterialType, type MemoryCandidate, type MemoryCandidateKey, type NamedMemory, type SpecialTemplate } from './data/daily-repository';
@@ -89,8 +90,8 @@ let memoryBackupFeedback = '';
 let dailySaveState: DailySaveState = 'saved';
 let dailyLastSavedAt = '';
 let dailySyncPendingCount = 0;
-let pwaUpdateAvailable = false;
-let pwaUpdateInProgress = false;
+let pwaUpdateState: PwaUpdateState = (() => { try { return consumePwaUpdateSuccess(sessionStorage) ? 'success' : 'idle'; } catch { return 'idle'; } })();
+let pwaUpdateTimeout: number | undefined;
 let applyPwaUpdate: (() => Promise<void>) | undefined;
 let settingsSearchComposing = false;
 let tradePickerSearchComposing = false;
@@ -121,7 +122,17 @@ let accountFeedback = '';
 let accountError = '';
 let syncInFlight = false;
 const escapeHtml = (value: string) => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
-const pwaUpdateNotice = () => !pwaUpdateAvailable ? '' : `<aside class="pwa-update-notice" role="status" aria-live="polite"><div><strong>${pwaUpdateInProgress ? '正在更新施工日報' : '已有新版施工日報'}</strong><p>${pwaUpdateInProgress ? '正在安全儲存草稿並套用新版，請勿關閉頁面。' : '新版已在背景下載完成。更新不會刪除本機日報資料。'}</p></div><div class="pwa-update-notice__actions">${pwaUpdateInProgress ? '' : '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">立即更新</button>'}</div></aside>`;
+const pwaUpdateNotice = () => {
+  if (pwaUpdateState === 'idle') return '';
+  const content = pwaUpdateState === 'available'
+    ? { title: '已有新版施工日報', message: '新版已在背景下載完成。更新不會刪除本機日報資料。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">立即更新</button>' }
+    : pwaUpdateState === 'applying'
+      ? { title: '正在儲存資料並套用新版', message: '請勿關閉頁面。日報、記憶與水位資料正在安全儲存。', actions: '' }
+      : pwaUpdateState === 'success'
+        ? { title: '更新完成', message: '已套用最新版，可以繼續使用。', actions: '<button type="button" data-app-action="dismiss-pwa-update">知道了</button>' }
+        : { title: '更新未完成', message: '使用者資料未被清除，請重新嘗試套用新版。', actions: '<button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' };
+  return `<aside class="pwa-update-notice pwa-update-notice--${pwaUpdateState}" role="status" aria-live="polite"><div><strong>${content.title}</strong><p>${content.message}</p></div><div class="pwa-update-notice__actions">${content.actions}</div></aside>`;
+};
 const field = (label: string, name: string, value: string, type = 'text') => `<label>${label}<input data-daily-field="${name}" type="${type}" value="${escapeHtml(value)}"></label>`;
 function sitePickerField(): string {
   const query = siteSearchQuery || daily.report.siteNameSnapshot;
@@ -595,8 +606,22 @@ app.addEventListener('click', async (event) => { const target = event.target as 
 app.addEventListener('click', async (event) => {
   const target = event.target as HTMLElement; const route = parseRoute(location.hash);
   const appAction = target.closest<HTMLElement>('[data-app-action]')?.dataset.appAction;
-  if (appAction === 'dismiss-pwa-update') { pwaUpdateAvailable = false; await renderApp(); return; }
-  if (appAction === 'apply-pwa-update' && applyPwaUpdate && !pwaUpdateInProgress) { pwaUpdateInProgress = true; await renderApp(); try { await daily.flush(); await applyPwaUpdate(); } catch { pwaUpdateInProgress = false; await renderApp(); alert('新版套用失敗，請稍後再試。'); } return; }
+  if (appAction === 'dismiss-pwa-update') { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); await renderApp(); return; }
+  if (appAction === 'apply-pwa-update' && applyPwaUpdate && pwaUpdateState !== 'applying') {
+    pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'apply');
+    if (pwaUpdateState !== 'applying') return;
+    await renderApp();
+    try {
+      await Promise.all([daily.flush(), persistActiveMemoryPartition(), persistActiveWaterPartition()]);
+      pwaUpdateTimeout = window.setTimeout(() => { if (pwaUpdateState === 'applying') { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } }, 15_000);
+      await applyPwaUpdate();
+    } catch {
+      if (pwaUpdateTimeout !== undefined) window.clearTimeout(pwaUpdateTimeout);
+      pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed');
+      await renderApp();
+    }
+    return;
+  }
   if (route.module === 'settings' && route.page === 'memory') {
     const groupToggle = target.closest<HTMLButtonElement>('[data-memory-group-toggle]'); if (groupToggle) { const kind = groupToggle.dataset.memoryGroupToggle as MemoryCandidate['kind']; memoryReviewState.openKind = memoryReviewState.openKind === kind ? null : kind; memoryReviewState.expandedKeys.clear(); await renderApp(); return; }
     const detailToggle = target.closest<HTMLButtonElement>('[data-memory-detail-toggle]'); if (detailToggle) { const key = detailToggle.dataset.memoryDetailToggle as MemoryCandidateKey; if (memoryReviewState.expandedKeys.has(key)) memoryReviewState.expandedKeys.delete(key); else memoryReviewState.expandedKeys.add(key); await renderApp(); return; }
@@ -786,6 +811,6 @@ async function syncActiveSiteSilently(): Promise<void> {
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else void syncActiveSiteSilently(); });
 window.addEventListener('online', () => { void syncActiveSiteSilently(); });
-async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateAvailable = true; void renderApp(); } }); }
+async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { if (pwaUpdateTimeout !== undefined) window.clearTimeout(pwaUpdateTimeout); if (pwaUpdateState === 'applying') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); } }); }
 void pruneExpiredReports();
 bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });
