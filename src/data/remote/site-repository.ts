@@ -9,8 +9,8 @@ export function mapAccessibleSiteMembershipRows(rows: AccessibleSiteMembershipRo
   return rows.flatMap((row) => row.sites ? [{ id: row.sites.id, name: row.sites.name, joinCode: row.sites.join_code, role: row.role, createdAt: row.sites.created_at }] : []);
 }
 
-export async function listAccessibleSites(): Promise<SiteSummary[]> {
-  const { data, error } = await getSupabaseClient().from('site_members').select('role, sites!inner(id,name,join_code,created_at)').order('created_at', { referencedTable: 'sites' });
+export async function listAccessibleSites(userId: string): Promise<SiteSummary[]> {
+  const { data, error } = await getSupabaseClient().from('site_members').select('role, sites!inner(id,name,join_code,created_at)').eq('user_id', userId).order('created_at', { referencedTable: 'sites' });
   if (error) throw error;
   return mapAccessibleSiteMembershipRows((data ?? []) as unknown as AccessibleSiteMembershipRow[]);
 }

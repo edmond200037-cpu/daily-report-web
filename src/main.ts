@@ -475,7 +475,7 @@ async function refreshAccount(): Promise<void> {
   try {
     accountAuth = await loadAuthSnapshot();
     if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; return; }
-    const [sites, context] = await Promise.all([listAccessibleSites(), loadSharedContext(accountAuth.user.id)]);
+    const [sites, context] = await Promise.all([listAccessibleSites(accountAuth.user.id), loadSharedContext(accountAuth.user.id)]);
     accountSites = sites;
     [accountRequests, accountMembers] = await Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)]);
     accountActiveSiteId = sites.some((site) => site.id === context.activeSiteId) ? context.activeSiteId : null;

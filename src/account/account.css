@@ -50,4 +50,14 @@
 .account-feedback { border: 1px solid color-mix(in srgb, var(--success) 45%, var(--daily-line)); border-radius: var(--radius-sm); background: var(--success-soft); color: var(--success); padding: var(--space-3); }
 @media (min-width: 760px) { .account-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 759px) { .account-site__primary { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 520px) {
+  .account-site-panel, .account-sites, .account-site { min-width: 0; }
+  .account-content, .account-sites, .account-site__details, .account-administration, .account-member-group { grid-template-columns: minmax(0, 1fr); }
+  .account-administration h2 { overflow-wrap: anywhere; }
+  .account-site__primary { align-items: stretch; }
+  .account-join-code { width: 100%; min-width: 0; }
+  .account-join-code > span { flex: none; }
+  .account-join-code code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .account-page-shell .account-join-code button { flex: none; min-height: 44px; }
+}
 @media (max-width: 520px) { .account-identity, .account-site, .account-member { align-items: stretch; flex-direction: column; } .account-identity > button, .account-site > button { width: 100%; } .account-member > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .account-member > div:last-child button { width: 100%; min-width: 0; padding-inline: var(--space-2); } }
