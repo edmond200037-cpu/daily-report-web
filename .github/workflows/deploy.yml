@@ -26,6 +26,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Vite 只會在建置階段讀取 VITE_*；部署版不可依賴開發機的 .env.local。
+          # 請在 GitHub repository Actions secrets 設定這兩個值。
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
