@@ -37,18 +37,31 @@ describe('共用工地帳號頁', () => {
   it('已登入時提供工地切換、手動同步與加入流程', () => {
     const html = renderAccountPage({
       auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never },
-      sites: [{ id: 'site-1', name: '測試工地', role: 'editor', createdAt: '2026-09-21T00:00:00Z' }],
+      sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role: 'editor', createdAt: '2026-09-21T00:00:00Z' }],
       activeSiteId: 'site-1', pendingCount: 2, requests: [], members: [], feedback: '', error: '',
     });
     expect(html).toContain('待同步 2 筆');
     expect(html).toContain('data-account-form="request-join"');
     expect(html).toContain('account-site active');
+    expect(html).toContain('加入碼：</span><code>a1b2c3d4e5f6</code>');
+    expect(html).toContain('data-account-action="copy-join-code" data-site-id="site-1"');
+    expect(html).not.toContain('data-join-code=');
+  });
+
+  it.each(['owner', 'editor', 'viewer'] as const)('%s 都能查看與複製自己已加入工地的加入碼', (role) => {
+    const html = renderAccountPage({
+      auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never },
+      sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role, createdAt: '2026-09-21T00:00:00Z' }],
+      activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '',
+    });
+    expect(html).toContain('a1b2c3d4e5f6');
+    expect(html).toContain('data-account-action="copy-join-code" data-site-id="site-1"');
   });
 
   it('管理員保留申請審核與成員角色操作標記', () => {
     const html = renderAccountPage({
       auth: { enabled: true, session: null, user: { id: 'owner-1', email: 'owner@example.com' } as never },
-      sites: [{ id: 'site-1', name: '測試工地', role: 'owner', createdAt: '2026-09-21T00:00:00Z' }], activeSiteId: 'site-1', pendingCount: 0,
+      sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role: 'owner', createdAt: '2026-09-21T00:00:00Z' }], activeSiteId: 'site-1', pendingCount: 0,
       requests: [{ id: 'request-1', siteId: 'site-1', siteName: '測試工地', userId: 'member-1', requestedAt: '2026-09-21T00:00:00Z' }],
       members: [{ siteId: 'site-1', userId: 'member-1', role: 'editor', createdAt: '2026-09-21T00:00:00Z' }], feedback: '', error: '',
     });
@@ -78,6 +91,16 @@ describe('共用工地帳號頁', () => {
     expect(accountCss).toContain('.account-page-shell small { color: var(--daily-ink-faint); }');
     expect(accountCss).toContain('.account-page-shell .issues { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }');
     expect(accountCss).toContain('.account-page-shell .primary { border-color: var(--daily-orange); background: var(--daily-orange); }');
+    expect(accountCss).toContain('.account-join-code code');
+    expect(accountCss).toContain('min-height: 44px');
+  });
+
+  it('複製操作只用工地 ID 從記憶體查找加入碼，並保留成功與失敗回饋', () => {
+    expect(main).toContain("button.dataset.accountAction === 'copy-join-code'");
+    expect(main).toContain('accountSites.find((row) => row.id === button.dataset.siteId)');
+    expect(main).toContain('navigator.clipboard.writeText(site.joinCode)');
+    expect(main).toContain('已複製「${site.name}」加入碼');
+    expect(main).toContain('無法自動複製，請手動選取加入碼');
   });
 
 });

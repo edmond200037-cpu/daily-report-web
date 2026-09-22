@@ -521,6 +521,24 @@ app.addEventListener('click', async (event) => {
   try {
     if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }
     if (button.dataset.accountAction === 'sign-out') { await switchActiveDataPartition(signOut); accountSites = []; accountActiveSiteId = null; accountFeedback = '已登出並切回本機草稿與記憶資料；共用工地快取仍保留在此裝置。'; }
+    if (button.dataset.accountAction === 'copy-join-code' && button.dataset.siteId) {
+      const site = accountSites.find((row) => row.id === button.dataset.siteId);
+      if (!site) { accountError = '找不到此工地的加入碼，請重新載入頁面後再試。'; await renderApp(); return; }
+      try {
+        await navigator.clipboard.writeText(site.joinCode);
+        accountFeedback = `已複製「${site.name}」加入碼`;
+        await renderApp();
+        const copiedButton = app.querySelector<HTMLButtonElement>(`[data-account-action="copy-join-code"][data-site-id="${site.id}"]`);
+        if (copiedButton) {
+          copiedButton.textContent = '已複製';
+          window.setTimeout(() => { if (copiedButton.isConnected) copiedButton.textContent = '複製'; }, 1600);
+        }
+      } catch {
+        accountError = '無法自動複製，請手動選取加入碼';
+        await renderApp();
+      }
+      return;
+    }
     if (button.dataset.accountAction === 'select-site' && accountAuth.user && button.dataset.siteId) {
       await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, button.dataset.siteId!); });
       accountActiveSiteId = button.dataset.siteId;

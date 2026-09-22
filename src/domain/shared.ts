@@ -4,6 +4,7 @@ export type SyncState = 'local-only' | 'saved-local' | 'pending' | 'syncing' | '
 export interface SiteSummary {
   id: string;
   name: string;
+  joinCode: string;
   role: SiteRole;
   createdAt: string;
 }

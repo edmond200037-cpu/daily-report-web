@@ -1,14 +1,18 @@
 import { getSupabaseClient } from './supabase-client';
 import type { SiteRole, SiteSummary } from '../../domain/shared';
 
-interface MembershipRow { role: SiteRole; sites: { id: string; name: string; created_at: string } | null; }
+export interface AccessibleSiteMembershipRow { role: SiteRole; sites: { id: string; name: string; join_code: string; created_at: string } | null; }
 export interface JoinRequestSummary { id: string; siteId: string; siteName: string; userId: string; requestedAt: string; }
 export interface SiteMemberSummary { siteId: string; userId: string; role: SiteRole; createdAt: string; }
 
+export function mapAccessibleSiteMembershipRows(rows: AccessibleSiteMembershipRow[]): SiteSummary[] {
+  return rows.flatMap((row) => row.sites ? [{ id: row.sites.id, name: row.sites.name, joinCode: row.sites.join_code, role: row.role, createdAt: row.sites.created_at }] : []);
+}
+
 export async function listAccessibleSites(): Promise<SiteSummary[]> {
-  const { data, error } = await getSupabaseClient().from('site_members').select('role, sites!inner(id,name,created_at)').order('created_at', { referencedTable: 'sites' });
+  const { data, error } = await getSupabaseClient().from('site_members').select('role, sites!inner(id,name,join_code,created_at)').order('created_at', { referencedTable: 'sites' });
   if (error) throw error;
-  return ((data ?? []) as unknown as MembershipRow[]).flatMap((row) => row.sites ? [{ id: row.sites.id, name: row.sites.name, role: row.role, createdAt: row.sites.created_at }] : []);
+  return mapAccessibleSiteMembershipRows((data ?? []) as unknown as AccessibleSiteMembershipRow[]);
 }
 
 export async function createSharedSite(name: string): Promise<{ siteId: string; joinCode: string }> {
