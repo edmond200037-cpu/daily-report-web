@@ -9,6 +9,10 @@ declare let self: ServiceWorkerGlobalScope;
 
 clientsClaim();
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting();
+});
+
 const navigationRequestFirst = new NetworkOnly();
 
 registerRoute(new NavigationRoute(async (options) => {

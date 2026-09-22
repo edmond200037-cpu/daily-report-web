@@ -19,9 +19,16 @@ describe('PWA 更新狀態機', () => {
     expect(consumePwaUpdateSuccess(storage)).toBe(false);
   });
 
-  it('套用中拒絕重複觸發，失敗後可以重試', () => {
+  it('套用中拒絕重複觸發，等待切換後可以重試', () => {
     expect(transitionPwaUpdateState('applying', 'apply')).toBe('applying');
+    expect(transitionPwaUpdateState('applying', 'waiting')).toBe('waiting');
+    expect(transitionPwaUpdateState('waiting', 'apply')).toBe('applying');
+    expect(transitionPwaUpdateState('waiting', 'completed')).toBe('success');
+  });
+
+  it('只有實際失敗才進入 error，等待提示可關閉', () => {
     expect(transitionPwaUpdateState('applying', 'failed')).toBe('error');
     expect(transitionPwaUpdateState('error', 'apply')).toBe('applying');
+    expect(transitionPwaUpdateState('waiting', 'dismiss')).toBe('idle');
   });
 });

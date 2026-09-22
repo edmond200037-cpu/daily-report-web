@@ -122,15 +122,18 @@ let accountFeedback = '';
 let accountError = '';
 let syncInFlight = false;
 const escapeHtml = (value: string) => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
+const clearPwaUpdateTimeout = () => { if (pwaUpdateTimeout !== undefined) { window.clearTimeout(pwaUpdateTimeout); pwaUpdateTimeout = undefined; } };
 const pwaUpdateNotice = () => {
   if (pwaUpdateState === 'idle') return '';
   const content = pwaUpdateState === 'available'
     ? { title: '已有新版施工日報', message: '新版已在背景下載完成。更新不會刪除本機日報資料。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">立即更新</button>' }
     : pwaUpdateState === 'applying'
       ? { title: '正在儲存資料並套用新版', message: '請勿關閉頁面。日報、記憶與水位資料正在安全儲存。', actions: '' }
+      : pwaUpdateState === 'waiting'
+        ? { title: '新版仍在等待套用', message: '資料已安全儲存，可重新嘗試，或關閉其他已開啟的施工日報分頁後再更新。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' }
       : pwaUpdateState === 'success'
         ? { title: '更新完成', message: '已套用最新版，可以繼續使用。', actions: '<button type="button" data-app-action="dismiss-pwa-update">知道了</button>' }
-        : { title: '更新未完成', message: '使用者資料未被清除，請重新嘗試套用新版。', actions: '<button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' };
+        : { title: '更新未完成', message: '更新程序發生錯誤，使用者資料未被清除，請重新嘗試。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' };
   return `<aside class="pwa-update-notice pwa-update-notice--${pwaUpdateState}" role="status" aria-live="polite"><div><strong>${content.title}</strong><p>${content.message}</p></div><div class="pwa-update-notice__actions">${content.actions}</div></aside>`;
 };
 const field = (label: string, name: string, value: string, type = 'text') => `<label>${label}<input data-daily-field="${name}" type="${type}" value="${escapeHtml(value)}"></label>`;
@@ -606,17 +609,17 @@ app.addEventListener('click', async (event) => { const target = event.target as 
 app.addEventListener('click', async (event) => {
   const target = event.target as HTMLElement; const route = parseRoute(location.hash);
   const appAction = target.closest<HTMLElement>('[data-app-action]')?.dataset.appAction;
-  if (appAction === 'dismiss-pwa-update') { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); await renderApp(); return; }
+  if (appAction === 'dismiss-pwa-update') { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); await renderApp(); return; }
   if (appAction === 'apply-pwa-update' && applyPwaUpdate && pwaUpdateState !== 'applying') {
     pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'apply');
     if (pwaUpdateState !== 'applying') return;
     await renderApp();
     try {
       await Promise.all([daily.flush(), persistActiveMemoryPartition(), persistActiveWaterPartition()]);
-      pwaUpdateTimeout = window.setTimeout(() => { if (pwaUpdateState === 'applying') { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } }, 15_000);
+      pwaUpdateTimeout = window.setTimeout(() => { if (pwaUpdateState === 'applying') { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'waiting'); void renderApp(); } }, 15_000);
       await applyPwaUpdate();
     } catch {
-      if (pwaUpdateTimeout !== undefined) window.clearTimeout(pwaUpdateTimeout);
+      clearPwaUpdateTimeout();
       pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed');
       await renderApp();
     }
@@ -811,6 +814,6 @@ async function syncActiveSiteSilently(): Promise<void> {
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else void syncActiveSiteSilently(); });
 window.addEventListener('online', () => { void syncActiveSiteSilently(); });
-async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { if (pwaUpdateTimeout !== undefined) window.clearTimeout(pwaUpdateTimeout); if (pwaUpdateState === 'applying') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); } }); }
+async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
 void pruneExpiredReports();
 bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });
