@@ -25,7 +25,7 @@ import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJo
 import { loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
 import { renderAccountPage } from './account/account-view';
 import type { SiteSummary } from './domain/shared';
-import { countOperations, dailyOperationStatusSummary, listSyncDiagnostics, retryMissingRpcOperations } from './sync/outbox';
+import { countOperations, dailyOperationStatusSummary, listAllOperations, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
 import { loadLastPulledAt, runSyncOnce, type SyncRunResult } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
@@ -127,6 +127,7 @@ let accountMembers: SiteMemberSummary[] = [];
 let accountFeedback = '';
 let accountError = '';
 let accountSyncDiagnostics: SyncOperation[] = [];
+let accountSyncOperations: SyncOperation[] = [];
 let accountConflictReviews: ConflictReview[] = [];
 let syncInFlight = false;
 let activeSyncEpoch = 0;
@@ -509,19 +510,31 @@ async function switchActiveDataPartition(changeContext: () => Promise<void>): Pr
 }
 async function refreshAccount(): Promise<void> {
   try {
+    accountError = '';
     accountAuth = await loadAuthSnapshot();
-    if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; accountSyncDiagnostics = []; accountConflictReviews = []; return; }
+    if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; accountSyncDiagnostics = []; accountSyncOperations = []; accountConflictReviews = []; return; }
     const [sites, context] = await Promise.all([listAccessibleSites(accountAuth.user.id), loadSharedContext(accountAuth.user.id)]);
     accountSites = sites;
     [accountRequests, accountMembers] = await Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)]);
     accountActiveSiteId = sites.some((site) => site.id === context.activeSiteId) ? context.activeSiteId : null;
     if (context.activeSiteId && !accountActiveSiteId) await selectActiveSharedSite(accountAuth.user.id, null);
-    accountPendingCount = accountActiveSiteId ? await countOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : 0;
-    accountSyncDiagnostics = accountActiveSiteId ? await listSyncDiagnostics({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
+    accountSyncOperations = accountActiveSiteId ? await listAllOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
+    accountPendingCount = accountSyncOperations.length;
+    accountSyncDiagnostics = accountSyncOperations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked');
     accountConflictReviews = accountActiveSiteId ? await listConflictReviews({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
   } catch (error) {
     accountError = error instanceof Error ? error.message : '無法讀取共用工地。';
   }
+}
+function accountModuleMarkup(content: string): string {
+  const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined;
+  return `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${content}</main>${pwaUpdateNotice()}`;
+}
+function renderAccountLoading(): void {
+  app.innerHTML = accountModuleMarkup('<section class="account-content"><section class="form-card account-status" aria-busy="true"><strong>正在載入共用工地…</strong><p>頁面已開啟，正在讀取帳號、工地與本機同步佇列。</p></section></section>');
+}
+function renderAccountLoaded(): void {
+  app.innerHTML = accountModuleMarkup(renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, conflicts: accountConflictReviews }));
 }
 async function renderApp(): Promise<void> {
   if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
@@ -529,7 +542,7 @@ async function renderApp(): Promise<void> {
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
   const token = ++renderToken; const route = parseRoute(location.hash); const previousRoute = renderedRoute; renderedRoute = route; water = undefined;
   if ((route.module === 'daily' && route.page === 'settings' && previousRoute?.module === 'daily' && previousRoute.page === 'main') || (route.module === 'water-level' && route.page === 'settings' && previousRoute?.module === 'water-level' && previousRoute.page === 'main')) settingsReturnModule = previousRoute.module;
-  if (route.module === 'account') { await refreshAccount(); if (token !== renderToken) return; const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined; app.innerHTML = `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, conflicts: accountConflictReviews })}</main>${pwaUpdateNotice()}`; return; }
+  if (route.module === 'account') { renderAccountLoading(); void refreshAccount().then(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; renderAccountLoaded(); }); return; }
   if (route.module === 'settings') { if (route.page === 'memory') { memoryCandidates = await listMemoryCandidates(); const keys = new Set(memoryCandidates.map((row) => row.key)); memoryReviewState.explicitKeys = new Set([...memoryReviewState.explicitKeys].filter((key) => keys.has(key))); memoryReviewState.expandedKeys = new Set([...memoryReviewState.expandedKeys].filter((key) => keys.has(key))); const groups = groupMemoryCandidates(memoryCandidates); if (memoryReviewState.openKind === undefined) memoryReviewState.openKind = groups[0]?.kind ?? null; else if (memoryReviewState.openKind !== null && !groups.some((group) => group.kind === memoryReviewState.openKind)) memoryReviewState.openKind = groups.find((group) => group.kind === memoryReviewState.nextKind)?.kind ?? groups[0]?.kind ?? null; memoryReviewState.nextKind = null; } else { if (settingsState.activeSection !== 'backup' && settingsState.activeSection !== 'debug') settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? dataSystemView() : memoryReviewView()}${pwaUpdateNotice()}`; return; }
   if (route.module === 'daily') {
     if (!accountAuth.enabled) await refreshAccount();
@@ -609,6 +622,11 @@ app.addEventListener('click', async (event) => {
   event.stopImmediatePropagation();
   accountFeedback = ''; accountError = '';
   try {
+    if (button.dataset.accountAction === 'retry-load-account') {
+      const token = ++renderToken; renderAccountLoading(); await refreshAccount();
+      if (token === renderToken && parseRoute(location.hash).module === 'account') renderAccountLoaded();
+      return;
+    }
     if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }
     if (button.dataset.accountAction === 'sign-out') { await switchActiveDataPartition(signOut); accountSites = []; accountActiveSiteId = null; accountFeedback = '已登出並切回本機草稿與記憶資料；共用工地快取仍保留在此裝置。'; }
     if (button.dataset.accountAction === 'copy-join-code' && button.dataset.siteId) {

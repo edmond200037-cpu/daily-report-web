@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { renderAccountPage } from '../../src/account/account-view';
 import { oauthRedirectUrl } from '../../src/auth/auth-service';
+import type { SyncOperation } from '../../src/sync/types';
 
 const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
@@ -94,6 +95,26 @@ describe('共用工地帳號頁', () => {
     expect(accountCss).toContain('.account-join-code code');
     expect(accountCss).toContain('min-height: 44px');
     expect(accountCss).toContain('border-left: 1px solid var(--daily-line-strong)');
+  });
+
+  it('點共用工地先渲染載入骨架，背景讀取完成才替換資料', () => {
+    expect(main).toContain("if (route.module === 'account') { renderAccountLoading(); void refreshAccount().then(");
+    expect(main).toContain('正在載入共用工地…');
+    expect(main).toContain('token !== renderToken || parseRoute(location.hash).module !== \'account\'');
+    expect(main).toContain("button.dataset.accountAction === 'retry-load-account'");
+  });
+
+  it('頁首與明細使用同一批全部狀態的八筆待同步操作', () => {
+    const rows = Array.from({ length: 8 }, (_, index): SyncOperation => ({
+      id: `op-${index}`, mutationId: `mutation-${index}`, userId: 'user-1', siteId: 'site-1', entity: index < 3 ? 'daily-patch' : index < 6 ? 'water-patch' : 'memory', entityId: 'entity-1', baseRevision: 0,
+      payload: index < 3 ? { reportDate: '2026-09-23', changes: [{ collection: 'tradeSections', field: 'workerCount' }] } : index < 6 ? { changes: [{ collection: 'points', field: 'name' }] } : { stores: {} }, status: index === 6 ? 'failed' : index === 7 ? 'conflict' : 'pending', attempts: 0, nextAttemptAt: '', createdAt: '2026-09-23T00:00:00.000Z', updatedAt: '',
+    }));
+    const html = renderAccountPage({ auth: { enabled: true, session: null, user: { id: 'user-1' } as never }, sites: [{ id: 'site-1', name: '測試工地', joinCode: 'code', role: 'editor', createdAt: '' }], activeSiteId: 'site-1', pendingCount: rows.length, requests: [], members: [], feedback: '', error: '', operations: rows, diagnostics: rows });
+    expect(html).toContain('待同步 8 筆');
+    expect(html).toContain('共 8 筆；此明細與頁首待同步數量相同');
+    expect((html.match(/<li>/g) ?? []).length).toBeGreaterThanOrEqual(8);
+    expect(html).toContain('日報日期 2026-09-23');
+    expect(html).toContain('tradeSections.workerCount');
   });
 
   it('複製操作只用工地 ID 從記憶體查找加入碼，並保留成功與失敗回饋', () => {
