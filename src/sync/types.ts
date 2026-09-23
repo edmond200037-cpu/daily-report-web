@@ -23,7 +23,7 @@ export interface SyncOperation extends SharedScope {
   protocolVersion?: 1 | 2;
 }
 
-export interface SyncCursor extends SharedScope { id: string; cursor: number; updatedAt: string; }
+export interface SyncCursor extends SharedScope { id: string; cursor: number; updatedAt: string; lastPulledAt?: string; }
 export interface SyncConflict extends SharedScope { id: string; operationId: string; localPayload: unknown; remotePayload: unknown; remoteRevision: number; createdAt: string; }
 
 export const retryDelayMs = (attempts: number): number => Math.min(60_000, 1_000 * (2 ** Math.max(0, attempts - 1)));

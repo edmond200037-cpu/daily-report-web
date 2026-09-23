@@ -23,6 +23,17 @@ describe('共編欄位 mutation', () => {
     expect(applyFieldMutations(snapshot, [{ op: 'delete', collection: 'points', id: 'well-a' }, { op: 'set', collection: 'points', id: 'well-a', field: 'name', value: '舊名稱' }])).toEqual({ points: [], logs: [] });
   });
 
+  it('A 新增與刪除工項後，B 以相同工種 ID 套用變更可得到相同結果', () => {
+    const before = { date: '2026-09-23', tradeSections: [{ id: 'trade-a', workItems: [{ id: 'old', taskTextSnapshot: '舊工項' }] }], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [] };
+    const added = { ...before, tradeSections: [{ id: 'trade-a', workItems: [...before.tradeSections[0].workItems, { id: 'new', taskTextSnapshot: '新工項' }] }] };
+    const removed = { ...before, tradeSections: [{ id: 'trade-a', workItems: [{ id: 'new', taskTextSnapshot: '新工項' }] }] };
+    const addChanges = buildFieldMutations('daily', before, added);
+    const deleteChanges = buildFieldMutations('daily', added, removed);
+    expect(addChanges).toContainEqual({ op: 'upsert', collection: 'workItems', parentId: 'trade-a', id: 'new', value: { id: 'new', taskTextSnapshot: '新工項' } });
+    expect(deleteChanges).toContainEqual({ op: 'delete', collection: 'workItems', parentId: 'trade-a', id: 'old' });
+    expect(applyFieldMutations(applyFieldMutations(before, addChanges), deleteChanges)).toEqual(removed);
+  });
+
   it('重套連續欄位操作時，依建立順序保留不同工項且最後操作覆蓋同欄位', () => {
     const remote = { tradeSections: [{ id: 'trade-a', workerCount: '2', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端工項' }] }] };
     const first = [{ op: 'upsert' as const, collection: 'workItems', parentId: 'trade-a', id: 'local-item', value: { id: 'local-item', taskTextSnapshot: '天地六' } }];
@@ -35,5 +46,12 @@ describe('共編欄位 mutation', () => {
     const remote = { tradeSections: [{ id: 'trade-a', workerCount: '2', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端值' }] }] };
     const legacy = { tradeSections: [{ id: 'trade-a', workerCount: '99', workItems: [{ id: 'cloud-item', taskTextSnapshot: '不覆蓋' }, { id: 'new-item', taskTextSnapshot: '天地六' }, { taskTextSnapshot: '無 ID' }] }] };
     expect(mergeLegacyDailyWorkItems(remote, legacy)).toEqual({ tradeSections: [{ id: 'trade-a', workerCount: '2', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端值' }, { id: 'new-item', taskTextSnapshot: '天地六' }] }] });
+  });
+
+  it('舊版快照不得復活另一手機已刪除的工項', () => {
+    const remote = { tradeSections: [{ id: 'trade-a', workItems: [] }] };
+    const legacy = { tradeSections: [{ id: 'trade-a', workItems: [{ id: 'deleted-item', taskTextSnapshot: '已刪除' }, { id: 'new-item', taskTextSnapshot: '可補回' }] }] };
+    const tombstones = new Set(['workItems:trade-a:deleted-item']);
+    expect(mergeLegacyDailyWorkItems(remote, legacy, tombstones)).toEqual({ tradeSections: [{ id: 'trade-a', workItems: [{ id: 'new-item', taskTextSnapshot: '可補回' }] }] });
   });
 });

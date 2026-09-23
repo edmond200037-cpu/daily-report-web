@@ -280,6 +280,11 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .backup hr { width: 100%; border: 0; border-top: 1px solid var(--line); }
 .hint, .empty { line-height: 1.65; }
 .pwa-update-notice { position: fixed; z-index: 80; right: var(--space-4); bottom: calc(var(--space-4) + env(safe-area-inset-bottom)); left: var(--space-4); display: grid; gap: var(--space-3); border: 1px solid #a9680c; border-radius: var(--radius-md); background: #fff7e8; box-shadow: 0 14px 34px rgb(73 48 12 / 22%); color: #503507; padding: var(--space-3) var(--space-4); }
+.manual-sync { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin: var(--space-3) 0; padding: var(--space-3); border: 1px solid var(--border-color, #d8ddd8); border-radius: var(--radius-md); background: #f7faf8; }
+.manual-sync > div { display: grid; gap: .2rem; min-width: 0; }
+.manual-sync strong { font-size: .875rem; }
+.manual-sync small { color: #53665a; line-height: 1.4; }
+.manual-sync button { flex: none; min-height: 40px; }
 .pwa-update-notice strong { color: #5c3900; }
 .pwa-update-notice p { margin: var(--space-1) 0 0; font-size: .8125rem; line-height: 1.5; }
 .pwa-update-notice__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

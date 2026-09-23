@@ -86,15 +86,15 @@ export function applyFieldMutations(snapshot: Record<string, unknown>, changes: 
  * cloud values and recover only local work items which the cloud cannot yet
  * know about.  Stable ids are the proof that an item is safe to add.
  */
-export function mergeLegacyDailyWorkItems(remote: Record<string, unknown>, legacy: Record<string, unknown>): Record<string, unknown> {
+export function mergeLegacyDailyWorkItems(remote: Record<string, unknown>, legacy: Record<string, unknown>, tombstones: ReadonlySet<string> = new Set()): Record<string, unknown> {
   const result = structuredClone(remote);
   const remoteTrades = records(result.tradeSections);
   const byTradeId = new Map(remoteTrades.filter((row) => Boolean(row.id)).map((row) => [String(row.id), row]));
 
   for (const localTrade of records(legacy.tradeSections)) {
     const tradeId = typeof localTrade.id === 'string' ? localTrade.id : '';
-    if (!tradeId) continue;
-    const safeItems = records(localTrade.workItems).filter((item) => typeof item.id === 'string' && item.id.length > 0);
+    if (!tradeId || tombstones.has(`tradeSections::${tradeId}`)) continue;
+    const safeItems = records(localTrade.workItems).filter((item) => typeof item.id === 'string' && item.id.length > 0 && !tombstones.has(`workItems:${tradeId}:${item.id}`));
     if (!safeItems.length) continue;
     const remoteTrade = byTradeId.get(tradeId);
     if (!remoteTrade) {

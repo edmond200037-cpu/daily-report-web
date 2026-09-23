@@ -13,9 +13,15 @@ interface ChangeRow { sequence: number; entity: string; entity_id: string; opera
 interface RemoteDraftRow { id: string; report_date: string; payload: DailyReportV3; revision: number; }
 interface RemoteMemoryRow { site_id: string; payload: MemorySnapshotPayload; revision: number; }
 interface RemoteWaterRow { site_id: string; payload: WaterSnapshotPayload; revision: number; }
-export interface SyncRunResult { applied: number; pulled: number; memoryPulled: number; waterPulled: number; conflicts: number; failed: number; }
+export interface SyncRunResult { applied: number; pulled: number; memoryPulled: number; waterPulled: number; conflicts: number; failed: number; pullError?: string; }
 
 const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
+async function loadDailyTombstones(scope: SharedScope): Promise<ReadonlySet<string> | null> {
+  const { data, error } = await getSupabaseClient().from('collaboration_tombstones')
+    .select('collection,entity_id,parent_id').eq('site_id', scope.siteId).eq('document_kind', 'daily');
+  if (error) return null;
+  return new Set((data ?? []).map((row) => `${row.collection}:${row.parent_id}:${row.entity_id}`));
+}
 
 async function pushOperation(operation: SyncOperation): Promise<MutationResult> {
   const request = operation.entity === 'daily-draft'
@@ -71,10 +77,21 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
     } else {
       const draftStore = tx.objectStore('live_report_draft');
       const draft = await request(draftStore.get('current')) as DailyReportV3 | undefined;
-      if (draft?.shared?.cloudId === operation.entityId && draft.shared.siteId === operation.siteId) {
-        draft.shared.revision = Math.max(draft.shared.revision, result.revision);
-        draftStore.put(draft);
-        tx.objectStore('draft_partitions').put({ id: `${operation.userId}:${operation.siteId}:${draft.date}`, userId: operation.userId, siteId: operation.siteId, reportDate: draft.date, report: structuredClone(draft), updatedAt: new Date().toISOString() });
+      const reportDate = dailyOperationDate(operation);
+      if (reportDate) {
+        const partitions = tx.objectStore('draft_partitions');
+        const partitionId = `${operation.userId}:${operation.siteId}:${reportDate}`;
+        const partition = await request(partitions.get(partitionId)) as { report: DailyReportV3 } | undefined;
+        const local = partition?.report ?? (draft?.date === reportDate ? draft : undefined);
+        if (local) {
+          const previousRevision = local.shared?.revision ?? 0;
+          local.shared = { userId: operation.userId, siteId: operation.siteId, cloudId: result.entity_id, reportDate, revision: Math.max(previousRevision, result.revision) };
+          partitions.put({ id: partitionId, userId: operation.userId, siteId: operation.siteId, reportDate, report: structuredClone(local), updatedAt: new Date().toISOString() });
+          if (draft?.date === reportDate && (!draft.shared || (draft.shared.userId === operation.userId && draft.shared.siteId === operation.siteId))) {
+            draft.shared = structuredClone(local.shared);
+            draftStore.put(draft);
+          }
+        }
       }
     }
     const queued = await request(queue.getAll()) as SyncOperation[];
@@ -86,6 +103,7 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
 }
 
 async function preserveConflict(operation: SyncOperation, result: MutationResult): Promise<void> {
+  const tombstones = operation.entity === 'daily-draft' ? await loadDailyTombstones(operation) : null;
   const database = await openDatabase() as IDBDatabase;
   try {
     const tx = database.transaction(['sync_outbox', 'sync_conflicts'], 'readwrite');
@@ -96,10 +114,10 @@ async function preserveConflict(operation: SyncOperation, result: MutationResult
     tx.objectStore('sync_outbox').put({ ...operation, status: rebaseable ? 'pending' : 'conflict', baseRevision: rebaseable ? result.revision : operation.baseRevision, nextAttemptAt: rebaseable ? now : operation.nextAttemptAt, updatedAt: now });
     const conflict: SyncConflict = { id: operation.id, operationId: operation.id, userId: operation.userId, siteId: operation.siteId, localPayload: operation.payload, remotePayload: result.remote_payload, remoteRevision: result.revision, createdAt: now };
     tx.objectStore('sync_conflicts').put(conflict);
-    if (operation.entity === 'daily-draft' && result.remote_payload && typeof result.remote_payload === 'object') {
+    if (operation.entity === 'daily-draft' && tombstones && result.remote_payload && typeof result.remote_payload === 'object') {
       const remote = result.remote_payload as Record<string, unknown>;
       const reportDate = typeof remote.date === 'string' ? remote.date : '';
-      const recovered = mergeLegacyDailyWorkItems(remote, operation.payload as Record<string, unknown>);
+      const recovered = mergeLegacyDailyWorkItems(remote, operation.payload as Record<string, unknown>, tombstones);
       const changes = reportDate ? buildFieldMutations('daily', remote, recovered) : [];
       if (changes.length) tx.objectStore('sync_outbox').put({
         id: crypto.randomUUID(), mutationId: crypto.randomUUID(), userId: operation.userId, siteId: operation.siteId,
@@ -113,6 +131,14 @@ async function preserveConflict(operation: SyncOperation, result: MutationResult
 }
 
 const cursorId = (scope: SharedScope): string => `${scope.userId}:${scope.siteId}`;
+
+export async function loadLastPulledAt(scope: SharedScope): Promise<string | null> {
+  const database = await openDatabase() as IDBDatabase;
+  try {
+    const row = await request(database.transaction('sync_cursors').objectStore('sync_cursors').get(cursorId(scope))) as SyncCursor | undefined;
+    return row?.lastPulledAt ?? (row?.cursor ? row.updatedAt : null);
+  } finally { database.close(); }
+}
 
 async function loadCursor(scope: SharedScope): Promise<number> {
   const database = await openDatabase() as IDBDatabase;
@@ -133,6 +159,13 @@ const matchingDailyOperations = (queue: SyncOperation[], scope: SharedScope, rep
   .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 
 async function applyRemoteDraft(scope: SharedScope, change: ChangeRow, remote: RemoteDraftRow): Promise<'pulled' | 'conflict' | 'skipped'> {
+  const probe = await openDatabase() as IDBDatabase;
+  let hasLegacy = false;
+  try {
+    const rows = await request(probe.transaction('sync_outbox').objectStore('sync_outbox').getAll()) as SyncOperation[];
+    hasLegacy = rows.some((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'daily-draft' && row.status !== 'conflict' && row.status !== 'blocked' && dailyOperationDate(row) === remote.report_date);
+  } finally { probe.close(); }
+  const tombstones = hasLegacy ? await loadDailyTombstones(scope) : null;
   const database = await openDatabase() as IDBDatabase;
   try {
     const tx = database.transaction(['live_report_draft', 'draft_partitions', 'sync_outbox', 'sync_conflicts', 'sync_cursors'], 'readwrite');
@@ -146,13 +179,12 @@ async function applyRemoteDraft(scope: SharedScope, change: ChangeRow, remote: R
     if (pendingPatches.length) {
       let next = structuredClone(remote.payload) as unknown as Record<string, unknown>;
       for (const operation of pendingPatches) next = applyFieldMutations(next, (operation.payload as { changes: FieldMutation[] }).changes);
-      if (pendingLegacy.length) for (const operation of pendingLegacy) next = mergeLegacyDailyWorkItems(next, operation.payload as Record<string, unknown>);
+      if (pendingLegacy.length && tombstones) for (const operation of pendingLegacy) next = mergeLegacyDailyWorkItems(next, operation.payload as Record<string, unknown>, tombstones);
       const report = next as unknown as DailyReportV3;
       report.id = 'current'; report.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: remote.id, reportDate: remote.report_date, revision: remote.revision };
-      // A new document gets its server id only after the first write.  Rebind
-      // every queued field mutation before it is retried, retaining mutation
-      // ids and payloads so retry remains idempotent.
-      for (const operation of pendingPatches) tx.objectStore('sync_outbox').put({ ...operation, entityId: remote.id, baseRevision: remote.revision, status: 'pending', nextAttemptAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      // Keep queued request identity unchanged. The RPC resolves a daily row by
+      // site/date, and changing entityId after an uncertain response would
+      // break its mutation-id idempotency hash.
       if (!current || current.date === remote.report_date) draftStore.put(report);
       tx.objectStore('draft_partitions').put({ id: `${scope.userId}:${scope.siteId}:${remote.report_date}`, userId: scope.userId, siteId: scope.siteId, reportDate: remote.report_date, report: structuredClone(report), updatedAt: new Date().toISOString() });
       outcome = 'pulled';
@@ -163,7 +195,7 @@ async function applyRemoteDraft(scope: SharedScope, change: ChangeRow, remote: R
       tx.objectStore('sync_conflicts').put(conflict);
       for (const operation of pendingLegacy) tx.objectStore('sync_outbox').put({ ...operation, status: 'conflict', updatedAt: now });
       let recovered = structuredClone(remote.payload) as unknown as Record<string, unknown>;
-      for (const operation of pendingLegacy) recovered = mergeLegacyDailyWorkItems(recovered, operation.payload as Record<string, unknown>);
+      if (tombstones) for (const operation of pendingLegacy) recovered = mergeLegacyDailyWorkItems(recovered, operation.payload as Record<string, unknown>, tombstones);
       const changes = buildFieldMutations('daily', remote.payload as unknown as Record<string, unknown>, recovered);
       if (changes.length) {
         const recoveryOperation: SyncOperation = {
@@ -299,12 +331,24 @@ async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; 
     }
     if (changes.length < 100) break;
   }
+  const database = await openDatabase() as IDBDatabase;
+  try {
+    const tx = database.transaction('sync_cursors', 'readwrite');
+    const store = tx.objectStore('sync_cursors');
+    const previous = await request(store.get(cursorId(scope))) as SyncCursor | undefined;
+    const stamp = new Date().toISOString();
+    store.put({ ...previous, id: cursorId(scope), ...scope, cursor, updatedAt: stamp, lastPulledAt: stamp } satisfies SyncCursor);
+    await transactionDone(tx);
+  } finally { database.close(); }
   return { pulled, memoryPulled, waterPulled, conflicts };
 }
 
 async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
   const summary: SyncRunResult = { applied: 0, pulled: 0, memoryPulled: 0, waterPulled: 0, conflicts: 0, failed: 0 };
-  for (const pending of await listReadyOperations(scope)) {
+  try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
+  catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); return summary; }
+  // Reconcile the cloud document before sending local field changes.
+  for (const pending of await listReadyOperations(scope, new Date(), true)) {
     const operation = await markOperationSending(pending);
     try {
       const result = await pushOperation(operation);
@@ -312,17 +356,9 @@ async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
       else { await acceptMutation(operation, result); summary.applied += 1; }
     } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }
   }
-  try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
-  catch { summary.failed += 1; }
-  // A pull can rebase a patch or extract safe work items from a legacy
-  // snapshot. Flush that new patch now instead of waiting for the 30s poll.
-  for (const pending of await listReadyOperations(scope)) {
-    const operation = await markOperationSending(pending);
-    try {
-      const result = await pushOperation(operation);
-      if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
-      else { await acceptMutation(operation, result); summary.applied += 1; }
-    } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }
+  if (summary.applied) {
+    try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
+    catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); }
   }
   return summary;
 }

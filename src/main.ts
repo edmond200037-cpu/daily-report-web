@@ -27,11 +27,10 @@ import { renderAccountPage } from './account/account-view';
 import type { SiteSummary } from './domain/shared';
 import { countOperations, dailyOperationStatusSummary, listSyncDiagnostics, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
-import { runSyncOnce } from './sync/engine';
+import { loadLastPulledAt, runSyncOnce } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
-import { subscribeToSiteChanges } from './sync/realtime';
 import { recoverLegacyDailyConflictsCloudFirst } from './sync/legacy-daily-recovery';
 
 type AppRoute =
@@ -95,6 +94,8 @@ let dailySaveState: DailySaveState = 'saved';
 let dailyLastSavedAt = '';
 let dailySyncPendingCount = 0;
 let dailySyncConflictCount = 0;
+let lastPulledAt: string | null = null;
+let syncFeedback = '';
 let pwaUpdateState: PwaUpdateState = (() => { try { return consumePwaUpdateSuccess(sessionStorage) ? 'success' : 'idle'; } catch { return 'idle'; } })();
 let pwaUpdateTimeout: number | undefined;
 let applyPwaUpdate: (() => Promise<void>) | undefined;
@@ -127,9 +128,6 @@ let accountFeedback = '';
 let accountError = '';
 let accountSyncDiagnostics: SyncOperation[] = [];
 let syncInFlight = false;
-let syncRequestedWhileRunning = false;
-let stopSiteRealtime: (() => void) | undefined;
-let realtimeScopeKey = '';
 let activeSyncEpoch = 0;
 const escapeHtml = (value: string) => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
 const clearPwaUpdateTimeout = () => { if (pwaUpdateTimeout !== undefined) { window.clearTimeout(pwaUpdateTimeout); pwaUpdateTimeout = undefined; } };
@@ -166,7 +164,6 @@ async function selectSharedSiteFromWorkspace(siteId: string): Promise<void> {
   accountActiveSiteId = siteId;
   await refreshAccount();
   await renderApp();
-  void syncActiveSiteSilently();
 }
 const tabs: Array<[DailyReportV3['activeTab'], string]> = [['engineering', '工程條目'], ['supplies', '進料'], ['contacts', '聯絡事項'], ['special', '特殊事項']];
 const summaryLabels: Record<DailyEntrySummary['kind'], string> = { engineering: '工程', material: '進料', contact: '聯絡', special: '特殊' };
@@ -364,6 +361,12 @@ function moduleHeader(title: string, meta: string, control?: ModuleHeaderControl
 function dailyHeader(saveLabel: string): string {
   return `<header class="top app-header app-header--module module-page__header daily-page__header"><div class="app-header__title"><p class="daily-page__save-status" data-save-status data-state="${dailySaveState}" role="status">${escapeHtml(saveLabel)}</p><h1>施工日報</h1></div><a class="settings-button" href="#settings/daily" aria-label="開啟施工日報設定">設定</a></header>`;
 }
+function syncControl(kind: 'daily' | 'water' = 'daily'): string {
+  if (!accountAuth.user || !accountActiveSiteId) return '';
+  const pulled = lastPulledAt ? new Date(lastPulledAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '尚未同步';
+  const current = kind === 'daily' ? `日報日期：${daily.report.date}` : `共用工地：${accountSites.find((site) => site.id === accountActiveSiteId)?.name ?? '目前工地'}`;
+  return `<section class="manual-sync" aria-label="共用工地同步"><div><strong>${escapeHtml(current)}</strong><small>本機上次取得雲端資料：${escapeHtml(pulled)}</small>${syncFeedback ? `<small role="status">${escapeHtml(syncFeedback)}</small>` : ''}</div><button type="button" class="primary" data-sync-now${syncInFlight ? ' disabled' : ''}>${syncInFlight ? '同步中…' : '立即同步'}</button></section>`;
+}
 function moduleTabs(active: 'daily' | 'water-level' | 'account'): string {
   return `<nav class="top-tabs" aria-label="主要功能"><a href="#daily"${active === 'daily' ? ' class="active" aria-current="page"' : ''}>施工日報</a><a href="#water-level"${active === 'water-level' ? ' class="active" aria-current="page"' : ''}>水位變化</a><a href="#account"${active === 'account' ? ' class="active" aria-current="page"' : ''}>共用工地</a></nav>`;
 }
@@ -383,14 +386,14 @@ function dailyView(): string {
   pruneTradeUndoQueue();
   const completed = daily.report.tradeSections.filter((trade) => trade.status === 'complete'); const drafts = daily.report.tradeSections.filter((trade) => trade.status === 'draft');
   const keyword = normalizeSearch(tradePickerSearch); const picks = dailyTrades.filter((item) => !keyword || item.normalizedName.includes(keyword)).slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName)); const recentVendor = (tradeId: string): NamedMemory | undefined => dailyVendors.filter((item) => item.tradeTypeId === tradeId && item.status === 'confirmed').slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName))[0]; const pickerContent = picks.length ? `<div class="settings-list">${picks.map((trade) => { const vendor = recentVendor(trade.id); return `<button type="button" class="settings-item" data-daily-action="select-trade" data-trade-id="${trade.id}"><strong>${escapeHtml(trade.name)}</strong><span class="hint">${vendor ? `最近使用：${escapeHtml(vendor.name)}` : '尚無最近使用廠商'}</span></button>`; }).join('')}</div>` : keyword ? '' : '<p class="empty">尚無可用工種。</p>'; const pickerActions = keyword && !picks.length ? `<div class="form-actions form-actions--submit"><button type="button" class="primary" data-daily-action="create-trade-from-search">立即新增工種「${escapeHtml(tradePickerSearch)}」</button><button type="button" data-daily-action="close-trade-picker">取消</button></div>` : `<div class="dialog-actions"><button type="button" data-daily-action="close-trade-picker">取消</button></div>`; const picker = tradePickerOpen ? `<div class="dialog-backdrop"><section class="trade-picker"><h2>新增工種</h2><div class="task-search" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem"><input data-trade-picker-search aria-label="搜尋工種名稱" placeholder="搜尋工種名稱" value="${escapeHtml(tradePickerSearch)}" autofocus>${keyword ? `<button type="button" data-daily-action="clear-trade-search">清除</button>` : ''}</div>${pickerContent}${pickerActions}</section></div>` : '';
-  const saveLabel = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailyLastSavedAt ? `已保存 ${dailyLastSavedAt}` : '本機自動儲存';
+  const saveLabel = dailySyncLabel();
   const previewSummary = drafts.length ? `尚有 ${drafts.length} 個草稿待完成` : completed.length ? `已完成 ${completed.length} 個工種，可複製日報` : '完成工種後即可複製日報';
   const duplicateWarning = duplicateVendorTradeIds(daily.report).size ? '<p class="daily-output__warning">同一工種存在重複廠商施工卡；預覽保留原內容，但不能定稿。</p>' : '';
   const nameWarning = groupOutputTrades(daily.report, false).some((group) => new Set(group.sections.map((trade) => trade.tradeNameSnapshot.trim())).size > 1) ? '<p class="daily-output__warning">同一工種的名稱快照不一致；預覽採最前施工卡名稱。</p>' : '';
   const previewBody = dailyPreviewOpen ? `<div class="daily-output__content">${drafts.length ? `<p class="daily-output__warning">${escapeHtml(previewSummary)}</p>` : ''}${duplicateWarning}${nameWarning}<pre>${escapeHtml(formatDailyReport(daily.report) || '完成工種後，這裡會顯示日報預覽。')}</pre><div class="daily-output__actions"><button type="button" data-daily-action="copy" ${drafts.length ? 'disabled' : ''}>僅複製</button><button type="button" class="primary" data-daily-action="finalize" ${drafts.length || !completed.length ? 'disabled' : ''}>定稿並複製</button><a class="daily-output__history-link" href="#daily/history">查看近 7 天</a></div><p class="hint">定稿會保留 7 天，之後自動清除；草稿會建立為新的當日填報。</p>${dailyCopyFeedback ? `<p class="daily-output__feedback" role="status">${escapeHtml(dailyCopyFeedback)}</p>` : ''}</div>` : '';
   const undoNotice = tradeUndoQueue.length ? `<aside class="trade-undo-notice" role="status" aria-live="polite"><span>已刪除 ${tradeUndoQueue.length} 個工程條目</span><button type="button" data-daily-action="undo-trade-delete">復原上一筆</button></aside>` : '';
   const connectionNotice = materialConnectionUndo && materialConnectionUndo.expiresAt > Date.now() ? `<aside class="trade-undo-notice material-connection-undo" role="status" aria-live="polite"><span>已解除進料連接</span><button type="button" data-daily-action="undo-material-disconnect">復原</button></aside>` : '';
-  return `<main class="app-shell module-page daily-page">${dailyHeader(saveLabel)}<div class="module-page__tabs">${moduleTabs('daily')}</div>${basicsView()}<section class="daily-workspace" aria-label="日報內容">${dailyTabs()}${activeTabContent()}</section><aside class="daily-output ${dailyPreviewOpen ? 'daily-output--open' : ''}"><button type="button" class="daily-output__toggle collapsed-summary" data-daily-action="toggle-preview" aria-expanded="${dailyPreviewOpen}" aria-controls="daily-output-content"><span><strong>${completed.length} 已完成</strong><span>${escapeHtml(previewSummary)}</span></span><span>${dailyPreviewOpen ? '收合預覽' : '查看預覽'}</span></button><div id="daily-output-content">${previewBody}</div></aside>${connectionNotice}${undoNotice}${picker}</main>`;
+  return `<main class="app-shell module-page daily-page">${dailyHeader(saveLabel)}<div class="module-page__tabs">${moduleTabs('daily')}</div>${syncControl()}${basicsView()}<section class="daily-workspace" aria-label="日報內容">${dailyTabs()}${activeTabContent()}</section><aside class="daily-output ${dailyPreviewOpen ? 'daily-output--open' : ''}"><button type="button" class="daily-output__toggle collapsed-summary" data-daily-action="toggle-preview" aria-expanded="${dailyPreviewOpen}" aria-controls="daily-output-content"><span><strong>${completed.length} 已完成</strong><span>${escapeHtml(previewSummary)}</span></span><span>${dailyPreviewOpen ? '收合預覽' : '查看預覽'}</span></button><div id="daily-output-content">${previewBody}</div></aside>${connectionNotice}${undoNotice}${picker}</main>`;
 }
 function dailyHistoryView(): string { return `<main class="app-shell settings-page"><header class="top app-header"><div><p class="eyebrow">FINALIZED REPORTS</p><h1>近 7 天日報</h1></div><a class="settings-button" href="#daily">返回日報</a></header>${moduleTabs('daily')}<section class="history-list">${finalizedReports.length ? finalizedReports.map((report) => `<article><div><strong>${escapeHtml(report.siteNameSnapshot)}｜${escapeHtml(report.date)}</strong><span>定稿：${escapeHtml(new Date(report.finalizedAt).toLocaleString('zh-TW'))}</span></div><pre>${escapeHtml(report.outputText)}</pre><button type="button" data-daily-action="copy-finalized" data-finalized-id="${report.id}">再次複製</button></article>`).join('') : '<p class="empty">近 7 天尚無已定稿日報。</p>'}</section><p class="hint">日報定稿後保留 7 天，超過期限會自動清除。</p></main>`; }
 const sectionLabels: Array<[DailySettingsSection, string]> = [['sites', '工地管理'], ['trade-tasks', '工種與工項管理'], ['vendors', '廠商管理'], ['locations', '位置管理'], ['materials', '材料類型管理'], ['templates', '特殊事項模板']];
@@ -449,13 +452,15 @@ function memoryReviewView(): string {
 }
 function dailySettingsView(): string { const areas = dailySettingsAreas.map((area) => { const expanded = settingsState.activeArea === area.id; const items = area.sections.map((section) => { const label = sectionLabels.find(([key]) => key === section)?.[1] ?? ''; const selected = settingsState.activeSection === section; return `<button type="button" class="settings-management-list__item${selected ? ' active' : ''}" data-settings-section="${section}" aria-current="${selected ? 'page' : 'false'}"><span><strong>${label}</strong><small>${section === 'trade-tasks' ? '建立工種、工項與排序規則' : section === 'vendors' ? '依工種維護合作廠商' : section === 'locations' ? '維護常用施工位置' : section === 'sites' ? '維護常用填報工地' : section === 'materials' ? '管理進料分類與順序' : '維護可重複使用的日報文字'}</small></span><span aria-hidden="true">›</span></button>`; }).join(''); return `<section class="settings-work-area${expanded ? ' expanded' : ''}"><button type="button" class="settings-work-area__toggle" data-settings-area="${area.id}" aria-expanded="${expanded}"><span><strong>${area.title}</strong><small>${area.description}</small></span><span aria-hidden="true">${expanded ? '收合' : '展開'}</span></button>${expanded ? `<div class="settings-work-area__content"><div class="settings-management-list">${items}</div><div class="settings-management-panel">${settingsItems()}</div></div>` : ''}</section>`; }).join(''); return `<main class="app-shell settings-page">${settingsHeader('DAILY SETTINGS', '施工日報主檔')}${settingsContextTabs('daily')}<div class="settings-work-areas">${areas}</div><p class="hint">這些展開狀態只保留在目前畫面；既有日報快照不會因管理操作而被改寫。</p></main>`; }
 function dataSystemView(): string { const active = settingsState.activeSection === 'debug' ? 'debug' : 'backup'; return `<main class="app-shell settings-page">${settingsHeader('DATA & SYSTEM', '資料與系統')}${settingsContextTabs('data')}<div class="settings-management-list settings-management-list--data"><button type="button" class="settings-management-list__item${active === 'backup' ? ' active' : ''}" data-data-system-section="backup"><span><strong>記憶備份與還原</strong><small>匯出、匯入可重複使用的主檔與候選。</small></span><span aria-hidden="true">›</span></button><button type="button" class="settings-management-list__item${active === 'debug' ? ' active' : ''}" data-data-system-section="debug"><span><strong>偵錯資訊</strong><small>檢視本機資料庫狀態與複製診斷資訊。</small></span><span aria-hidden="true">›</span></button></div><div class="settings-management-panel">${settingsItems()}</div></main>`; }
-function waterShell(settings: boolean): string { const shellClass = settings ? 'app-shell settings-page water-settings-shell' : 'app-shell module-page water-page-shell'; const sharedSite = accountAuth.user ? accountSites.find((item) => item.id === accountActiveSiteId)?.name : undefined; const control = { kind: 'link' as const, href: '#settings/water', label: '設定', ariaLabel: '開啟水位設定' }; const header = settings ? settingsHeader('WATER SETTINGS', '水位設定') : sharedSite ? moduleHeader('水位變化', `共用工地：${sharedSite}`, control) : moduleHeader('水位變化', '本機量測資料', control); const navigation = settings ? settingsContextTabs('water') : moduleTabs('water-level'); return `<main class="${shellClass}">${header}<div class="module-page__tabs">${navigation}</div><div id="water-root"></div></main>`; }
+function waterShell(settings: boolean): string { const shellClass = settings ? 'app-shell settings-page water-settings-shell' : 'app-shell module-page water-page-shell'; const sharedSite = accountAuth.user ? accountSites.find((item) => item.id === accountActiveSiteId)?.name : undefined; const control = { kind: 'link' as const, href: '#settings/water', label: '設定', ariaLabel: '開啟水位設定' }; const header = settings ? settingsHeader('WATER SETTINGS', '水位設定') : sharedSite ? moduleHeader('水位變化', `共用工地：${sharedSite}`, control) : moduleHeader('水位變化', '本機量測資料', control); const navigation = settings ? settingsContextTabs('water') : moduleTabs('water-level'); return `<main class="${shellClass}">${header}<div class="module-page__tabs">${navigation}</div>${settings ? '' : syncControl('water')}<div id="water-root"></div></main>`; }
+function dailySyncLabel(): string {
+  return dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncConflictCount ? `衝突 ${dailySyncConflictCount} 筆${dailySyncPendingCount ? `・待同步 ${dailySyncPendingCount} 筆` : ''}` : dailySyncPendingCount ? `已存本機・待同步 ${dailySyncPendingCount} 筆` : daily.report.shared && lastPulledAt ? '已同步' : dailyLastSavedAt ? `已保存本機 ${dailyLastSavedAt}` : '本機自動儲存';
+}
 function updateDailySaveStatus(): void {
   const status = app.querySelector<HTMLElement>('[data-save-status]');
   if (!status) return;
-  const label = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncConflictCount ? `衝突處理中 ${dailySyncConflictCount} 筆${dailySyncPendingCount ? `・已存本機・待同步 ${dailySyncPendingCount} 筆` : ''}` : dailySyncPendingCount ? `已存本機・待同步 ${dailySyncPendingCount} 筆` : daily.report.shared ? '已同步' : dailyLastSavedAt ? `已保存 ${dailyLastSavedAt}` : '本機自動儲存';
   status.dataset.state = dailySaveState;
-  status.textContent = label;
+  status.textContent = dailySyncLabel();
 }
 async function mountWater(route: Extract<AppRoute, { module: 'water-level' }>, token: number): Promise<void> {
   app.innerHTML = waterShell(route.page === 'settings');
@@ -463,7 +468,7 @@ async function mountWater(route: Extract<AppRoute, { module: 'water-level' }>, t
   if (!root) throw new Error('找不到水位功能容器。');
   const module = await import('./water-level/controller.js');
   if (token !== renderToken) return;
-  const controller = new module.WaterLevelController(root, () => { void syncActiveSiteSilently(); }) as WaterController;
+  const controller = new module.WaterLevelController(root, () => { void refreshDailySyncStatus(); }) as WaterController;
   water = controller;
   await controller.initialize();
   if (token !== renderToken) return;
@@ -472,7 +477,7 @@ async function mountWater(route: Extract<AppRoute, { module: 'water-level' }>, t
 }
 async function refreshDailySyncStatus(): Promise<void> {
   const scope = await loadActiveSharedScope().catch(() => null);
-  const summary = scope ? await dailyOperationStatusSummary(scope).catch(() => ({ pending: 0, conflict: 0 })) : { pending: 0, conflict: 0 };
+  const summary = scope ? await dailyOperationStatusSummary(scope, daily.report.date).catch(() => ({ pending: 0, conflict: 0 })) : { pending: 0, conflict: 0 };
   dailySyncPendingCount = summary.pending;
   dailySyncConflictCount = summary.conflict;
   updateDailySaveStatus();
@@ -492,12 +497,14 @@ async function refreshActiveMemoryCache(): Promise<void> {
 }
 async function switchActiveDataPartition(changeContext: () => Promise<void>): Promise<void> {
   activeSyncEpoch += 1;
-  stopSiteRealtime?.(); stopSiteRealtime = undefined; realtimeScopeKey = '';
   await daily.flush();
   await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
   await changeContext();
   await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]);
   await Promise.all([reloadActiveDraftPartition(), refreshActiveMemoryCache()]);
+  const scope = await loadActiveSharedScope().catch(() => null);
+  lastPulledAt = scope ? await loadLastPulledAt(scope) : null;
+  syncFeedback = '';
 }
 async function refreshAccount(): Promise<void> {
   try {
@@ -574,6 +581,14 @@ app.addEventListener('pointerdown', (event) => { if ((event.target as HTMLElemen
 app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement; const route = parseRoute(location.hash); if (route.module === 'daily' && route.page === 'settings' && target.dataset.tradeSearch !== undefined && !tradeSearchComposing && !(event as InputEvent).isComposing) refreshTradeSearch(target); });
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; if (!target.closest('[data-settings-action="clear-trade-search"]')) return; tradeSearchKeyword = ''; void renderApp().then(() => app.querySelector<HTMLInputElement>('[data-trade-search]')?.focus()); });
 app.addEventListener('click', (event) => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-shared-site-select]'); if (button?.dataset.sharedSiteSelect) { event.preventDefault(); void selectSharedSiteFromWorkspace(button.dataset.sharedSiteSelect); } });
+app.addEventListener('click', async (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-sync-now]');
+  if (!button || syncInFlight) return;
+  event.stopImmediatePropagation();
+  button.disabled = true; button.textContent = '同步中…';
+  await syncActiveSiteNow();
+  await renderApp();
+});
 app.addEventListener('change', async (event) => {
   const target = event.target;
   const route = parseRoute(location.hash);
@@ -617,13 +632,8 @@ app.addEventListener('click', async (event) => {
       accountActiveSiteId = button.dataset.siteId;
       accountFeedback = '已切換目前共用工地、獨立草稿與記憶快取。';
     }
-    if (button.dataset.accountAction === 'sync-now' && accountAuth.user && accountActiveSiteId) {
-      await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
-      const result = await runSyncOnce({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
-      if (result.memoryPulled) await refreshActiveMemoryCache();
-      if (result.waterPulled && water) await water.refresh();
-      if (result.pulled) await reloadActiveDraftPartition();
-      accountFeedback = `同步完成：送出 ${result.applied} 筆、接收 ${result.pulled} 筆、衝突 ${result.conflicts} 筆、失敗 ${result.failed} 筆。`;
+    if (button.dataset.accountAction === 'sync-now' && accountAuth.user && accountActiveSiteId && !syncInFlight) {
+      await syncActiveSiteNow();
     }
     if (button.dataset.accountAction === 'recover-legacy-daily-conflicts' && accountAuth.user && accountActiveSiteId) {
       const result = await recoverLegacyDailyConflictsCloudFirst({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
@@ -862,37 +872,38 @@ app.addEventListener('drop', async (event) => { const targetRow = (event.target 
 app.addEventListener('dragend', () => { draggedMaterialTypeId = null; });
 window.addEventListener('beforeunload', (event) => { if (settingsState.dirty || materialDirty() || contactDirty()) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('hashchange', () => { const route = parseRoute(location.hash); if (materialEditor && !discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; if (route.module === 'water-level') void daily.flush(); if (route.module === 'daily' && route.page === 'main') { daily.expandedId = null; dailyBasicsExpanded = false; } void renderApp(); });
-async function syncActiveSiteSilently(): Promise<void> {
-  if (syncInFlight) { syncRequestedWhileRunning = true; return; }
-  if (document.hidden || settingsState.dirty) return;
+async function syncActiveSiteNow(): Promise<void> {
+  if (syncInFlight) return;
+  const route = parseRoute(location.hash);
+  if ((route.module === 'daily' && route.page === 'settings' && settingsState.dirty) || (route.module === 'daily' && route.page === 'main' && (materialDirty() || contactDirty()))) {
+    syncFeedback = '請先儲存目前編輯中的表單，再按立即同步。';
+    return;
+  }
   const epoch = activeSyncEpoch;
   syncInFlight = true;
   try {
-    if (dailySaveState === 'saving') await daily.flush();
+    await daily.flush();
     const scope = await loadActiveSharedScope();
-    if (!scope) return;
-    const scopeKey = `${scope.userId}:${scope.siteId}`;
-    if (scopeKey !== realtimeScopeKey) {
-      stopSiteRealtime?.(); realtimeScopeKey = scopeKey;
-      stopSiteRealtime = subscribeToSiteChanges(scope, () => { if (!document.hidden) void syncActiveSiteSilently(); });
-    }
+    if (!scope) { syncFeedback = '請先登入並選擇共用工地。'; return; }
     await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
     const result = await runSyncOnce(scope);
     if (epoch !== activeSyncEpoch) return;
+    lastPulledAt = await loadLastPulledAt(scope);
     await refreshDailySyncStatus();
     if (result.memoryPulled) await refreshActiveMemoryCache();
     if (result.waterPulled && water) await water.refresh();
     if (result.pulled) {
-      const refreshed = await loadDailyDraft();
+      const refreshed = await loadDailyDraftForDate(daily.report.date);
       if (refreshed) daily.report = refreshed;
-      await renderApp();
     }
-  } catch { /* Offline and backend failures leave the durable outbox for the next trigger. */ }
-  finally { syncInFlight = false; if (syncRequestedWhileRunning) { syncRequestedWhileRunning = false; void syncActiveSiteSilently(); } }
+    syncFeedback = `送出 ${result.applied} 筆、接收 ${result.pulled} 筆、衝突 ${result.conflicts} 筆、失敗 ${result.failed} 筆；待同步 ${await countOperations(scope)} 筆。${result.pullError ? ` 接收失敗：${result.pullError}` : ''}`;
+    accountFeedback = `同步完成：${syncFeedback}`;
+  } catch (error) {
+    syncFeedback = error instanceof Error ? `同步失敗：${error.message}` : '同步失敗，請查看共用工地的診斷資訊。';
+    accountError = syncFeedback;
+  } finally { syncInFlight = false; }
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else void syncActiveSiteSilently(); });
-window.addEventListener('online', () => { void syncActiveSiteSilently(); });
-window.addEventListener('local-data-saved', () => { void syncActiveSiteSilently(); });
-async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } });
+async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
 void pruneExpiredReports();
 bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });

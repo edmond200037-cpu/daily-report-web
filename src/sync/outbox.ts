@@ -16,10 +16,10 @@ export async function enqueueSyncOperation(input: EnqueueInput): Promise<SyncOpe
   return operation;
 }
 
-export async function listReadyOperations(scope: SharedScope, now = new Date()): Promise<SyncOperation[]> {
+export async function listReadyOperations(scope: SharedScope, now = new Date(), manual = false): Promise<SyncOperation[]> {
   const key = sharedScopeKey(scope);
   return (await list('sync_outbox') as SyncOperation[])
-    .filter((row) => sharedScopeKey(row) === key && canRetryAt(row, now))
+    .filter((row) => sharedScopeKey(row) === key && (canRetryAt(row, now) || (manual && (row.status === 'failed' || row.status === 'pending'))))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
@@ -28,9 +28,9 @@ export async function countOperations(scope: SharedScope): Promise<number> {
   return (await list('sync_outbox') as SyncOperation[]).filter((row) => sharedScopeKey(row) === key).length;
 }
 
-export async function dailyOperationStatusSummary(scope: SharedScope): Promise<{ pending: number; conflict: number }> {
+export async function dailyOperationStatusSummary(scope: SharedScope, reportDate?: string): Promise<{ pending: number; conflict: number }> {
   const key = sharedScopeKey(scope);
-  const rows = (await list('sync_outbox') as SyncOperation[]).filter((row) => sharedScopeKey(row) === key && (row.entity === 'daily-draft' || row.entity === 'daily-patch'));
+  const rows = (await list('sync_outbox') as SyncOperation[]).filter((row) => sharedScopeKey(row) === key && (row.entity === 'daily-draft' || row.entity === 'daily-patch') && (!reportDate || (row.entity === 'daily-patch' ? (row.payload as { reportDate?: string }).reportDate : (row.payload as { date?: string }).date) === reportDate));
   return {
     pending: rows.filter((row) => row.status !== 'conflict').length,
     conflict: rows.filter((row) => row.status === 'conflict').length,
