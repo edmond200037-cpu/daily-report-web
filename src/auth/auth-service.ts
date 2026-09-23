@@ -22,7 +22,7 @@ export async function completeOAuthRedirect(): Promise<boolean> {
   const { error } = await getSupabaseClient().auth.exchangeCodeForSession(code);
   if (error) throw error;
   for (const key of ['auth_callback', 'code', 'sb_flow_id', 'error', 'error_code', 'error_description']) url.searchParams.delete(key);
-  url.hash = '#account';
+  url.hash = '#settings/account';
   history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   return true;
 }

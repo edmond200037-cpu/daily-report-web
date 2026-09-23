@@ -15,15 +15,17 @@ describe('設定端直達導覽契約', () => {
     expect(main).not.toContain('function settingsHubView()');
   });
 
-  it('設定頁保留來源返回操作與四區 2×2 導覽', () => {
+  it('設定頁保留來源返回操作與五區導覽', () => {
     expect(main).toContain('let settingsReturnModule: SettingsReturnModule = \'daily\';');
     expect(main).toContain('function settingsReturnLink(): string');
     expect(main).toContain('class="settings-context-tabs"');
     expect(css).toContain('.settings-context-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));');
     expect(css).toContain('.settings-context-tabs a.active { border-color: var(--accent); background: var(--surface-raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }');
+    expect(css).toContain('.settings-context-tabs a:last-child { grid-column: 1 / -1; }');
+    expect(main).toContain("['account', '#settings/account', '共用工地']");
   });
 
-  it('四個設定領域共用紙質淡黃色工作台，不影響填報模組容器', () => {
+  it('五個設定領域共用紙質淡黃色工作台，不影響填報模組容器', () => {
     expect(css).toContain('.settings-page { background: var(--daily-paper); color: var(--daily-ink); }');
     expect(css).toContain('.settings-page .settings-context-tabs a { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }');
     expect(css).toContain('.settings-page .settings-work-area { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); }');

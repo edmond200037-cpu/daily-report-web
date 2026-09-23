@@ -49,6 +49,20 @@ describe('共用工地帳號頁', () => {
     expect(html).not.toContain('data-join-code=');
   });
 
+  it('同步佇列仍在載入或讀取失敗時，不把未知筆數顯示為零', () => {
+    const state = {
+      auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never },
+      sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role: 'editor' as const, createdAt: '' }],
+      activeSiteId: 'site-1', pendingCount: 0, requests: [], members: [], feedback: '', error: '',
+    };
+    const loading = renderAccountPage({ ...state, operationsStatus: 'loading' });
+    expect(loading).toContain('待同步讀取中');
+    expect(loading).not.toContain('待同步 0 筆');
+    const failed = renderAccountPage({ ...state, operationsStatus: 'error' });
+    expect(failed).toContain('待同步無法讀取');
+    expect(failed).toContain('資料未被清除');
+  });
+
   it.each(['owner', 'editor', 'viewer'] as const)('%s 都能查看與複製自己已加入工地的加入碼', (role) => {
     const html = renderAccountPage({
       auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never },
@@ -74,14 +88,12 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('aria-pressed="true"');
   });
 
-  it('共用工地由路由層使用與其他模組一致的頁首與頁籤骨架', () => {
-    expect(main).toContain('type ModuleHeaderControl');
-    expect(main).toContain("kind: 'link'");
-    expect(main).toContain("kind: 'action'");
-    expect(main).toContain('多人協作與跨裝置同步');
+  it('共用工地使用設定頁首與第五個設定入口', () => {
     expect(main).toContain('data-account-action="sync-now"');
-    expect(main).toContain('class="app-shell module-page account-page-shell"');
-    expect(main).toContain('<div class="module-page__tabs">${moduleTabs(\'account\')}</div>');
+    expect(main).toContain('class="app-shell settings-page account-page-shell"');
+    expect(main).toContain("settingsContextTabs('account')");
+    expect(main).toContain("['account', '#settings/account', '共用工地']");
+    expect(main).toContain("if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }");
   });
 
   it('模組頁與共用工地保留紙張色、危險訊息與 daily orange 互動契約', () => {
@@ -98,10 +110,12 @@ describe('共用工地帳號頁', () => {
   });
 
   it('點共用工地先渲染載入骨架，背景讀取完成才替換資料', () => {
-    expect(main).toContain("if (route.module === 'account') { renderAccountLoading(); void refreshAccount().then(");
+    expect(main).toContain("if (route.module === 'account') { renderAccountLoading(); void refreshAccount(() =>");
     expect(main).toContain('正在載入共用工地…');
     expect(main).toContain('token !== renderToken || parseRoute(location.hash).module !== \'account\'');
     expect(main).toContain("button.dataset.accountAction === 'retry-load-account'");
+    expect(main).toContain('15_000 - (started - accountLoadStartedAt)');
+    expect(main).toContain('accountLoadCoreReady = true;');
   });
 
   it('頁首與明細使用同一批全部狀態的八筆待同步操作', () => {

@@ -24,6 +24,8 @@ import { completeOAuthRedirect, loadAuthSnapshot, signInWithGoogle, signOut, typ
 import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJoinRequests, listSiteMembers, rejectSiteMember, removeSiteMember, requestSiteAccess, updateSiteMemberRole, type JoinRequestSummary, type SiteMemberSummary } from './data/remote/site-repository';
 import { loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
 import { renderAccountPage } from './account/account-view';
+import { AccountLoadTimeoutError, withAccountDeadline } from './account/load-timeout';
+import { DB_VERSION } from './data/db.js';
 import type { SiteSummary } from './domain/shared';
 import { countOperations, dailyOperationStatusSummary, listAllOperations, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
@@ -129,6 +131,16 @@ let accountError = '';
 let accountSyncDiagnostics: SyncOperation[] = [];
 let accountSyncOperations: SyncOperation[] = [];
 let accountConflictReviews: ConflictReview[] = [];
+type AccountLoadStage = '帳號驗證' | '工地清單' | '成員資料' | '本機同步佇列' | '衝突資料';
+type AccountLoadEvent = { stage: AccountLoadStage; status: 'loading' | 'ok' | 'error' | 'timeout'; durationMs: number; code?: string };
+let accountLoadEvents: AccountLoadEvent[] = [];
+let accountLoadStage: AccountLoadStage | null = null;
+let accountLoadStartedAt = 0;
+let accountLoadCoreReady = false;
+let accountLoadExtrasPending = false;
+let accountQueueStatus: 'loading' | 'ready' | 'error' = 'ready';
+let accountLoadVersion = 0;
+let debugOpen = false;
 let syncInFlight = false;
 let activeSyncEpoch = 0;
 const escapeHtml = (value: string) => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
@@ -151,7 +163,7 @@ function sitePickerField(): string {
   if (accountAuth.user) {
     const active = accountSites.find((site) => site.id === accountActiveSiteId);
     const options = accountSites.map((site) => `<button type="button" class="shared-site-picker__option${site.id === accountActiveSiteId ? ' active' : ''}" data-shared-site-select="${site.id}"${site.id === accountActiveSiteId ? ' disabled' : ''}><strong>${escapeHtml(site.name)}</strong><small>${site.role === 'viewer' ? '檢視' : site.role === 'editor' ? '編輯' : '管理員'}${site.id === accountActiveSiteId ? ' · 目前使用' : ''}</small></button>`).join('');
-    return `<section class="shared-site-picker" aria-label="共用工地"><div><strong>共用工地</strong><small>${active ? `目前資料會同步至「${escapeHtml(active.name)}」` : '請先選擇共用工地，資料會維持本機模式。'}</small></div><div class="shared-site-picker__options">${options || '<a href="#account">前往建立或加入工地</a>'}</div></section>`;
+    return `<section class="shared-site-picker" aria-label="共用工地"><div><strong>共用工地</strong><small>${active ? `目前資料會同步至「${escapeHtml(active.name)}」` : '請先選擇共用工地，資料會維持本機模式。'}</small></div><div class="shared-site-picker__options">${options || '<a href="#settings/account">前往建立或加入工地</a>'}</div></section>`;
   }
   const query = siteSearchQuery || daily.report.siteNameSnapshot;
   const keyword = normalizeSearch(query);
@@ -201,6 +213,7 @@ function parseRoute(hash: string): AppRoute {
   if (normalized === '#settings/water') return { module: 'water-level', page: 'settings' };
   if (normalized === '#settings/memory') return { module: 'settings', page: 'memory' };
   if (normalized === '#settings/data') return { module: 'settings', page: 'data' };
+  if (normalized === '#settings/account') return { module: 'account', page: 'main' };
   if (normalized === '#account') return { module: 'account', page: 'main' };
   if (normalized === '#daily') return { module: 'daily', page: 'main' };
   if (normalized === '#daily/settings') return { module: 'daily', page: 'settings' };
@@ -369,11 +382,11 @@ function syncControl(kind: 'daily' | 'water' = 'daily'): string {
   const current = kind === 'daily' ? `日報日期：${daily.report.date}` : `共用工地：${accountSites.find((site) => site.id === accountActiveSiteId)?.name ?? '目前工地'}`;
   return `<section class="manual-sync" aria-label="共用工地同步"><div><strong>${escapeHtml(current)}</strong><small>本機上次取得雲端資料：${escapeHtml(pulled)}</small>${syncFeedback ? `<small role="status">${escapeHtml(syncFeedback)}</small>` : ''}</div><button type="button" class="primary" data-sync-now${syncInFlight ? ' disabled' : ''}>${syncInFlight ? '同步中…' : '立即同步'}</button></section>`;
 }
-function moduleTabs(active: 'daily' | 'water-level' | 'account'): string {
-  return `<nav class="top-tabs" aria-label="主要功能"><a href="#daily"${active === 'daily' ? ' class="active" aria-current="page"' : ''}>施工日報</a><a href="#water-level"${active === 'water-level' ? ' class="active" aria-current="page"' : ''}>水位變化</a><a href="#account"${active === 'account' ? ' class="active" aria-current="page"' : ''}>共用工地</a></nav>`;
+function moduleTabs(active: 'daily' | 'water-level'): string {
+  return `<nav class="top-tabs" aria-label="主要功能"><a href="#daily"${active === 'daily' ? ' class="active" aria-current="page"' : ''}>施工日報</a><a href="#water-level"${active === 'water-level' ? ' class="active" aria-current="page"' : ''}>水位變化</a></nav>`;
 }
-function settingsContextTabs(active: 'daily' | 'water' | 'memory' | 'data'): string {
-  const items: Array<[typeof active, string, string]> = [['daily', '#settings/daily', '施工日報主檔'], ['water', '#settings/water', '水位設定'], ['memory', '#settings/memory', '記憶審核'], ['data', '#settings/data', '資料與系統']];
+function settingsContextTabs(active: 'daily' | 'water' | 'memory' | 'data' | 'account'): string {
+  const items: Array<[typeof active, string, string]> = [['daily', '#settings/daily', '施工日報主檔'], ['water', '#settings/water', '水位設定'], ['memory', '#settings/memory', '記憶審核'], ['data', '#settings/data', '資料與系統'], ['account', '#settings/account', '共用工地']];
   return `<nav class="settings-context-tabs" aria-label="設定區域">${items.map(([id, href, label]) => `<a href="${href}"${id === active ? ' class="active" aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
 }
 function basicsView(): string {
@@ -407,7 +420,7 @@ function settingsItems(): string {
   const section = settingsState.activeSection;
   if (section === 'materials') { const keyword = normalizeSearch(settingsState.taskSearchKeyword); const rows = materialTypes.filter((row) => !keyword || row.normalizedName.includes(keyword)); return `<section class="form-card material-type-settings"><h2>材料類型管理</h2><div class="task-search"><input data-material-type-search placeholder="搜尋材料類型" value="${escapeHtml(settingsState.taskSearchKeyword)}"><button type="button" data-settings-action="add-material-type">＋ 新增材料類型</button></div><div class="settings-list">${rows.map((row) => `<article class="settings-item" draggable="true" data-material-type-id="${row.id}"><strong>⠿ ${escapeHtml(row.name)}</strong><span class="hint">使用 ${row.usageCount} 次${row.lastUsedAt ? `｜最近：${escapeHtml(new Date(row.lastUsedAt).toLocaleDateString('zh-TW'))}` : ''}</span><div class="settings-item-actions"><button type="button" data-settings-action="rename-material-type" data-id="${row.id}">重新命名</button><button type="button" class="danger-text" data-settings-action="delete-material-type" data-id="${row.id}">刪除</button></div></article>`).join('') || '<p class="empty">尚無材料類型。</p>'}</div></section>`; }
   if (section === 'backup') return `<section class="form-card"><h2>記憶備份與還原</h2><p class="hint">只包含工地、工種、工項、廠商、位置、材料類型、材料候選與特殊事項模板；不包含日報草稿、定稿日報或水位資料。</p><div class="action-row"><button type="button" class="primary" data-settings-action="export-memory-backup">下載記憶備份</button><label class="button-like">匯入記憶備份<input type="file" accept="application/json,.json" data-memory-backup-import hidden></label></div>${memoryBackupFeedback ? `<p class="hint" role="status">${escapeHtml(memoryBackupFeedback)}</p>` : ''}</section>`;
-  if (section === 'debug') return `<section class="form-card"><h2>偵錯資訊</h2><pre>${escapeHtml(JSON.stringify({ appVersion: '0.1.0', databaseVersion: 4, route: location.hash, draft: { date: daily.report.date, trades: daily.report.tradeSections.length }, serviceWorker: navigator.serviceWorker?.controller ? 'active' : 'not active', stores: settingsDebug }, null, 2))}</pre><div class="action-row"><button type="button" data-settings-action="copy-debug">複製偵錯資訊</button><button type="button" class="danger-text" data-settings-action="clear-debug">清除偵錯紀錄</button></div></section>`;
+  if (section === 'debug') return `<section class="form-card"><h2>偵錯資訊</h2><pre>${escapeHtml(JSON.stringify({ ...debugSnapshot(), stores: settingsDebug }, null, 2))}</pre><div class="action-row"><button type="button" data-settings-action="copy-debug">複製偵錯資訊</button><button type="button" class="danger-text" data-settings-action="clear-debug">清除偵錯紀錄</button></div></section>`;
   if (section === 'trade-tasks') return tradeTasksSettings();
   const needsTrade = section === 'vendors'; const title = sectionLabels.find(([key]) => key === section)?.[1] ?? '';
   const rows = section === 'templates' ? settingsTemplates : settingsRows;
@@ -427,7 +440,21 @@ function normalizeSearch(value: string): string { return value.trim().replace(/�
 function tradeForm(value = ''): string { return `<form class="settings-edit-form" data-settings-form="trade"><label>工種名稱<input name="name" maxlength="50" value="${escapeHtml(value)}" autofocus></label><div class="form-actions form-actions--submit"><button class="primary" type="submit">儲存</button><button type="button" data-settings-action="cancel">取消</button></div></form>`; }
 function taskForm(mode: 'add' | 'edit', value = ''): string { return `<form class="settings-edit-form" data-settings-form="${mode}"><label>工項名稱<input name="name" maxlength="50" value="${escapeHtml(value)}" autofocus></label><div class="form-actions form-actions--submit"><button class="primary" type="submit">儲存</button><button type="button" data-settings-action="cancel">取消</button></div></form>`; }
 function settingsReturnLink(): string { const href = settingsReturnModule === 'water-level' ? '#water-level' : '#daily'; const label = settingsReturnModule === 'water-level' ? '返回水位' : '返回日報'; return `<a class="settings-button" href="${href}">${label}</a>`; }
-function settingsHeader(eyebrow: string, title: string): string { return `<header class="top app-header"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1></div>${settingsReturnLink()}</header>`; }
+function debugSnapshot(): Record<string, unknown> {
+  const counts = { pending: 0, sending: 0, failed: 0, blocked: 0, conflict: 0 };
+  for (const operation of accountSyncOperations) counts[operation.status] += 1;
+  return {
+    appVersion: '0.1.0', databaseVersion: DB_VERSION, route: location.hash,
+    online: navigator.onLine, serviceWorker: navigator.serviceWorker?.controller ? 'active' : 'not active',
+    authEnabled: accountAuth.enabled, signedIn: Boolean(accountAuth.user), activeSiteSelected: Boolean(accountActiveSiteId),
+    accountLoad: { stage: accountLoadStage, elapsedMs: accountLoadStartedAt ? Date.now() - accountLoadStartedAt : 0, coreReady: accountLoadCoreReady, detailsPending: accountLoadExtrasPending, events: accountLoadEvents },
+    syncQueue: { status: accountQueueStatus, counts }, lastPulledAt,
+  };
+}
+function debugPanel(): string {
+  return `<section id="settings-debug-panel" class="settings-debug-panel" data-debug-panel${debugOpen ? '' : ' hidden'} aria-label="偵錯資訊"><h2>偵錯資訊</h2><p>僅包含狀態與安全錯誤碼，不包含登入憑證、加入碼或日報內容。</p><pre data-debug-output>${escapeHtml(JSON.stringify(debugSnapshot(), null, 2))}</pre><button type="button" data-settings-action="copy-debug">複製偵錯資訊</button></section>`;
+}
+function settingsHeader(eyebrow: string, title: string): string { return `<header class="top app-header"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1></div><div class="settings-header-actions"><button type="button" data-settings-action="toggle-debug" aria-expanded="${debugOpen}" aria-controls="settings-debug-panel">偵錯顯示</button>${settingsReturnLink()}</div></header>${debugPanel()}`; }
 function memoryReviewView(): string {
   const groups = groupMemoryCandidates(memoryCandidates);
   const effectiveKeys = new Set(confirmationSelection([...memoryReviewState.explicitKeys], memoryCandidates).keys);
@@ -508,41 +535,95 @@ async function switchActiveDataPartition(changeContext: () => Promise<void>): Pr
   lastPulledAt = scope ? await loadLastPulledAt(scope) : null;
   syncFeedback = '';
 }
-async function refreshAccount(): Promise<void> {
+async function refreshAccount(onProgress?: () => void): Promise<void> {
+  const version = ++accountLoadVersion;
+  accountError = '';
+  accountLoadEvents = [];
+  accountLoadStartedAt = Date.now();
+  accountLoadCoreReady = false;
+  accountLoadExtrasPending = false;
+  const current = () => version === accountLoadVersion;
+  const run = async <T,>(stage: AccountLoadStage, task: Promise<T>): Promise<T> => {
+    const started = Date.now();
+    const remaining = Math.max(1, 15_000 - (started - accountLoadStartedAt));
+    if (current()) { accountLoadStage = stage; accountLoadEvents.push({ stage, status: 'loading', durationMs: 0 }); onProgress?.(); }
+    try {
+      const result = await withAccountDeadline(task, remaining);
+      if (!current()) throw new Error('ACCOUNT_LOAD_STALE');
+      const event = accountLoadEvents.findLast((row) => row.stage === stage && row.status === 'loading');
+      if (event) { event.status = 'ok'; event.durationMs = Date.now() - started; }
+      onProgress?.();
+      return result;
+    } catch (error) {
+      if (current()) {
+        const event = accountLoadEvents.findLast((row) => row.stage === stage && row.status === 'loading');
+        if (event) { event.status = error instanceof AccountLoadTimeoutError ? 'timeout' : 'error'; event.durationMs = Date.now() - started; const code = (error as { code?: unknown })?.code; if (typeof code === 'string' && /^[A-Z0-9_]{2,20}$/.test(code)) event.code = code; }
+        onProgress?.();
+      }
+      throw error;
+    }
+  };
   try {
-    accountError = '';
-    accountAuth = await loadAuthSnapshot();
-    if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; accountSyncDiagnostics = []; accountSyncOperations = []; accountConflictReviews = []; return; }
-    const [sites, context] = await Promise.all([listAccessibleSites(accountAuth.user.id), loadSharedContext(accountAuth.user.id)]);
+    const auth = await run('帳號驗證', loadAuthSnapshot());
+    if (!current()) return;
+    accountAuth = auth;
+    if (!auth.user) {
+      accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null;
+      accountPendingCount = 0; accountSyncDiagnostics = []; accountSyncOperations = []; accountConflictReviews = [];
+      accountQueueStatus = 'ready'; accountLoadCoreReady = true; accountLoadStage = null; onProgress?.(); return;
+    }
+    const [sites, context] = await run('工地清單', Promise.all([listAccessibleSites(auth.user.id), loadSharedContext(auth.user.id)]));
+    if (!current()) return;
     accountSites = sites;
-    [accountRequests, accountMembers] = await Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)]);
     accountActiveSiteId = sites.some((site) => site.id === context.activeSiteId) ? context.activeSiteId : null;
-    if (context.activeSiteId && !accountActiveSiteId) await selectActiveSharedSite(accountAuth.user.id, null);
-    accountSyncOperations = accountActiveSiteId ? await listAllOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
-    accountPendingCount = accountSyncOperations.length;
-    accountSyncDiagnostics = accountSyncOperations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked');
-    accountConflictReviews = accountActiveSiteId ? await listConflictReviews({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
+    accountRequests = []; accountMembers = []; accountSyncOperations = []; accountSyncDiagnostics = []; accountPendingCount = 0; accountConflictReviews = [];
+    accountQueueStatus = accountActiveSiteId ? 'loading' : 'ready';
+    accountLoadCoreReady = true;
+    accountLoadExtrasPending = true;
+    onProgress?.();
+    if (context.activeSiteId && !accountActiveSiteId) void selectActiveSharedSite(auth.user.id, null).catch(() => {});
+    const scope = accountActiveSiteId ? { userId: auth.user.id, siteId: accountActiveSiteId } : null;
+    const optional = await Promise.allSettled([
+      run('成員資料', Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)])).then(([requests, members]) => { if (current()) { accountRequests = requests; accountMembers = members; } }),
+      run('本機同步佇列', scope ? listAllOperations(scope) : Promise.resolve([])).then((operations) => { if (current()) { accountSyncOperations = operations; accountPendingCount = operations.length; accountSyncDiagnostics = operations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked'); accountQueueStatus = 'ready'; } }).catch((error) => { if (current()) accountQueueStatus = 'error'; throw error; }),
+      run('衝突資料', scope ? listConflictReviews(scope) : Promise.resolve([])).then((reviews) => { if (current()) accountConflictReviews = reviews; }),
+    ]);
+    if (!current()) return;
+    accountLoadExtrasPending = false;
+    accountLoadStage = null;
+    if (optional.some((result) => result.status === 'rejected')) accountError = '部分工地資料讀取失敗或逾時；可查看偵錯資訊並重新讀取。';
+    onProgress?.();
   } catch (error) {
-    accountError = error instanceof Error ? error.message : '無法讀取共用工地。';
+    if (!current()) return;
+    accountLoadStage = null;
+    accountLoadExtrasPending = false;
+    const timeout = error instanceof AccountLoadTimeoutError;
+    accountError = timeout ? '讀取共用工地超過 15 秒，請查看偵錯資訊並重新讀取。' : '無法讀取共用工地，請查看偵錯資訊並重新讀取。';
+    onProgress?.();
   }
 }
 function accountModuleMarkup(content: string): string {
-  const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined;
-  return `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${content}</main>${pwaUpdateNotice()}`;
+  const sync = accountActiveSiteId ? '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' : '';
+  return `<main class="app-shell settings-page account-page-shell">${settingsHeader('SHARED SITE', '共用工地')}${settingsContextTabs('account')}${sync ? `<div class="account-page-actions">${sync}</div>` : ''}${content}</main>${pwaUpdateNotice()}`;
 }
 function renderAccountLoading(): void {
-  app.innerHTML = accountModuleMarkup('<section class="account-content"><section class="form-card account-status" aria-busy="true"><strong>正在載入共用工地…</strong><p>頁面已開啟，正在讀取帳號、工地與本機同步佇列。</p></section></section>');
+  const content = accountError
+    ? `<section class="account-content"><section class="form-card account-status" role="alert"><strong>${escapeHtml(accountError)}</strong><p>最後階段：${escapeHtml(accountLoadEvents.at(-1)?.stage ?? '尚未開始')}</p><button type="button" data-account-action="retry-load-account">重新讀取</button></section></section>`
+    : `<section class="account-content"><section class="form-card account-status" aria-busy="true"><strong>正在載入共用工地…</strong><p>目前階段：${escapeHtml(accountLoadStage ?? '準備中')}。超過 15 秒將顯示錯誤與重試。</p></section></section>`;
+  app.innerHTML = accountModuleMarkup(content);
 }
 function renderAccountLoaded(): void {
-  app.innerHTML = accountModuleMarkup(renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, conflicts: accountConflictReviews }));
+  const progress = accountLoadExtrasPending ? '<p class="hint" role="status">工地已可使用，成員與同步診斷仍在載入…</p>' : '';
+  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews }));
 }
 async function renderApp(): Promise<void> {
   if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
   if (location.hash === '#daily/settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
+  if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }
   const token = ++renderToken; const route = parseRoute(location.hash); const previousRoute = renderedRoute; renderedRoute = route; water = undefined;
   if ((route.module === 'daily' && route.page === 'settings' && previousRoute?.module === 'daily' && previousRoute.page === 'main') || (route.module === 'water-level' && route.page === 'settings' && previousRoute?.module === 'water-level' && previousRoute.page === 'main')) settingsReturnModule = previousRoute.module;
-  if (route.module === 'account') { renderAccountLoading(); void refreshAccount().then(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; renderAccountLoaded(); }); return; }
+  if (route.module === 'account') { renderAccountLoading(); void refreshAccount(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; if (accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); }); return; }
   if (route.module === 'settings') { if (route.page === 'memory') { memoryCandidates = await listMemoryCandidates(); const keys = new Set(memoryCandidates.map((row) => row.key)); memoryReviewState.explicitKeys = new Set([...memoryReviewState.explicitKeys].filter((key) => keys.has(key))); memoryReviewState.expandedKeys = new Set([...memoryReviewState.expandedKeys].filter((key) => keys.has(key))); const groups = groupMemoryCandidates(memoryCandidates); if (memoryReviewState.openKind === undefined) memoryReviewState.openKind = groups[0]?.kind ?? null; else if (memoryReviewState.openKind !== null && !groups.some((group) => group.kind === memoryReviewState.openKind)) memoryReviewState.openKind = groups.find((group) => group.kind === memoryReviewState.nextKind)?.kind ?? groups[0]?.kind ?? null; memoryReviewState.nextKind = null; } else { if (settingsState.activeSection !== 'backup' && settingsState.activeSection !== 'debug') settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? dataSystemView() : memoryReviewView()}${pwaUpdateNotice()}`; return; }
   if (route.module === 'daily') {
     if (!accountAuth.enabled) await refreshAccount();
@@ -595,6 +676,21 @@ app.addEventListener('focusout', (event) => { const target = event.target as HTM
 app.addEventListener('pointerdown', (event) => { if ((event.target as HTMLElement).closest('[data-contact-suggestions] [data-daily-action="contact-pick-memory"]')) event.preventDefault(); });
 app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement; const route = parseRoute(location.hash); if (route.module === 'daily' && route.page === 'settings' && target.dataset.tradeSearch !== undefined && !tradeSearchComposing && !(event as InputEvent).isComposing) refreshTradeSearch(target); });
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; if (!target.closest('[data-settings-action="clear-trade-search"]')) return; tradeSearchKeyword = ''; void renderApp().then(() => app.querySelector<HTMLInputElement>('[data-trade-search]')?.focus()); });
+app.addEventListener('click', (event) => {
+  const action = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-settings-action]')?.dataset.settingsAction;
+  if (action === 'toggle-debug') {
+    event.stopImmediatePropagation();
+    debugOpen = !debugOpen;
+    const panel = app.querySelector<HTMLElement>('[data-debug-panel]');
+    if (panel) { panel.hidden = !debugOpen; const output = panel.querySelector<HTMLElement>('[data-debug-output]'); if (output) output.textContent = JSON.stringify(debugSnapshot(), null, 2); }
+    app.querySelector<HTMLButtonElement>('[data-settings-action="toggle-debug"]')?.setAttribute('aria-expanded', String(debugOpen));
+  } else if (action === 'copy-debug') {
+    event.stopImmediatePropagation();
+    const route = parseRoute(location.hash);
+    const snapshot = { ...debugSnapshot(), ...(route.module === 'settings' && route.page === 'data' && settingsState.activeSection === 'debug' ? { stores: settingsDebug } : {}) };
+    void navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+  }
+});
 app.addEventListener('click', (event) => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-shared-site-select]'); if (button?.dataset.sharedSiteSelect) { event.preventDefault(); void selectSharedSiteFromWorkspace(button.dataset.sharedSiteSelect); } });
 app.addEventListener('click', async (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-sync-now]');
@@ -623,8 +719,8 @@ app.addEventListener('click', async (event) => {
   accountFeedback = ''; accountError = '';
   try {
     if (button.dataset.accountAction === 'retry-load-account') {
-      const token = ++renderToken; renderAccountLoading(); await refreshAccount();
-      if (token === renderToken && parseRoute(location.hash).module === 'account') renderAccountLoaded();
+      const token = ++renderToken; accountError = ''; renderAccountLoading();
+      await refreshAccount(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; if (accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); });
       return;
     }
     if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }
@@ -936,6 +1032,6 @@ async function syncActiveSiteNow(): Promise<SyncRunResult | null> {
   } finally { syncInFlight = false; }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } });
-async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
+async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#settings/account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
 void pruneExpiredReports();
 bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });

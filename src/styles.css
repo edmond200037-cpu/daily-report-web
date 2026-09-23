@@ -139,7 +139,7 @@ nav { display: flex; gap: var(--space-1); overflow: auto; padding: var(--space-4
 nav a { border-bottom: 2px solid transparent; color: var(--ink-soft); font-size: .875rem; font-weight: 700; padding: .5rem .75rem; text-decoration: none; white-space: nowrap; }
 nav a:hover { color: var(--ink); }
 nav a.active, nav a[aria-current="page"] { border-color: var(--accent); color: var(--ink); }
-.top-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 0 var(--space-4); overflow: hidden; padding: 0; border-bottom: 1px solid var(--line); }
+.top-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0 0 var(--space-4); overflow: hidden; padding: 0; border-bottom: 1px solid var(--line); }
 .top-tabs a { display: grid; place-items: center; min-width: 0; min-height: 46px; border-radius: 0; padding: .75rem 1rem .625rem; text-align: center; }
 
 .editor-layout { display: grid; gap: var(--space-5); }
@@ -182,6 +182,14 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .settings-context-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
 .settings-context-tabs a { display: grid; place-items: center; min-height: 44px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); padding: var(--space-2); font-size: .8125rem; font-weight: 720; text-align: center; text-decoration: none; }
 .settings-context-tabs a.active { border-color: var(--accent); background: var(--surface-raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }
+.settings-context-tabs a:last-child { grid-column: 1 / -1; }
+.settings-header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.settings-debug-panel { display: grid; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-4); border: 1px solid var(--daily-line-strong); border-radius: var(--radius-sm); background: var(--daily-paper-raised); }
+.settings-debug-panel[hidden] { display: none; }
+.settings-debug-panel h2, .settings-debug-panel p { margin: 0; }
+.settings-debug-panel pre { max-height: 45vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.settings-debug-panel button { justify-self: start; }
+.account-page-actions { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
 .settings-work-areas { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
 .settings-work-area { overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); }
 .settings-work-area.expanded { border-color: var(--ink); }
@@ -300,4 +308,5 @@ textarea { min-height: 4.5rem; resize: vertical; }
 
 @media (min-width: 768px) { .settings-context-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .settings-work-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
 @media (max-width: 420px) { .quick-add { grid-template-columns: 1fr; } .card-actions button { font-size: .75rem; padding: .5rem; } .top h1 { font-size: 1.35rem; } .settings-item-actions { align-items: stretch; flex-direction: column; } .memory-review.has-selection { padding-bottom: calc(14rem + env(safe-area-inset-bottom)); } .memory-review__overview { align-items: flex-start; flex-direction: column; } .memory-candidate__detail { align-items: stretch; flex-direction: column; padding-left: var(--space-4); } .memory-candidate__detail .danger-text { align-self: flex-start; } .memory-review__action-bar { align-items: stretch; flex-direction: column; } .memory-review__action-bar > div:last-child { display: grid; grid-template-columns: 1fr 1.35fr; } }
+@media (max-width: 520px) { .settings-page .top { align-items: stretch; flex-direction: column; } .settings-header-actions { justify-content: space-between; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 1ms !important; animation-duration: 1ms !important; } }

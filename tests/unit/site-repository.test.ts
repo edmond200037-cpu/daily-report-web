@@ -70,6 +70,6 @@ describe('我的工地與成員管理的查詢邊界', () => {
 
   it('重新整理帳號以目前登入使用者查詢工地', () => {
     const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
-    expect(main).toContain('listAccessibleSites(accountAuth.user.id)');
+    expect(main).toContain('listAccessibleSites(auth.user.id)');
   });
 });
