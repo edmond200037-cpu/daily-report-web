@@ -1,6 +1,7 @@
 import { list, put, remove } from '../data/db.js';
 import { sharedScopeKey, type SharedScope } from '../domain/shared';
 import { canRetryAt, retryDelayMs, type SyncEntity, type SyncOperation } from './types';
+import { classifySyncError } from './error-diagnostics';
 
 interface EnqueueInput extends SharedScope { entity: SyncEntity; entityId: string; baseRevision: number; payload: unknown; }
 
@@ -30,7 +31,7 @@ export async function countOperations(scope: SharedScope): Promise<number> {
 export async function listSyncDiagnostics(scope: SharedScope): Promise<SyncOperation[]> {
   const key = sharedScopeKey(scope);
   return (await list('sync_outbox') as SyncOperation[])
-    .filter((row) => sharedScopeKey(row) === key && (row.status === 'failed' || row.status === 'conflict'))
+    .filter((row) => sharedScopeKey(row) === key && (row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked'))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
@@ -41,11 +42,9 @@ export async function markOperationSending(operation: SyncOperation): Promise<Sy
 }
 
 export async function markOperationFailed(operation: SyncOperation, error?: unknown): Promise<SyncOperation> {
-  const attempts = operation.attempts + 1;
+  const diagnostic = classifySyncError(error); const attempts = operation.attempts + 1;
   const now = new Date();
-  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '無法連線或雲端拒絕此操作。';
-  const lastError = raw.replace(/[\r\n\t]+/g, ' ').replace(/https?:\/\/\S+/g, '[網址]').trim().slice(0, 240) || '無法連線或雲端拒絕此操作。';
-  const next: SyncOperation = { ...operation, status: 'failed', attempts, lastError, nextAttemptAt: new Date(now.valueOf() + retryDelayMs(attempts)).toISOString(), updatedAt: now.toISOString() };
+  const next: SyncOperation = { ...operation, status: diagnostic.retryable ? 'failed' : 'blocked', attempts, lastError: diagnostic.message, lastErrorCode: diagnostic.code, lastErrorHint: diagnostic.hint ?? diagnostic.guidance, retryable: diagnostic.retryable, nextAttemptAt: diagnostic.retryable ? new Date(now.valueOf() + retryDelayMs(attempts)).toISOString() : now.toISOString(), updatedAt: now.toISOString() };
   await put('sync_outbox', next);
   return next;
 }

@@ -31,6 +31,7 @@ import { loadActiveSharedScope } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
 import { subscribeToSiteChanges } from './sync/realtime';
+import { recoverLegacyDailyConflictsCloudFirst } from './sync/legacy-daily-recovery';
 
 type AppRoute =
   | { module: 'daily'; page: 'main' }
@@ -601,6 +602,11 @@ app.addEventListener('click', async (event) => {
       if (result.waterPulled && water) await water.refresh();
       if (result.pulled) await reloadActiveDraftPartition();
       accountFeedback = `同步完成：送出 ${result.applied} 筆、接收 ${result.pulled} 筆、衝突 ${result.conflicts} 筆、失敗 ${result.failed} 筆。`;
+    }
+    if (button.dataset.accountAction === 'recover-legacy-daily-conflicts' && accountAuth.user && accountActiveSiteId) {
+      const result = await recoverLegacyDailyConflictsCloudFirst({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      await reloadActiveDraftPartition();
+      accountFeedback = `已採用雲端日報 ${result.restoredFromCloud} 筆；本機舊內容已保留為復原副本。${result.resubmitted ? `雲端尚無資料的 ${result.resubmitted} 筆已重新送出。` : ''}`;
     }
     const requestId = button.dataset.requestId;
     if (requestId && button.dataset.accountAction === 'approve-editor') { await approveSiteMember(requestId, 'editor'); accountFeedback = '已核准為編輯者。'; }
