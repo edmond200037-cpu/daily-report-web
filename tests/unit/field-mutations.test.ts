@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFieldMutations, buildFieldMutations } from '../../src/sync/field-mutations';
+import { applyFieldMutations, buildFieldMutations, mergeLegacyDailyWorkItems } from '../../src/sync/field-mutations';
 
 describe('共編欄位 mutation', () => {
   it('不同日報欄位產生可獨立套用的穩定 ID 修改', () => {
@@ -21,5 +21,19 @@ describe('共編欄位 mutation', () => {
   it('刪除後的舊欄位 set 不會在客戶端重新建立識別', () => {
     const snapshot = { points: [{ id: 'well-a', name: 'A井' }], logs: [] };
     expect(applyFieldMutations(snapshot, [{ op: 'delete', collection: 'points', id: 'well-a' }, { op: 'set', collection: 'points', id: 'well-a', field: 'name', value: '舊名稱' }])).toEqual({ points: [], logs: [] });
+  });
+
+  it('重套連續欄位操作時，依建立順序保留不同工項且最後操作覆蓋同欄位', () => {
+    const remote = { tradeSections: [{ id: 'trade-a', workerCount: '2', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端工項' }] }] };
+    const first = [{ op: 'upsert' as const, collection: 'workItems', parentId: 'trade-a', id: 'local-item', value: { id: 'local-item', taskTextSnapshot: '天地六' } }];
+    const second = [{ op: 'set' as const, collection: 'tradeSections', id: 'trade-a', field: 'workerCount', value: '4' }];
+    const third = [{ op: 'set' as const, collection: 'tradeSections', id: 'trade-a', field: 'workerCount', value: '5' }];
+    expect(applyFieldMutations(applyFieldMutations(applyFieldMutations(remote, first), second), third)).toEqual({ tradeSections: [{ id: 'trade-a', workerCount: '5', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端工項' }, { id: 'local-item', taskTextSnapshot: '天地六' }] }] });
+  });
+
+  it('舊版快照衝突只補入雲端尚無且有固定 ID 的工項', () => {
+    const remote = { tradeSections: [{ id: 'trade-a', workerCount: '2', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端值' }] }] };
+    const legacy = { tradeSections: [{ id: 'trade-a', workerCount: '99', workItems: [{ id: 'cloud-item', taskTextSnapshot: '不覆蓋' }, { id: 'new-item', taskTextSnapshot: '天地六' }, { taskTextSnapshot: '無 ID' }] }] };
+    expect(mergeLegacyDailyWorkItems(remote, legacy)).toEqual({ tradeSections: [{ id: 'trade-a', workerCount: '2', workItems: [{ id: 'cloud-item', taskTextSnapshot: '雲端值' }, { id: 'new-item', taskTextSnapshot: '天地六' }] }] });
   });
 });

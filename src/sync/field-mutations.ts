@@ -80,3 +80,34 @@ export function applyFieldMutations(snapshot: Record<string, unknown>, changes: 
   }
   return result;
 }
+
+/**
+ * Legacy snapshots have no field-level intent.  On a conflict, retain the
+ * cloud values and recover only local work items which the cloud cannot yet
+ * know about.  Stable ids are the proof that an item is safe to add.
+ */
+export function mergeLegacyDailyWorkItems(remote: Record<string, unknown>, legacy: Record<string, unknown>): Record<string, unknown> {
+  const result = structuredClone(remote);
+  const remoteTrades = records(result.tradeSections);
+  const byTradeId = new Map(remoteTrades.filter((row) => Boolean(row.id)).map((row) => [String(row.id), row]));
+
+  for (const localTrade of records(legacy.tradeSections)) {
+    const tradeId = typeof localTrade.id === 'string' ? localTrade.id : '';
+    if (!tradeId) continue;
+    const safeItems = records(localTrade.workItems).filter((item) => typeof item.id === 'string' && item.id.length > 0);
+    if (!safeItems.length) continue;
+    const remoteTrade = byTradeId.get(tradeId);
+    if (!remoteTrade) {
+      // This trade itself is absent remotely, so its identified work items are
+      // safe additions.  No remote field is overwritten.
+      remoteTrades.push({ ...structuredClone(localTrade), workItems: structuredClone(safeItems) });
+      continue;
+    }
+    const remoteItems = records(remoteTrade.workItems);
+    const itemIds = new Set(remoteItems.filter((item) => Boolean(item.id)).map((item) => String(item.id)));
+    for (const item of safeItems) if (!itemIds.has(String(item.id))) remoteItems.push(structuredClone(item));
+    remoteTrade.workItems = remoteItems;
+  }
+  result.tradeSections = remoteTrades;
+  return result;
+}

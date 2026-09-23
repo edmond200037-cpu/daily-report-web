@@ -25,7 +25,7 @@ import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJo
 import { loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
 import { renderAccountPage } from './account/account-view';
 import type { SiteSummary } from './domain/shared';
-import { countOperations, listSyncDiagnostics, retryMissingRpcOperations } from './sync/outbox';
+import { countOperations, dailyOperationStatusSummary, listSyncDiagnostics, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
 import { runSyncOnce } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
@@ -94,6 +94,7 @@ let memoryBackupFeedback = '';
 let dailySaveState: DailySaveState = 'saved';
 let dailyLastSavedAt = '';
 let dailySyncPendingCount = 0;
+let dailySyncConflictCount = 0;
 let pwaUpdateState: PwaUpdateState = (() => { try { return consumePwaUpdateSuccess(sessionStorage) ? 'success' : 'idle'; } catch { return 'idle'; } })();
 let pwaUpdateTimeout: number | undefined;
 let applyPwaUpdate: (() => Promise<void>) | undefined;
@@ -452,7 +453,7 @@ function waterShell(settings: boolean): string { const shellClass = settings ? '
 function updateDailySaveStatus(): void {
   const status = app.querySelector<HTMLElement>('[data-save-status]');
   if (!status) return;
-  const label = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncPendingCount ? `已存本機・待同步／衝突 ${dailySyncPendingCount} 筆` : daily.report.shared ? '已同步' : dailyLastSavedAt ? `已保存 ${dailyLastSavedAt}` : '本機自動儲存';
+  const label = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncConflictCount ? `衝突處理中 ${dailySyncConflictCount} 筆${dailySyncPendingCount ? `・已存本機・待同步 ${dailySyncPendingCount} 筆` : ''}` : dailySyncPendingCount ? `已存本機・待同步 ${dailySyncPendingCount} 筆` : daily.report.shared ? '已同步' : dailyLastSavedAt ? `已保存 ${dailyLastSavedAt}` : '本機自動儲存';
   status.dataset.state = dailySaveState;
   status.textContent = label;
 }
@@ -471,7 +472,9 @@ async function mountWater(route: Extract<AppRoute, { module: 'water-level' }>, t
 }
 async function refreshDailySyncStatus(): Promise<void> {
   const scope = await loadActiveSharedScope().catch(() => null);
-  dailySyncPendingCount = scope ? await countOperations(scope).catch(() => 0) : 0;
+  const summary = scope ? await dailyOperationStatusSummary(scope).catch(() => ({ pending: 0, conflict: 0 })) : { pending: 0, conflict: 0 };
+  dailySyncPendingCount = summary.pending;
+  dailySyncConflictCount = summary.conflict;
   updateDailySaveStatus();
 }
 async function reloadActiveDraftPartition(): Promise<void> {

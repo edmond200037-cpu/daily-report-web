@@ -28,6 +28,15 @@ export async function countOperations(scope: SharedScope): Promise<number> {
   return (await list('sync_outbox') as SyncOperation[]).filter((row) => sharedScopeKey(row) === key).length;
 }
 
+export async function dailyOperationStatusSummary(scope: SharedScope): Promise<{ pending: number; conflict: number }> {
+  const key = sharedScopeKey(scope);
+  const rows = (await list('sync_outbox') as SyncOperation[]).filter((row) => sharedScopeKey(row) === key && (row.entity === 'daily-draft' || row.entity === 'daily-patch'));
+  return {
+    pending: rows.filter((row) => row.status !== 'conflict').length,
+    conflict: rows.filter((row) => row.status === 'conflict').length,
+  };
+}
+
 export async function listSyncDiagnostics(scope: SharedScope): Promise<SyncOperation[]> {
   const key = sharedScopeKey(scope);
   return (await list('sync_outbox') as SyncOperation[])
