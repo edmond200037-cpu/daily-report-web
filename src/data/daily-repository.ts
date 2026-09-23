@@ -3,6 +3,7 @@ import { openDatabase, STORES } from './db.js';
 import { loadActiveSharedScope } from '../sync/context';
 import { buildSyncOperation } from '../sync/outbox';
 import type { SyncOperation } from '../sync/types';
+import { buildFieldMutations } from '../sync/field-mutations';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
 export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; }
@@ -76,17 +77,19 @@ export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
   try {
     const stores = scope ? ['live_report_draft', 'draft_partitions', 'sync_outbox'] : ['live_report_draft', 'draft_partitions'];
     const tx = database.transaction(stores, 'readwrite');
+    const partitionIdValue = partitionId(scope?.userId ?? null, scope?.siteId ?? null, report.date);
+    const partitionBefore = await request(tx.objectStore('draft_partitions').get(partitionIdValue)) as DraftPartition | undefined;
     tx.objectStore('live_report_draft').put(report);
-    const partition: DraftPartition = { id: partitionId(scope?.userId ?? null, scope?.siteId ?? null, report.date), userId: scope?.userId ?? null, siteId: scope?.siteId ?? null, reportDate: report.date, report: structuredClone(report), updatedAt: now() };
+    const partition: DraftPartition = { id: partitionIdValue, userId: scope?.userId ?? null, siteId: scope?.siteId ?? null, reportDate: report.date, report: structuredClone(report), updatedAt: now() };
     tx.objectStore('draft_partitions').put(partition);
     if (scope && report.shared) {
       const queue = tx.objectStore('sync_outbox');
       const existing = await request(queue.getAll()) as SyncOperation[];
       existing.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'daily-draft' && row.entityId === report.shared?.cloudId && row.status === 'pending' && row.attempts === 0).forEach((row) => queue.delete(row.id));
       const payload = structuredClone(report) as DailyReportV3;
-      payload.activeTab = 'engineering';
-      delete payload.shared;
-      queue.put(buildSyncOperation({ ...scope, entity: 'daily-draft', entityId: report.shared.cloudId, baseRevision: report.shared.revision, payload }));
+      payload.activeTab = 'engineering'; delete payload.shared;
+      const changes = buildFieldMutations('daily', partitionBefore?.report as unknown as Record<string, unknown> | undefined, payload as unknown as Record<string, unknown>);
+      if (changes.length) queue.put(buildSyncOperation({ ...scope, entity: 'daily-patch', entityId: report.shared.cloudId, baseRevision: report.shared.revision, payload: { reportDate: report.date, changes } }));
     }
     await txDone(tx);
   } finally { database.close(); }

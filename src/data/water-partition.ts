@@ -2,7 +2,7 @@ import { openDatabase, transactionDone } from './db.js';
 import { loadActiveSharedScope } from '../sync/context';
 import { buildSyncOperation } from '../sync/outbox';
 import type { SharedScope } from '../domain/shared';
-import type { SyncOperation } from '../sync/types';
+import { buildFieldMutations } from '../sync/field-mutations';
 
 export interface WaterSnapshotPayload { schemaVersion: 1; points: unknown[]; logs: unknown[]; }
 export interface WaterPartition extends SharedScope { id: string; revision: number; payload: WaterSnapshotPayload; payloadHash: string; updatedAt: string; }
@@ -32,9 +32,11 @@ export async function persistActiveWaterPartition(): Promise<boolean> {
     tx.objectStore('water_partitions').put(partition);
     const hasContent = payload.points.length > 0 || payload.logs.length > 0;
     if (scope && (existing || hasContent)) {
-      const queue = tx.objectStore('sync_outbox'); const queued = await request(queue.getAll()) as SyncOperation[];
-      queued.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'water-snapshot' && row.status === 'pending' && row.attempts === 0).forEach((row) => queue.delete(row.id));
-      queue.put(buildSyncOperation({ ...scope, entity: 'water-snapshot', entityId: scope.siteId, baseRevision: partition.revision, payload }));
+      const queue = tx.objectStore('sync_outbox');
+      // v2 changes are incremental. Do not coalesce them against a local
+      // partition: doing so would silently drop an earlier offline edit.
+      const changes = buildFieldMutations('water', existing?.payload as unknown as Record<string, unknown> | undefined, payload as unknown as Record<string, unknown>);
+      if (changes.length) queue.put(buildSyncOperation({ ...scope, entity: 'water-patch', entityId: scope.siteId, baseRevision: partition.revision, payload: { changes } }));
     }
     await transactionDone(tx); return true;
   } finally { database.close(); }

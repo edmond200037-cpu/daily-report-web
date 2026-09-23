@@ -6,7 +6,7 @@ interface EnqueueInput extends SharedScope { entity: SyncEntity; entityId: strin
 
 export function buildSyncOperation(input: EnqueueInput): SyncOperation {
   const now = new Date().toISOString();
-  return { ...input, id: crypto.randomUUID(), mutationId: crypto.randomUUID(), status: 'pending', attempts: 0, nextAttemptAt: now, createdAt: now, updatedAt: now };
+  return { ...input, id: crypto.randomUUID(), mutationId: crypto.randomUUID(), protocolVersion: input.entity.endsWith('-patch') ? 2 : 1, status: 'pending', attempts: 0, nextAttemptAt: now, createdAt: now, updatedAt: now };
 }
 
 export async function enqueueSyncOperation(input: EnqueueInput): Promise<SyncOperation> {

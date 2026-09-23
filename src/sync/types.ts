@@ -1,6 +1,6 @@
 import type { SharedScope } from '../domain/shared';
 
-export type SyncEntity = 'memory' | 'daily-draft' | 'daily-finalization' | 'water-snapshot' | 'water-point' | 'water-log';
+export type SyncEntity = 'memory' | 'daily-draft' | 'daily-patch' | 'daily-finalization' | 'water-snapshot' | 'water-patch' | 'water-point' | 'water-log';
 export type SyncOperationStatus = 'pending' | 'sending' | 'conflict' | 'failed';
 
 export interface SyncOperation extends SharedScope {
@@ -15,6 +15,8 @@ export interface SyncOperation extends SharedScope {
   nextAttemptAt: string;
   createdAt: string;
   updatedAt: string;
+  /** Missing means a pre-collaboration full-snapshot outbox entry. */
+  protocolVersion?: 1 | 2;
 }
 
 export interface SyncCursor extends SharedScope { id: string; cursor: number; updatedAt: string; }

@@ -29,6 +29,7 @@ import { runSyncOnce } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
+import { subscribeToSiteChanges } from './sync/realtime';
 
 type AppRoute =
   | { module: 'daily'; page: 'main' }
@@ -121,6 +122,9 @@ let accountMembers: SiteMemberSummary[] = [];
 let accountFeedback = '';
 let accountError = '';
 let syncInFlight = false;
+let stopSiteRealtime: (() => void) | undefined;
+let realtimeScopeKey = '';
+let activeSyncEpoch = 0;
 const escapeHtml = (value: string) => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
 const clearPwaUpdateTimeout = () => { if (pwaUpdateTimeout !== undefined) { window.clearTimeout(pwaUpdateTimeout); pwaUpdateTimeout = undefined; } };
 const pwaUpdateNotice = () => {
@@ -439,7 +443,7 @@ async function mountWater(route: Extract<AppRoute, { module: 'water-level' }>, t
   if (!root) throw new Error('找不到水位功能容器。');
   const module = await import('./water-level/controller.js');
   if (token !== renderToken) return;
-  const controller = new module.WaterLevelController(root) as WaterController;
+  const controller = new module.WaterLevelController(root, () => { void syncActiveSiteSilently(); }) as WaterController;
   water = controller;
   await controller.initialize();
   if (token !== renderToken) return;
@@ -465,6 +469,8 @@ async function refreshActiveMemoryCache(): Promise<void> {
   ]);
 }
 async function switchActiveDataPartition(changeContext: () => Promise<void>): Promise<void> {
+  activeSyncEpoch += 1;
+  stopSiteRealtime?.(); stopSiteRealtime = undefined; realtimeScopeKey = '';
   await daily.flush();
   await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
   await changeContext();
@@ -794,13 +800,20 @@ window.addEventListener('beforeunload', (event) => { if (settingsState.dirty || 
 window.addEventListener('hashchange', () => { const route = parseRoute(location.hash); if (materialEditor && !discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; if (route.module === 'water-level') void daily.flush(); if (route.module === 'daily' && route.page === 'main') { daily.expandedId = null; dailyBasicsExpanded = false; } void renderApp(); });
 async function syncActiveSiteSilently(): Promise<void> {
   if (syncInFlight || document.hidden || materialEditor || contactEditor || settingsState.dirty) return;
+  const epoch = activeSyncEpoch;
   syncInFlight = true;
   try {
     if (dailySaveState === 'saving') await daily.flush();
     const scope = await loadActiveSharedScope();
     if (!scope) return;
+    const scopeKey = `${scope.userId}:${scope.siteId}`;
+    if (scopeKey !== realtimeScopeKey) {
+      stopSiteRealtime?.(); realtimeScopeKey = scopeKey;
+      stopSiteRealtime = subscribeToSiteChanges(scope, () => { if (!document.hidden) void syncActiveSiteSilently(); });
+    }
     await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
     const result = await runSyncOnce(scope);
+    if (epoch !== activeSyncEpoch) return;
     await refreshDailySyncStatus();
     if (result.memoryPulled) await refreshActiveMemoryCache();
     if (result.waterPulled && water) await water.refresh();
@@ -814,6 +827,7 @@ async function syncActiveSiteSilently(): Promise<void> {
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else void syncActiveSiteSilently(); });
 window.addEventListener('online', () => { void syncActiveSiteSilently(); });
+window.addEventListener('local-data-saved', () => { void syncActiveSiteSilently(); });
 async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
 void pruneExpiredReports();
 bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });

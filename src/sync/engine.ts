@@ -6,6 +6,7 @@ import { SHARED_MEMORY_STORES, memoryPayloadHash, type MemoryPartition, type Mem
 import { waterPayloadHash, type WaterPartition, type WaterSnapshotPayload } from '../data/water-partition';
 import { listReadyOperations, markOperationFailed, markOperationSending } from './outbox';
 import type { SyncConflict, SyncCursor, SyncOperation } from './types';
+import { applyFieldMutations, type FieldMutation } from './field-mutations';
 
 interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
 interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
@@ -22,11 +23,21 @@ async function pushOperation(operation: SyncOperation): Promise<MutationResult> 
         p_site_id: operation.siteId, p_mutation_id: operation.mutationId, p_entity_id: operation.entityId,
         p_base_revision: operation.baseRevision, p_payload: operation.payload,
       })
+    : operation.entity === 'daily-patch'
+      ? getSupabaseClient().rpc('apply_daily_field_mutation', {
+          p_site_id: operation.siteId, p_mutation_id: operation.mutationId, p_entity_id: operation.entityId,
+          p_report_date: (operation.payload as { reportDate: string }).reportDate, p_changes: (operation.payload as { changes: FieldMutation[] }).changes,
+        })
     : operation.entity === 'memory'
       ? getSupabaseClient().rpc('apply_memory_snapshot_mutation', {
           p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
           p_base_revision: operation.baseRevision, p_payload: operation.payload,
         })
+      : operation.entity === 'water-patch'
+        ? getSupabaseClient().rpc('apply_water_field_mutation', {
+            p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
+            p_changes: (operation.payload as { changes: FieldMutation[] }).changes,
+          })
       : operation.entity === 'water-snapshot'
         ? getSupabaseClient().rpc('apply_water_snapshot_mutation', {
             p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
@@ -42,7 +53,7 @@ async function pushOperation(operation: SyncOperation): Promise<MutationResult> 
 async function acceptMutation(operation: SyncOperation, result: MutationResult): Promise<void> {
   const database = await openDatabase() as IDBDatabase;
   try {
-    const storeNames = operation.entity === 'memory' || operation.entity === 'water-snapshot'
+    const storeNames = operation.entity === 'memory' || operation.entity === 'water-snapshot' || operation.entity === 'water-patch'
       ? [operation.entity === 'memory' ? 'memory_partitions' : 'water_partitions', 'sync_outbox']
       : ['live_report_draft', 'draft_partitions', 'sync_outbox'];
     const tx = database.transaction(storeNames, 'readwrite');
@@ -52,7 +63,7 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
       const store = tx.objectStore('memory_partitions');
       const partition = await request(store.get(id)) as MemoryPartition | undefined;
       if (partition) store.put({ ...partition, revision: Math.max(partition.revision, result.revision), updatedAt: new Date().toISOString() });
-    } else if (operation.entity === 'water-snapshot') {
+    } else if (operation.entity === 'water-snapshot' || operation.entity === 'water-patch') {
       const id = `${operation.userId}:${operation.siteId}`;
       const store = tx.objectStore('water_partitions');
       const partition = await request(store.get(id)) as WaterPartition | undefined;
@@ -103,9 +114,15 @@ async function applyRemoteDraft(scope: SharedScope, change: ChangeRow, remote: R
     const draftStore = tx.objectStore('live_report_draft');
     const current = await request(draftStore.get('current')) as DailyReportV3 | undefined;
     const queue = await request(tx.objectStore('sync_outbox').getAll()) as SyncOperation[];
-    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'daily-draft' && (row.entityId === remote.id || (row.payload as DailyReportV3 | undefined)?.date === remote.report_date));
+    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && (row.entity === 'daily-draft' || row.entity === 'daily-patch') && (row.entityId === remote.id || (row.payload as DailyReportV3 | undefined)?.date === remote.report_date));
     let outcome: 'pulled' | 'conflict' | 'skipped' = 'skipped';
-    if (pending || (current && current.date === remote.report_date && !current.shared && hasDraftContent(current))) {
+    if (pending?.entity === 'daily-patch') {
+      const next = applyFieldMutations(remote.payload as unknown as Record<string, unknown>, (pending.payload as { changes: FieldMutation[] }).changes) as unknown as DailyReportV3;
+      next.id = 'current'; next.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: remote.id, reportDate: remote.report_date, revision: remote.revision };
+      draftStore.put(next);
+      tx.objectStore('draft_partitions').put({ id: `${scope.userId}:${scope.siteId}:${remote.report_date}`, userId: scope.userId, siteId: scope.siteId, reportDate: remote.report_date, report: structuredClone(next), updatedAt: new Date().toISOString() });
+      outcome = 'pulled';
+    } else if (pending || (current && current.date === remote.report_date && !current.shared && hasDraftContent(current))) {
       const now = new Date().toISOString();
       const conflictId = pending?.id ?? `pull:${scope.siteId}:${remote.id}`;
       const conflict: SyncConflict = { id: conflictId, operationId: pending?.id ?? '', ...scope, localPayload: pending?.payload ?? current, remotePayload: remote.payload, remoteRevision: remote.revision, createdAt: now };
@@ -169,9 +186,16 @@ async function applyRemoteWater(scope: SharedScope, change: ChangeRow, remote: R
     const tx = database.transaction(['water_partitions', 'water_level_points', 'water_level_logs', 'sync_outbox', 'sync_conflicts', 'sync_cursors'], 'readwrite');
     const queueStore = tx.objectStore('sync_outbox');
     const queue = await request(queueStore.getAll()) as SyncOperation[];
-    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'water-snapshot');
+    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && (row.entity === 'water-snapshot' || row.entity === 'water-patch'));
     let outcome: 'pulled' | 'conflict';
-    if (pending) {
+    if (pending?.entity === 'water-patch') {
+      const payload = applyFieldMutations(remote.payload as unknown as Record<string, unknown>, (pending.payload as { changes: FieldMutation[] }).changes) as unknown as WaterSnapshotPayload;
+      const now = new Date().toISOString();
+      tx.objectStore('water_partitions').put({ id: `${scope.userId}:${scope.siteId}`, ...scope, revision: remote.revision, payload, payloadHash: waterPayloadHash(payload), updatedAt: now } satisfies WaterPartition);
+      const points = tx.objectStore('water_level_points'); const logs = tx.objectStore('water_level_logs'); points.clear(); logs.clear();
+      for (const row of payload.points) points.put(row); for (const row of payload.logs) logs.put(row);
+      outcome = 'pulled';
+    } else if (pending) {
       const now = new Date().toISOString();
       tx.objectStore('sync_conflicts').put({ id: pending.id, operationId: pending.id, ...scope, localPayload: pending.payload, remotePayload: remote.payload, remoteRevision: remote.revision, createdAt: now } satisfies SyncConflict);
       queueStore.put({ ...pending, status: 'conflict', updatedAt: now }); outcome = 'conflict';

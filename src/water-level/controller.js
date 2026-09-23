@@ -18,7 +18,7 @@ export const waterLogSummary = (log) => {
 };
 
 export class WaterLevelController {
-  constructor(root) {
+  constructor(root, onLocalSaved = () => {}) {
     this.root = root;
     this.points = [];
     this.logs = [];
@@ -27,10 +27,22 @@ export class WaterLevelController {
     this.expandedHistoryId = null;
     this.outputOpen = false;
     this.importFeedback = [];
+    this.onLocalSaved = onLocalSaved;
   }
 
   async initialize() { this.points = await loadPoints(); this.logs = await loadLogs(); this.editing = newLog(this.points); }
-  async refresh() { this.points = await loadPoints(); this.logs = await loadLogs(); if (!this.editing || !this.editing.id) this.editing = newLog(this.points); this.render(); }
+  async refresh() {
+    const active = document.activeElement;
+    const field = active?.dataset?.waterField ?? active?.dataset?.waterReading;
+    const selectionStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
+    const selectionEnd = typeof active?.selectionEnd === 'number' ? active.selectionEnd : null;
+    this.points = await loadPoints(); this.logs = await loadLogs(); if (!this.editing || !this.editing.id) this.editing = newLog(this.points); this.render();
+    if (field !== undefined) {
+      const selector = active?.dataset?.waterField ? `[data-water-field="${CSS.escape(active.dataset.waterField)}"]` : `[data-water-reading="${CSS.escape(active.dataset.waterReading)}"]`;
+      const next = this.root.querySelector(selector);
+      if (next) { next.focus(); if (selectionStart !== null) next.setSelectionRange(selectionStart, selectionEnd ?? selectionStart); }
+    }
+  }
   preview() { return formatWaterLogs(this.logs); }
 
   render() {
@@ -77,13 +89,13 @@ export class WaterLevelController {
     if (action === 'toggle-output') { this.outputOpen = !this.outputOpen; this.render(); return; }
     if (action === 'toggle-history') { this.expandedHistoryId = this.expandedHistoryId === id ? null : id; this.render(); return; }
     if (action === 'copy-water') { await navigator.clipboard.writeText(this.preview()); return; }
-    if (action === 'save-log') { const errors = validateLog(this.editing); if (errors.length) { this.render(); return; } await saveLog(this.editing); this.editing = newLog(await loadPoints()); await this.refresh(); return; }
-    if (action === 'save-point') { await savePoint(String(id)); await this.refresh(); return; }
+    if (action === 'save-log') { const errors = validateLog(this.editing); if (errors.length) { this.render(); return; } await saveLog(this.editing); this.onLocalSaved(); window.dispatchEvent(new Event('local-data-saved')); this.editing = newLog(await loadPoints()); await this.refresh(); return; }
+    if (action === 'save-point') { await savePoint(String(id)); this.onLocalSaved(); await this.refresh(); return; }
     if (action === 'cancel-edit') { this.editing = newLog(await loadPoints()); this.mode = 'entry'; this.render(); return; }
     if (action === 'edit-log') { const log = this.logs.find((item) => item.id === id); if (log) { this.editing = structuredClone(log); this.mode = 'entry'; this.expandedHistoryId = null; this.render(); } return; }
-    if (action === 'delete-log' && confirm('刪除後，後續下降量將重新計算。確定刪除？')) { await deleteLog(id); if (this.expandedHistoryId === id) this.expandedHistoryId = null; await this.refresh(); return; }
-    if (action === 'delete-point' && confirm('刪除井位只影響後續輸入，不會刪除歷史讀值。確定刪除？')) { await deletePoint(id); await this.refresh(); return; }
-    if (action === 'rename-point') { const point = this.points.find((item) => item.id === id); if (!point) return; const name = prompt('新的井位名稱', point.name); if (name !== null) { await savePoint(name, id); await this.refresh(); } return; }
+    if (action === 'delete-log' && confirm('刪除後，後續下降量將重新計算。確定刪除？')) { await deleteLog(id); this.onLocalSaved(); if (this.expandedHistoryId === id) this.expandedHistoryId = null; await this.refresh(); return; }
+    if (action === 'delete-point' && confirm('刪除井位只影響後續輸入，不會刪除歷史讀值。確定刪除？')) { await deletePoint(id); this.onLocalSaved(); await this.refresh(); return; }
+    if (action === 'rename-point') { const point = this.points.find((item) => item.id === id); if (!point) return; const name = prompt('新的井位名稱', point.name); if (name !== null) { await savePoint(name, id); this.onLocalSaved(); await this.refresh(); } return; }
     if (action === 'parse-import') await this.importText();
   }
 
@@ -105,6 +117,7 @@ export class WaterLevelController {
       const existing = this.logs.find((log) => log.measuredAt === segment.measuredAt);
       if (existing && !confirm(`${segment.measuredAt} 已有量測紀錄，是否覆蓋？`)) { messages.push(`${segment.measuredAt}：略過重複紀錄`); continue; }
       await saveLog({ id: existing?.id || '', measuredAt: segment.measuredAt, battery: segment.battery, readings: segment.readings });
+      this.onLocalSaved();
       messages.push(`${segment.measuredAt}：已匯入`);
     }
     this.importFeedback = messages;
