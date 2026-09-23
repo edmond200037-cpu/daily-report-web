@@ -14,6 +14,7 @@ import { selectSiteMemory } from './data/daily-repository';
 import { comparableFloor, normalizeFloor } from './daily/floor';
 import { createDailyDraft, type ContactItem, type DailyReportV3, type FinalizedDailyReport, type MaterialEntry, type SpecialItem, type TradeSection } from './domain/daily';
 import { duplicateWorkItemIds, validateDailyForFinalization } from './daily/daily-validator';
+import { withActiveSharedSite } from './daily/report-site';
 import { normalizeName } from './format/normalization';
 import { duplicateVendorTradeIds, groupOutputTrades } from './daily/daily-output-model';
 import { contentStatusTone, itemCountStatusTone, materialStatusTone, tradeStatusTone } from './daily/entry-presentation';
@@ -517,7 +518,24 @@ async function renderApp(): Promise<void> {
   if ((route.module === 'daily' && route.page === 'settings' && previousRoute?.module === 'daily' && previousRoute.page === 'main') || (route.module === 'water-level' && route.page === 'settings' && previousRoute?.module === 'water-level' && previousRoute.page === 'main')) settingsReturnModule = previousRoute.module;
   if (route.module === 'account') { await refreshAccount(); if (token !== renderToken) return; const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined; app.innerHTML = `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics })}</main>${pwaUpdateNotice()}`; return; }
   if (route.module === 'settings') { if (route.page === 'memory') { memoryCandidates = await listMemoryCandidates(); const keys = new Set(memoryCandidates.map((row) => row.key)); memoryReviewState.explicitKeys = new Set([...memoryReviewState.explicitKeys].filter((key) => keys.has(key))); memoryReviewState.expandedKeys = new Set([...memoryReviewState.expandedKeys].filter((key) => keys.has(key))); const groups = groupMemoryCandidates(memoryCandidates); if (memoryReviewState.openKind === undefined) memoryReviewState.openKind = groups[0]?.kind ?? null; else if (memoryReviewState.openKind !== null && !groups.some((group) => group.kind === memoryReviewState.openKind)) memoryReviewState.openKind = groups.find((group) => group.kind === memoryReviewState.nextKind)?.kind ?? groups[0]?.kind ?? null; memoryReviewState.nextKind = null; } else { if (settingsState.activeSection !== 'backup' && settingsState.activeSection !== 'debug') settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? dataSystemView() : memoryReviewView()}${pwaUpdateNotice()}`; return; }
-  if (route.module === 'daily') { if (!accountAuth.enabled) await refreshAccount(); if (route.page === 'settings') { if (settingsState.activeSection === 'backup' || settingsState.activeSection === 'debug') settingsState.activeSection = 'sites'; await refreshSettings(); } else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports(); if (token !== renderToken) return; app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`; requestAnimationFrame(syncMaterialConnectionCurves); return; }
+  if (route.module === 'daily') {
+    if (!accountAuth.enabled) await refreshAccount();
+    if (token !== renderToken) return;
+    if (route.page === 'main') {
+      const site = accountAuth.user ? accountSites.find((item) => item.id === accountActiveSiteId) : undefined;
+      const aligned = withActiveSharedSite(daily.report, site);
+      if (aligned !== daily.report) {
+        if (site?.role === 'viewer') daily.report = aligned;
+        else daily.update(() => { daily.report = aligned; });
+      }
+    }
+    if (route.page === 'settings') { if (settingsState.activeSection === 'backup' || settingsState.activeSection === 'debug') settingsState.activeSection = 'sites'; await refreshSettings(); }
+    else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports();
+    if (token !== renderToken) return;
+    app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`;
+    requestAnimationFrame(syncMaterialConnectionCurves);
+    return;
+  }
   try { await mountWater(route, token); } catch (error) { if (token !== renderToken) return; const summary = error instanceof Error ? error.message : '無法讀取本機水位資料。'; app.innerHTML = `<main class="app-shell"><section class="form-card"><h1>水位功能暫時無法開啟</h1><p>錯誤摘要：${escapeHtml(summary)}</p><p><a href="#water-level">重新載入</a>　<a href="#daily">返回施工日報</a></p></section></main>${pwaUpdateNotice()}`; }
 }
 async function refreshSettings(): Promise<void> { const section = settingsState.activeSection; settingsTrades = await listMemories('trades'); if (section === 'materials') materialTypes = await listMaterialTypes(); else if (section === 'templates') settingsTemplates = await listTemplates(); else if (section === 'debug') settingsDebug = await databaseSummary(); else if (section === 'trade-tasks') { settingsAllTasks = await listMemories('tasks'); settingsRows = settingsAllTasks.filter((row) => row.tradeTypeId === settingsState.selectedTradeTypeId); } else if (section === 'vendors') settingsRows = settingsState.selectedTradeTypeId ? await listMemories('vendors', settingsState.selectedTradeTypeId) : []; else if (section !== 'backup') settingsRows = await listMemories(section); }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { isFinalizedReportExpired, outputFingerprint, recentConfirmedVendor, type NamedMemory } from '../../src/data/daily-repository';
 import { validateDailyForFinalization } from '../../src/daily/daily-validator';
+import { withActiveSharedSite } from '../../src/daily/report-site';
+import { formatDailyReport } from '../../src/daily/daily-formatter';
 import type { DailyReportV3 } from '../../src/domain/daily';
 
 const draft = (): DailyReportV3 => ({ id: 'current', date: '2026-08-10', siteId: 'site-1', siteNameSnapshot: '測試工地', activeTab: 'engineering', tradeSections: [{ id: 'trade-1', tradeTypeId: null, tradeNameSnapshot: '模板工程', vendorId: null, vendorNameSnapshot: '廠商', workerCount: '3', workItems: [{ id: 'work-1', startFloorRaw: '', startFloorNormalized: null, endFloorRaw: '', endFloorNormalized: null, locationId: null, locationTextSnapshot: '', taskId: null, taskTextSnapshot: '模板組立', note: '', sortOrder: 0, createdAt: '', updatedAt: '' }], materialEntries: [], status: 'complete', sortOrder: 0, createdAt: '', updatedAt: '' }], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [], createdAt: '', updatedAt: '' });
@@ -12,6 +14,14 @@ describe('日報定稿契約', () => {
     expect(validateDailyForFinalization(incomplete)).toContain('尚有工種草稿，請完成或刪除後再定稿。');
     const missingSite = draft(); missingSite.siteNameSnapshot = '';
     expect(validateDailyForFinalization(missingSite)).toContain('請填寫工地名稱。');
+  });
+
+  it('選定共用工地後，以該工地名稱驗證及產生日報文字', () => {
+    const missingSite = draft(); missingSite.siteId = 'old-local-site'; missingSite.siteNameSnapshot = '';
+    const report = withActiveSharedSite(missingSite, { name: '天地六工地' });
+    expect(report.siteId).toBeNull();
+    expect(validateDailyForFinalization(report)).toEqual([]);
+    expect(formatDailyReport(report)).toContain('天地六工地');
   });
 
   it('在第 7 個日曆日清除已定稿日報', () => {
