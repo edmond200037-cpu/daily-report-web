@@ -9,7 +9,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { consumePwaUpdateSuccess, PWA_UPDATE_SUCCESS_MARKER, transitionPwaUpdateState, type PwaUpdateState } from './pwa/update-state';
 import { DailyController, type DailyDeleteUndo, type DailySaveState } from './daily/daily-controller';
 import { formatDailyReport } from './daily/daily-formatter';
-import { clearDebugLogs, confirmMemory, confirmMemoryCandidates, createMaterialType, databaseSummary, deleteMemory, deleteMaterialType, exportMemories, finalizeDailyReport, listMaterialMemory, listMaterialTypes, listMemories, listMemoryCandidates, listRecentFinalizedReports, listTemplates, loadDailyDraft, loadDailyDraftForDate, mergeMemoryBackup, pruneExpiredReports, rejectMaterialMemoryItem, renameMaterialType, reorderMaterialTypes, saveContactEntry, saveMaterialEntry, saveMemory, saveTemplate, type DailySettingsSection, type MaterialMemoryItem, type MaterialType, type MemoryCandidate, type MemoryCandidateKey, type NamedMemory, type SpecialTemplate } from './data/daily-repository';
+import { clearDebugLogs, confirmMemory, confirmMemoryCandidates, createMaterialType, databaseSummary, deleteMemory, deleteMaterialType, exportMemories, finalizeDailyReport, outputFingerprint, listMaterialMemory, listMaterialTypes, listMemories, listMemoryCandidates, listRecentFinalizedReports, listTemplates, loadDailyDraft, loadDailyDraftForDate, mergeMemoryBackup, pruneExpiredReports, rejectMaterialMemoryItem, renameMaterialType, reorderMaterialTypes, saveContactEntry, saveMaterialEntry, saveMemory, saveTemplate, type DailySettingsSection, type MaterialMemoryItem, type MaterialType, type MemoryCandidate, type MemoryCandidateKey, type NamedMemory, type SpecialTemplate } from './data/daily-repository';
 import { selectSiteMemory } from './data/daily-repository';
 import { comparableFloor, normalizeFloor } from './daily/floor';
 import { createDailyDraft, type ContactItem, type DailyReportV3, type FinalizedDailyReport, type MaterialEntry, type SpecialItem, type TradeSection } from './domain/daily';
@@ -22,18 +22,23 @@ import { searchTradeManagement, settingsTradeSwipeRelease } from './settings/tra
 import { confirmationSelection, groupMemoryCandidates, memoryCandidateImpact, rejectionSelection } from './settings/memory-review';
 import { completeOAuthRedirect, loadAuthSnapshot, signInWithGoogle, signOut, type AuthSnapshot } from './auth/auth-service';
 import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJoinRequests, listSiteMembers, rejectSiteMember, removeSiteMember, requestSiteAccess, updateSiteMemberRole, type JoinRequestSummary, type SiteMemberSummary } from './data/remote/site-repository';
-import { loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
+import { cacheActiveSiteRole, loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
 import { renderAccountPage } from './account/account-view';
 import { AccountLoadTimeoutError, withAccountDeadline } from './account/load-timeout';
 import { DB_VERSION } from './data/db.js';
 import type { SiteSummary } from './domain/shared';
 import { countOperations, dailyOperationStatusSummary, listAllOperations, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
-import { loadLastPulledAt, runSyncOnce, type SyncRunResult } from './sync/engine';
+import { loadLastPulledAt, refreshCloudMemoryLibrary, runSyncOnce, type SyncRunResult } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
+import { queueMemoryImport, readLocalMemoryImportSource } from './data/memory-partition';
+import { getSupabaseClient } from './data/remote/supabase-client';
+import { previewMemoryImport, type MemoryImportPreview } from './sync/memory-import';
+import type { RemoteMemoryEntry } from './sync/memory-entries';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
 import { exportConflictBackups, listConflictReviews, queueConflictResolution, type ConflictReview } from './sync/conflict-review';
+import { subscribeToSiteChanges } from './sync/realtime';
 
 type AppRoute =
   | { module: 'daily'; page: 'main' }
@@ -122,6 +127,7 @@ let settingsReturnModule: SettingsReturnModule = 'daily';
 let renderedRoute: AppRoute | null = null;
 let accountAuth: AuthSnapshot = { enabled: false, session: null, user: null };
 let accountSites: SiteSummary[] = [];
+let accountActiveSiteRole: SiteSummary['role'] | null = null;
 let accountActiveSiteId: string | null = null;
 let accountPendingCount = 0;
 let accountRequests: JoinRequestSummary[] = [];
@@ -174,8 +180,10 @@ function sitePickerField(): string {
 }
 async function selectSharedSiteFromWorkspace(siteId: string): Promise<void> {
   if (!accountAuth.user || siteId === accountActiveSiteId || !accountSites.some((site) => site.id === siteId)) return;
-  await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, siteId); });
+  const role = accountSites.find((site) => site.id === siteId)?.role ?? null;
+  await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, siteId, role); });
   accountActiveSiteId = siteId;
+  accountActiveSiteRole = role;
   await refreshAccount();
   await renderApp();
 }
@@ -568,7 +576,7 @@ async function refreshAccount(onProgress?: () => void): Promise<void> {
     if (!current()) return;
     accountAuth = auth;
     if (!auth.user) {
-      accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null;
+      accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountActiveSiteRole = null;
       accountPendingCount = 0; accountSyncDiagnostics = []; accountSyncOperations = []; accountConflictReviews = [];
       accountQueueStatus = 'ready'; accountLoadCoreReady = true; accountLoadStage = null; onProgress?.(); return;
     }
@@ -576,6 +584,8 @@ async function refreshAccount(onProgress?: () => void): Promise<void> {
     if (!current()) return;
     accountSites = sites;
     accountActiveSiteId = sites.some((site) => site.id === context.activeSiteId) ? context.activeSiteId : null;
+    accountActiveSiteRole = sites.find((site) => site.id === accountActiveSiteId)?.role ?? null;
+    void cacheActiveSiteRole(auth.user.id, accountActiveSiteRole).catch(() => {});
     accountRequests = []; accountMembers = []; accountSyncOperations = []; accountSyncDiagnostics = []; accountPendingCount = 0; accountConflictReviews = [];
     accountQueueStatus = accountActiveSiteId ? 'loading' : 'ready';
     accountLoadCoreReady = true;
@@ -614,7 +624,7 @@ function renderAccountLoading(): void {
 }
 function renderAccountLoaded(): void {
   const progress = accountLoadExtrasPending ? '<p class="hint" role="status">工地已可使用，成員與同步診斷仍在載入…</p>' : '';
-  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews }));
+  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews, importPreview: memoryImportSiteId === accountActiveSiteId ? memoryImportPreview : null }));
 }
 async function renderApp(): Promise<void> {
   if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
@@ -692,6 +702,25 @@ app.addEventListener('click', (event) => {
   }
 });
 app.addEventListener('click', (event) => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-shared-site-select]'); if (button?.dataset.sharedSiteSelect) { event.preventDefault(); void selectSharedSiteFromWorkspace(button.dataset.sharedSiteSelect); } });
+app.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement;
+  const mutation = target.closest('[data-memory-confirm],[data-memory-reject],[data-memory-reject-selected],[data-settings-action="confirm"],[data-settings-action="delete"],[data-settings-action="delete-material-type"],[data-settings-action="rename-material-type"],[data-settings-action="add-material-type"],[data-site-search-action],[data-daily-action="finalize"]');
+  if (!mutation) return;
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole;
+  if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改或審核工地記憶。'); return; }
+  window.setTimeout(scheduleBackgroundSync, 1000);
+}, true);
+app.addEventListener('submit', (event) => {
+  if (!(event.target instanceof HTMLFormElement) || !event.target.dataset.settingsForm) return;
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole;
+  if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改工地記憶。'); return; }
+  window.setTimeout(scheduleBackgroundSync, 1000);
+}, true);
+app.addEventListener('change', (event) => {
+  if (!(event.target instanceof HTMLInputElement) || !event.target.dataset.memoryBackupImport) return;
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole;
+  if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); event.target.value = ''; alert('檢視者無法匯入工地記憶。'); }
+}, true);
 app.addEventListener('click', async (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-sync-now]');
   if (!button || syncInFlight) return;
@@ -724,7 +753,7 @@ app.addEventListener('click', async (event) => {
       return;
     }
     if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }
-    if (button.dataset.accountAction === 'sign-out') { await switchActiveDataPartition(signOut); accountSites = []; accountActiveSiteId = null; accountFeedback = '已登出並切回本機草稿與記憶資料；共用工地快取仍保留在此裝置。'; }
+    if (button.dataset.accountAction === 'sign-out') { await switchActiveDataPartition(signOut); accountSites = []; accountActiveSiteId = null; accountActiveSiteRole = null; accountFeedback = '已登出並切回本機草稿與記憶資料；共用工地快取仍保留在此裝置。'; }
     if (button.dataset.accountAction === 'copy-join-code' && button.dataset.siteId) {
       const site = accountSites.find((row) => row.id === button.dataset.siteId);
       if (!site) { accountError = '找不到此工地的加入碼，請重新載入頁面後再試。'; await renderApp(); return; }
@@ -744,9 +773,54 @@ app.addEventListener('click', async (event) => {
       return;
     }
     if (button.dataset.accountAction === 'select-site' && accountAuth.user && button.dataset.siteId) {
-      await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, button.dataset.siteId!); });
+      const role = accountSites.find((site) => site.id === button.dataset.siteId)?.role ?? null;
+      await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, button.dataset.siteId!, role); });
       accountActiveSiteId = button.dataset.siteId;
+      accountActiveSiteRole = role;
       accountFeedback = '已切換目前共用工地、獨立草稿與記憶快取。';
+      scheduleBackgroundSync();
+    }
+    if (button.dataset.accountAction === 'preview-memory-import' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner') throw new Error('只有工地管理員可以匯入舊本機記憶。');
+      const source = await readLocalMemoryImportSource();
+      if (!source) throw new Error('這台裝置沒有可匯入的舊本機記憶。');
+      const remote = await readCloudMemoryEntries(accountActiveSiteId);
+      memoryImportPreview = previewMemoryImport(source, remote);
+      memoryImportSource = 'local';
+      memoryImportSiteId = accountActiveSiteId;
+      memoryImportRemoteSignature = cloudMemorySignature(remote);
+      accountFeedback = `預覽完成：新增 ${memoryImportPreview.add.length} 筆、相同 ${memoryImportPreview.duplicate.length} 筆、內容衝突 ${memoryImportPreview.conflict.length} 筆。`;
+    }
+    if (button.dataset.accountAction === 'preview-legacy-memory-import' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner') throw new Error('只有工地管理員可以匯入舊快照。');
+      const old = (await listAllOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId })).find((row) => row.entity === 'memory');
+      if (!old) throw new Error('找不到舊版待送快照。');
+      const remote = await readCloudMemoryEntries(accountActiveSiteId);
+      memoryImportPreview = previewMemoryImport(old.payload as import('./data/memory-partition').MemorySnapshotPayload, remote);
+      memoryImportSource = 'legacy';
+      memoryImportSiteId = accountActiveSiteId;
+      memoryImportRemoteSignature = cloudMemorySignature(remote);
+      accountFeedback = `舊快照預覽完成：新增 ${memoryImportPreview.add.length} 筆、相同 ${memoryImportPreview.duplicate.length} 筆、衝突 ${memoryImportPreview.conflict.length} 筆。`;
+    }
+    if (button.dataset.accountAction === 'confirm-memory-import' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner' || memoryImportSiteId !== accountActiveSiteId || !memoryImportPreview) throw new Error('請先由管理員重新預覽目標工地。');
+      const remote = await readCloudMemoryEntries(accountActiveSiteId);
+      if (cloudMemorySignature(remote) !== memoryImportRemoteSignature) throw new Error('雲端記憶已變更，請重新預覽後再匯入。');
+      const selectedConflicts = [...app.querySelectorAll<HTMLInputElement>('[data-memory-import-conflict]:checked')]
+        .map((input) => memoryImportPreview!.conflict.find((entry) => entry.id === input.value)).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+      const entries = [...memoryImportPreview.add, ...selectedConflicts];
+      const count = entries.length;
+      if (!count && memoryImportSource !== 'legacy') throw new Error('沒有需要新增的舊記憶。');
+      if (!window.confirm(`將 ${count} 筆舊本機記憶加入目前共用工地？原始本機資料會保留；未勾選的衝突不會匯入。`)) return;
+      const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+      await queueMemoryImport(scope, entries, memoryImportSource === 'legacy');
+      if (memoryImportSource === 'legacy') await refreshCloudMemoryLibrary(scope);
+      memoryImportPreview = null;
+      accountFeedback = `已將 ${count} 筆記憶排入逐筆同步；原始本機資料未清除。`;
+      scheduleBackgroundSync();
     }
     if (button.dataset.accountAction === 'sync-now' && accountAuth.user && accountActiveSiteId && !syncInFlight) {
       await syncActiveSiteNow();
@@ -792,7 +866,8 @@ app.addEventListener('submit', async (event) => {
   try {
     if (form.dataset.accountForm === 'create-site') {
       const result = await createSharedSite(String(values.get('name') ?? ''));
-      if (accountAuth.user) await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, result.siteId); });
+      if (accountAuth.user) await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, result.siteId, 'owner'); });
+      accountActiveSiteRole = 'owner';
       accountFeedback = `工地已建立並設為目前工地。加入碼：${result.joinCode}`;
     } else {
       await requestSiteAccess(String(values.get('joinCode') ?? ''));
@@ -917,7 +992,7 @@ app.addEventListener('click', async (event) => {
   else if (action === 'delete-trade') daily.deleteTrade(button.dataset.id!);
   else if (action === 'complete') { const issues = daily.complete(button.dataset.id!); if (issues.length) alert(`尚未完成：\n${issues.join('\n')}`); }
   else if (action === 'copy') { await navigator.clipboard.writeText(formatDailyReport(daily.report)); dailyCopyFeedback = '已複製完整日報。'; window.setTimeout(() => { dailyCopyFeedback = ''; void renderApp(); }, 2400); }
-  else if (action === 'finalize') { const issues = validateDailyForFinalization(daily.report); if (issues.length) { alert(`尚未完成：\n${issues.join('\n')}`); return; } try { const output = formatDailyReport(daily.report); const finalized = await finalizeDailyReport(daily.report, output); daily.report = finalized.retainedDraft; await daily.flush(); const syncResult = await syncActiveSiteNow(); const scope = await loadActiveSharedScope().catch(() => null); const syncState = scope ? await dailyOperationStatusSummary(scope) : null; [dailyTrades, dailyVendors, dailyTasks, materialTypes, materialMemory] = await Promise.all([listMemories('trades'), listMemories('vendors'), listMemories('tasks'), listMaterialTypes(), listMaterialMemory()]); await persistActiveMemoryPartition(); await navigator.clipboard.writeText(finalized.outputText); const cloudState = !scope ? '本機已定稿；尚未選擇共用工地。' : syncState && (syncState.pending || syncState.conflict || syncResult?.failed) ? '本機已定稿、雲端待同步。' : '本機已定稿、已同步雲端。'; dailyCopyFeedback = `${finalized.created ? '已定稿、複製並更新記憶；草稿已保留。' : '內容未變，已再次複製；未重複建立定稿或記憶。'} ${cloudState}`; dailyPreviewOpen = true; } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); return; } }
+  else if (action === 'finalize') { const issues = validateDailyForFinalization(daily.report); if (issues.length) { alert(`尚未完成：\n${issues.join('\n')}`); return; } try { const output = formatDailyReport(daily.report); const finalized = await finalizeDailyReport(daily.report, output); daily.report = finalized.retainedDraft; await daily.flush(); if (finalized.created) await persistActiveMemoryPartition(await outputFingerprint(finalized.outputText)); const syncResult = await syncActiveSiteNow(); const scope = await loadActiveSharedScope().catch(() => null); const syncState = scope ? await dailyOperationStatusSummary(scope) : null; [dailyTrades, dailyVendors, dailyTasks, materialTypes, materialMemory] = await Promise.all([listMemories('trades'), listMemories('vendors'), listMemories('tasks'), listMaterialTypes(), listMaterialMemory()]); await persistActiveMemoryPartition(); await navigator.clipboard.writeText(finalized.outputText); const cloudState = !scope ? '本機已定稿；尚未選擇共用工地。' : syncState && (syncState.pending || syncState.conflict || syncResult?.failed) ? '本機已定稿、雲端待同步。' : '本機已定稿、已同步雲端。'; dailyCopyFeedback = `${finalized.created ? '已定稿、複製並更新記憶；草稿已保留。' : '內容未變，已再次複製；未重複建立定稿或記憶。'} ${cloudState}`; dailyPreviewOpen = true; } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); return; } }
   else if (action === 'delete-contact') { const item = daily.report.contacts.find((row) => row.id === button.dataset.id); if (!item) { activeContactSearch = null; contactEditor = null; await renderApp(); return; } if (!window.confirm(`刪除聯絡事項？\n\n工種：${item.tradeNameSnapshot}\n廠商：${item.vendorNameSnapshot}\n施工項目：${item.items.length} 項\n\n此操作無法復原。`)) return; daily.update(() => { daily.report.contacts = daily.report.contacts.filter((row) => row.id !== item.id); daily.report.contacts.forEach((row, index) => row.sortOrder = index); }); activeContactSearch = null; contactEditor = null; }
   else if (action === 'add-special') { daily.addSpecial(); expandedSpecialId = daily.report.specialItems.at(-1)?.id ?? null; }
   else if (action === 'delete-special') daily.update(() => daily.report.specialItems = daily.report.specialItems.filter((item) => item.id !== button.dataset.id));
@@ -1031,7 +1106,66 @@ async function syncActiveSiteNow(): Promise<SyncRunResult | null> {
     return null;
   } finally { syncInFlight = false; }
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } });
-async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#settings/account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
+let backgroundSyncTimer: number | undefined;
+let subscribedSiteId: string | null = null;
+let unsubscribeSiteChanges: (() => void) | null = null;
+function scheduleBackgroundSync(): void {
+  if (backgroundSyncTimer) window.clearTimeout(backgroundSyncTimer);
+  backgroundSyncTimer = window.setTimeout(() => { backgroundSyncTimer = undefined; void runBackgroundSync(); }, 350);
+}
+async function runBackgroundSync(): Promise<void> {
+  if (syncInFlight || !navigator.onLine || document.hidden) return;
+  const epoch = activeSyncEpoch;
+  const scope = await loadActiveSharedScope().catch(() => null);
+  if (!scope) { unsubscribeSiteChanges?.(); unsubscribeSiteChanges = null; subscribedSiteId = null; return; }
+  if (epoch !== activeSyncEpoch) return;
+  if (!accountSites.length) {
+    try {
+      accountSites = await listAccessibleSites(scope.userId);
+      accountActiveSiteId = scope.siteId;
+      accountActiveSiteRole = accountSites.find((site) => site.id === scope.siteId)?.role ?? null;
+      await cacheActiveSiteRole(scope.userId, accountActiveSiteRole);
+    } catch { /* Cached role remains available while offline. */ }
+  }
+  if (subscribedSiteId !== scope.siteId) {
+    unsubscribeSiteChanges?.(); subscribedSiteId = scope.siteId;
+    unsubscribeSiteChanges = subscribeToSiteChanges(scope, scheduleBackgroundSync);
+  }
+  syncInFlight = true;
+  try {
+    await persistActiveMemoryPartition();
+    const result = await runSyncOnce(scope, false);
+    if (epoch !== activeSyncEpoch) return;
+    lastPulledAt = await loadLastPulledAt(scope);
+    if (result.memoryPulled) await refreshActiveMemoryCache();
+    if (result.waterPulled && water) await water.refresh();
+    await refreshDailySyncStatus();
+    const focused = document.activeElement;
+    if (result.memoryPulled && !(focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement || focused instanceof HTMLSelectElement) && !(parseRoute(location.hash).module === 'account' && memoryImportPreview) && !settingsState.dirty && !materialDirty() && !contactDirty()) await renderApp();
+  } catch (error) {
+    console.warn('背景同步失敗；本機佇列保留供重試。', error);
+  } finally { syncInFlight = false; }
+}
+let memoryImportPreview: MemoryImportPreview | null = null;
+let memoryImportSiteId: string | null = null;
+let memoryImportSource: 'local' | 'legacy' = 'local';
+let memoryImportRemoteSignature = '';
+async function readCloudMemoryEntries(siteId: string): Promise<RemoteMemoryEntry[]> {
+  const all: RemoteMemoryEntry[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await getSupabaseClient().from('memory_entries')
+      .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
+      .eq('site_id', siteId).order('id').range(offset, offset + 499);
+    if (error) throw error;
+    all.push(...(data ?? []) as RemoteMemoryEntry[]);
+    if (!data || data.length < 500) return all;
+  }
+}
+const cloudMemorySignature = (rows: RemoteMemoryEntry[]): string => JSON.stringify(rows.map((row) => [row.id, row.revision, row.deleted_at]));
+window.addEventListener('memory-outbox-changed', scheduleBackgroundSync);
+window.addEventListener('online', scheduleBackgroundSync);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else scheduleBackgroundSync(); });
+window.setInterval(scheduleBackgroundSync, 30_000);
+async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#settings/account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); accountActiveSiteId = initialScope?.siteId ?? null; accountActiveSiteRole = initialScope ? (await loadSharedContext(initialScope.userId)).activeSiteRole ?? null : null; lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
 void pruneExpiredReports();
-bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });
+bootstrap().then(scheduleBackgroundSync).catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });

@@ -7,11 +7,11 @@ import { waterPayloadHash, type WaterPartition, type WaterSnapshotPayload } from
 import { listReadyOperations, markOperationFailed, markOperationSending } from './outbox';
 import type { SyncConflict, SyncCursor, SyncOperation } from './types';
 import { applyFieldMutations, buildFieldMutations, mergeLegacyDailyWorkItems, type FieldMutation } from './field-mutations';
+import { memoryEntryStore, type RemoteMemoryEntry } from './memory-entries';
 
 interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
 interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
 interface RemoteDraftRow { id: string; report_date: string; payload: DailyReportV3; revision: number; }
-interface RemoteMemoryRow { site_id: string; payload: MemorySnapshotPayload; revision: number; }
 interface RemoteWaterRow { site_id: string; payload: WaterSnapshotPayload; revision: number; }
 export interface SyncRunResult {
   applied: number; pulled: number; dailyApplied: number; dailyPulled: number;
@@ -43,6 +43,11 @@ async function pushOperation(operation: SyncOperation): Promise<MutationResult> 
           p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
           p_base_revision: operation.baseRevision, p_payload: operation.payload,
         })
+      : operation.entity === 'memory-entry'
+        ? getSupabaseClient().rpc('apply_memory_entry_mutation', {
+            p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
+            p_base_revision: operation.baseRevision, p_entry: operation.payload,
+          })
       : operation.entity === 'water-patch'
         ? getSupabaseClient().rpc('apply_water_field_mutation', {
             p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
@@ -63,12 +68,15 @@ async function pushOperation(operation: SyncOperation): Promise<MutationResult> 
 async function acceptMutation(operation: SyncOperation, result: MutationResult): Promise<void> {
   const database = await openDatabase() as IDBDatabase;
   try {
-    const storeNames = operation.entity === 'memory' || operation.entity === 'water-snapshot' || operation.entity === 'water-patch'
+    const storeNames = operation.entity === 'memory-entry' ? ['memory_entry_versions', 'sync_outbox', 'sync_conflicts']
+      : operation.entity === 'memory' || operation.entity === 'water-snapshot' || operation.entity === 'water-patch'
       ? [operation.entity === 'memory' ? 'memory_partitions' : 'water_partitions', 'sync_outbox', 'sync_conflicts']
       : ['live_report_draft', 'draft_partitions', 'sync_outbox', 'sync_conflicts'];
     const tx = database.transaction(storeNames, 'readwrite');
     const queue = tx.objectStore('sync_outbox');
-    if (operation.entity === 'memory') {
+    if (operation.entity === 'memory-entry') {
+      tx.objectStore('memory_entry_versions').put({ id: `${operation.siteId}:${operation.entityId}`, revision: result.revision });
+    } else if (operation.entity === 'memory') {
       const id = `${operation.userId}:${operation.siteId}`;
       const store = tx.objectStore('memory_partitions');
       const partition = await request(store.get(id)) as MemoryPartition | undefined;
@@ -238,41 +246,61 @@ async function applyRemoteDraft(scope: SharedScope, change: ChangeRow, remote: R
   } finally { database.close(); }
 }
 
-async function applyRemoteMemory(scope: SharedScope, change: ChangeRow, remote: RemoteMemoryRow): Promise<'pulled' | 'conflict'> {
+async function applyRemoteMemoryEntry(scope: SharedScope, change: ChangeRow, remote: RemoteMemoryEntry): Promise<'pulled' | 'conflict' | 'skipped'> {
   const database = await openDatabase() as IDBDatabase;
   try {
-    const tx = database.transaction(['memory_partitions', 'sync_outbox', 'sync_conflicts', 'sync_cursors', ...SHARED_MEMORY_STORES], 'readwrite');
-    const queueStore = tx.objectStore('sync_outbox');
-    const queue = await request(queueStore.getAll()) as SyncOperation[];
-    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory');
-    let outcome: 'pulled' | 'conflict';
-    if (pending) {
-      const now = new Date().toISOString();
-      tx.objectStore('sync_conflicts').put({
-        id: pending.id, operationId: pending.id, ...scope,
-        localPayload: pending.payload, remotePayload: remote.payload,
-        remoteRevision: remote.revision, createdAt: now,
-      } satisfies SyncConflict);
-      queueStore.put({ ...pending, status: 'conflict', updatedAt: now });
+    const storeName = memoryEntryStore(remote.kind);
+    const tx = database.transaction(['memory_partitions', 'memory_entry_versions', 'sync_outbox', 'sync_conflicts', 'sync_cursors', storeName], 'readwrite');
+    const queue = await request(tx.objectStore('sync_outbox').getAll()) as SyncOperation[];
+    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry' && row.entityId === remote.id);
+    const legacy = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory');
+    const now = new Date().toISOString();
+    let outcome: 'pulled' | 'conflict' | 'skipped' = 'pulled';
+    if (legacy) {
+      tx.objectStore('sync_outbox').put({ ...legacy, status: 'blocked', lastError: '舊版整份記憶快照需要預覽並轉成逐筆資料。', updatedAt: now });
       outcome = 'conflict';
+    } else if (pending) {
+      // Let the RPC decide CAS and learning-event deduplication. It returns both
+      // copies on conflict without disturbing an offline edit in the cache.
+      outcome = 'skipped';
     } else {
-      const now = new Date().toISOString();
-      const partition: MemoryPartition = {
-        id: `${scope.userId}:${scope.siteId}`, ...scope, revision: remote.revision,
-        payload: remote.payload, payloadHash: memoryPayloadHash(remote.payload), updatedAt: now,
-      };
-      tx.objectStore('memory_partitions').put(partition);
-      for (const name of SHARED_MEMORY_STORES) {
-        const store = tx.objectStore(name);
-        store.clear();
-        for (const row of remote.payload.stores[name] ?? []) store.put(row);
+      const store = tx.objectStore(storeName);
+      const partitionStore = tx.objectStore('memory_partitions');
+      const partition = await request(partitionStore.get(`${scope.userId}:${scope.siteId}`)) as MemoryPartition | undefined;
+      const payload = structuredClone(partition?.payload ?? { schemaVersion: 1, stores: Object.fromEntries(SHARED_MEMORY_STORES.map((name) => [name, []])) }) as MemorySnapshotPayload;
+      if (remote.kind === 'template') {
+        const setting = (await request(store.get('daily_special_templates_v1')) as { id: string; templates?: Record<string, unknown>[] } | undefined) ?? { id: 'daily_special_templates_v1', templates: [] };
+        setting.templates = (setting.templates ?? []).filter((row) => row.id !== remote.id);
+        if (!remote.deleted_at) setting.templates.push(remote.payload);
+        store.put(setting);
+        payload.stores.app_settings = payload.stores.app_settings.filter((row) => (row as { id: string }).id !== setting.id);
+        payload.stores.app_settings.push(setting);
+      } else {
+        if (remote.deleted_at) store.delete(remote.id); else store.put(remote.payload);
+        payload.stores[storeName] = (payload.stores[storeName] ?? []).filter((row) => (row as { id: string }).id !== remote.id);
+        if (!remote.deleted_at) payload.stores[storeName].push(remote.payload);
       }
-      outcome = 'pulled';
+      partitionStore.put({ id: `${scope.userId}:${scope.siteId}`, ...scope, revision: partition?.revision ?? 0, payload, payloadHash: memoryPayloadHash(payload), updatedAt: now } satisfies MemoryPartition);
+      tx.objectStore('memory_entry_versions').put({ id: `${scope.siteId}:${remote.id}`, revision: remote.revision });
     }
-    tx.objectStore('sync_cursors').put({ id: cursorId(scope), ...scope, cursor: change.sequence, updatedAt: new Date().toISOString() } satisfies SyncCursor);
+    tx.objectStore('sync_cursors').put({ id: cursorId(scope), ...scope, cursor: change.sequence, updatedAt: now } satisfies SyncCursor);
     await transactionDone(tx);
     return outcome;
   } finally { database.close(); }
+}
+
+export async function refreshCloudMemoryLibrary(scope: SharedScope): Promise<void> {
+  const cursor = await loadCursor(scope);
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await getSupabaseClient().from('memory_entries')
+      .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
+      .eq('site_id', scope.siteId).order('id').range(offset, offset + 499);
+    if (error) throw error;
+    for (const row of data ?? []) await applyRemoteMemoryEntry(scope,
+      { sequence: cursor, entity: 'memory-entry', entity_id: row.id, operation: row.deleted_at ? 'delete' : 'upsert', revision: row.revision, changed_at: new Date().toISOString() },
+      row as RemoteMemoryEntry);
+    if (!data || data.length < 500) break;
+  }
 }
 
 async function applyRemoteWater(scope: SharedScope, change: ChangeRow, remote: RemoteWaterRow): Promise<'pulled' | 'conflict'> {
@@ -320,11 +348,11 @@ async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; 
         if (remoteError) throw remoteError;
         const outcome = await applyRemoteDraft(scope, change, remote as unknown as RemoteDraftRow);
         if (outcome === 'pulled') { pulled += 1; dailyPulled += 1; } else if (outcome === 'conflict') conflicts += 1;
-      } else if (change.entity === 'memory' && change.operation === 'upsert') {
-        const { data: remote, error: remoteError } = await getSupabaseClient().from('memory_snapshots').select('site_id,payload,revision').eq('site_id', scope.siteId).single();
+      } else if (change.entity === 'memory-entry') {
+        const { data: remote, error: remoteError } = await getSupabaseClient().from('memory_entries').select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at').eq('site_id', scope.siteId).eq('id', change.entity_id).single();
         if (remoteError) throw remoteError;
-        const outcome = await applyRemoteMemory(scope, change, remote as unknown as RemoteMemoryRow);
-        if (outcome === 'pulled') { pulled += 1; memoryPulled += 1; } else conflicts += 1;
+        const outcome = await applyRemoteMemoryEntry(scope, change, remote as unknown as RemoteMemoryEntry);
+        if (outcome === 'pulled') { pulled += 1; memoryPulled += 1; } else if (outcome === 'conflict') conflicts += 1;
       } else if (change.entity === 'water-snapshot' && change.operation === 'upsert') {
         const { data: remote, error: remoteError } = await getSupabaseClient().from('water_snapshots').select('site_id,payload,revision').eq('site_id', scope.siteId).single();
         if (remoteError) throw remoteError;
@@ -354,21 +382,31 @@ async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; 
 function recordApplied(summary: SyncRunResult, operation: SyncOperation): void {
   summary.applied += 1;
   if (operation.entity === 'daily-draft' || operation.entity === 'daily-patch') summary.dailyApplied += 1;
-  else if (operation.entity === 'memory') summary.memoryApplied += 1;
+  else if (operation.entity === 'memory' || operation.entity === 'memory-entry') summary.memoryApplied += 1;
   else if (operation.entity === 'water-snapshot' || operation.entity === 'water-patch') summary.waterApplied += 1;
 }
 
-async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
+async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise<SyncRunResult> {
   const summary: SyncRunResult = { applied: 0, pulled: 0, dailyApplied: 0, dailyPulled: 0, memoryApplied: 0, memoryPulled: 0, waterApplied: 0, waterPulled: 0, conflicts: 0, failed: 0 };
   try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.dailyPulled += pulled.dailyPulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
   catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); return summary; }
   // Reconcile the cloud document before sending local field changes.
-  for (const pending of await listReadyOperations(scope, new Date(), true)) {
+  for (const pending of await listReadyOperations(scope, new Date(), manual)) {
+    if (pending.entity === 'memory') continue; // Preserve old snapshot operations for manual recovery.
     const operation = await markOperationSending(pending);
     try {
       const result = await pushOperation(operation);
       if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
-      else { await acceptMutation(operation, result); recordApplied(summary, operation); }
+      else {
+        await acceptMutation(operation, result); recordApplied(summary, operation);
+        if (operation.entity === 'memory-entry' && result.status === 'duplicate') {
+          const { data: remote, error } = await getSupabaseClient().from('memory_entries')
+            .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
+            .eq('site_id', scope.siteId).eq('id', operation.entityId).single();
+          if (error) throw error;
+          await applyRemoteMemoryEntry(scope, { sequence: await loadCursor(scope), entity: 'memory-entry', entity_id: operation.entityId, operation: 'upsert', revision: result.revision, changed_at: new Date().toISOString() }, remote as RemoteMemoryEntry);
+        }
+      }
     } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }
   }
   if (summary.applied) {
@@ -378,8 +416,8 @@ async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
   return summary;
 }
 
-export async function runSyncOnce(scope: SharedScope): Promise<SyncRunResult> {
+export async function runSyncOnce(scope: SharedScope, manual = true): Promise<SyncRunResult> {
   const locks = (navigator as Navigator & { locks?: LockManager }).locks;
-  if (!locks) return runSyncOnceUnlocked(scope);
-  return locks.request(`construction-report-sync:${scope.userId}:${scope.siteId}`, () => runSyncOnceUnlocked(scope));
+  if (!locks) return runSyncOnceUnlocked(scope, manual);
+  return locks.request(`construction-report-sync:${scope.userId}:${scope.siteId}`, () => runSyncOnceUnlocked(scope, manual));
 }

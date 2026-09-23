@@ -34,6 +34,16 @@ function payloadForConflict(operation: SyncOperation, conflict: SyncConflict, cl
 }
 
 async function latestCloud(scope: SharedScope, operation: SyncOperation, conflict: SyncConflict): Promise<{ payload: Record<string, unknown>; revision: number; entityId: string; reportDate?: string }> {
+  if (operation.entity === 'memory-entry') {
+    const { data, error } = await getSupabaseClient().from('memory_entries')
+      .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
+      .eq('site_id', scope.siteId).eq('id', operation.entityId).maybeSingle();
+    if (error) throw error;
+    const payload = data ? { id: data.id, kind: data.kind, parent_id: data.parent_id, normalized_name: data.normalized_name,
+      payload: data.payload, status: data.status, usage_count: data.usage_count, finalized_usage_count: data.finalized_usage_count,
+      deleted: Boolean(data.deleted_at) } : {};
+    return { payload, revision: Number(data?.revision ?? conflict.remoteRevision), entityId: operation.entityId };
+  }
   if (operation.entity.startsWith('daily')) {
     const reportDate = operation.entity === 'daily-patch' ? (operation.payload as { reportDate?: string }).reportDate : (operation.payload as { date?: string }).date;
     if (!reportDate) throw new Error('日報衝突缺少日期，無法安全審核。');
@@ -58,7 +68,7 @@ export async function listConflictReviews(scope: SharedScope): Promise<ConflictR
   for (const conflict of conflicts.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId)) {
     const operation = operations.find((row) => row.id === conflict.operationId || row.id === conflict.id);
     if (!operation || operation.status !== 'conflict') continue;
-    const kind: ConflictKind | undefined = operation.entity.startsWith('daily') ? 'daily' : operation.entity.startsWith('water') ? 'water' : operation.entity === 'memory' ? 'memory' : undefined;
+    const kind: ConflictKind | undefined = operation.entity.startsWith('daily') ? 'daily' : operation.entity.startsWith('water') ? 'water' : operation.entity.startsWith('memory') ? 'memory' : undefined;
     if (!kind) continue;
     const latest = await latestCloud(scope, operation, conflict);
     const local = payloadForConflict(operation, conflict, latest.payload);
@@ -111,12 +121,13 @@ export async function queueConflictResolution(scope: SharedScope, reviewed: Conf
   if (!current) throw new Error('此衝突已不存在，請重新載入。');
   if (current.cloudRevision !== reviewed.cloudRevision || current.cloudEntityId !== reviewed.cloudEntityId) throw new Error('雲端版本已更新；差異已重新整理，請重新確認。');
   const merged = mergeReview(current, new Set(localPaths));
-  const entity = current.kind === 'daily' ? 'daily-patch' : current.kind === 'water' ? 'water-patch' : 'memory';
+  const entity = current.kind === 'daily' ? 'daily-patch' : current.kind === 'water' ? 'water-patch' : current.entity === 'memory-entry' ? 'memory-entry' : 'memory';
   const payload = current.kind === 'daily'
     ? { reportDate: current.reportDate, changes: buildFieldMutations('daily', current.cloud, merged) }
     : current.kind === 'water'
       ? { changes: buildFieldMutations('water', current.cloud, merged) }
       : merged;
+  if (entity === 'memory-entry') { delete payload.learning_key; delete payload.base_revision; }
   const operation = buildSyncOperation({ ...scope, entity, entityId: current.cloudEntityId, baseRevision: current.cloudRevision, payload });
   operation.resolvesConflictIds = [current.id, current.operationId];
   const database = await openDatabase() as IDBDatabase;

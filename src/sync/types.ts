@@ -1,6 +1,6 @@
 import type { SharedScope } from '../domain/shared';
 
-export type SyncEntity = 'memory' | 'daily-draft' | 'daily-patch' | 'daily-finalization' | 'water-snapshot' | 'water-patch' | 'water-point' | 'water-log';
+export type SyncEntity = 'memory' | 'memory-entry' | 'daily-draft' | 'daily-patch' | 'daily-finalization' | 'water-snapshot' | 'water-patch' | 'water-point' | 'water-log';
 export type SyncOperationStatus = 'pending' | 'sending' | 'conflict' | 'failed' | 'blocked';
 
 export interface SyncOperation extends SharedScope {

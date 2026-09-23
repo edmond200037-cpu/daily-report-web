@@ -26,3 +26,18 @@ npx supabase test db
 5. 先以兩個測試帳號驗證非成員、viewer、editor、owner，再導入實際工地資料。
 
 未設定兩個環境變數時，應用程式維持原本的本機模式。
+# 工地記憶逐筆化（202609230002）
+
+部署 `202609230002_memory_entries_sync.sql` 前先備份資料庫。遷移會在同一交易內，把每個 `memory_snapshots` 的工地、工種、廠商、工項、位置、材料與特殊事項模板複製到 `memory_entries`，驗證筆數及 JSON 內容後記錄於 `memory_snapshot_migrations`。遇到重複 ID、父層遺失或內容不符會讓整個交易失敗，原快照仍在。其他 `app_settings` 偏好不會上傳。
+
+部署後檢查：
+
+```sql
+select m.site_id, m.snapshot_revision, m.source_count, m.migrated_count, m.content_hash,
+       (select count(*) from public.memory_entries e where e.site_id=m.site_id) as current_rows
+from public.memory_snapshot_migrations m;
+```
+
+舊 `memory_snapshots` 保留做回復來源；舊版整份記憶寫入 RPC 已停止對登入者開放。若需回復，先停用新版客戶端並匯出目前 `memory_entries`、`sync_operations`、`site_changes` 與本機衝突備份，再以原快照重建測試環境核對，不直接覆寫正式站的逐筆修改。
+
+實際驗收需在部署後用兩個編輯者、一個檢視者與兩台手機進行。檢查不同記憶同時修改、同筆衝突、確認／駁回傳遞、離線佇列重送、模板同步及本機匯入預覽。自動測試不能取代這項驗收。
