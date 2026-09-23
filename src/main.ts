@@ -24,7 +24,7 @@ import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJo
 import { loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
 import { renderAccountPage } from './account/account-view';
 import type { SiteSummary } from './domain/shared';
-import { countOperations, listSyncDiagnostics } from './sync/outbox';
+import { countOperations, listSyncDiagnostics, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
 import { runSyncOnce } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
@@ -607,6 +607,12 @@ app.addEventListener('click', async (event) => {
       const result = await recoverLegacyDailyConflictsCloudFirst({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
       await reloadActiveDraftPartition();
       accountFeedback = `已採用雲端日報 ${result.restoredFromCloud} 筆；本機舊內容已保留為復原副本。${result.resubmitted ? `雲端尚無資料的 ${result.resubmitted} 筆已重新送出。` : ''}`;
+    }
+    if (button.dataset.accountAction === 'retry-missing-rpc' && accountAuth.user && accountActiveSiteId) {
+      const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+      const retried = await retryMissingRpcOperations(scope);
+      const result = retried ? await runSyncOnce(scope) : null;
+      accountFeedback = result?.failed ? `已重新送出 ${retried} 筆，但仍有 ${result.failed} 筆失敗；請查看新的錯誤摘要。` : `已重新送出 ${retried} 筆，請確認待同步數量。`;
     }
     const requestId = button.dataset.requestId;
     if (requestId && button.dataset.accountAction === 'approve-editor') { await approveSiteMember(requestId, 'editor'); accountFeedback = '已核准為編輯者。'; }

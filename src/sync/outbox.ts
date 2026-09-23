@@ -35,6 +35,16 @@ export async function listSyncDiagnostics(scope: SharedScope): Promise<SyncOpera
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
+/** Re-queues only operations blocked because PostgREST did not know a newly deployed RPC. */
+export async function retryMissingRpcOperations(scope: SharedScope): Promise<number> {
+  const key = sharedScopeKey(scope); const rows = await list('sync_outbox') as SyncOperation[]; const now = new Date().toISOString(); let retried = 0;
+  for (const row of rows) {
+    if (sharedScopeKey(row) !== key || row.status !== 'blocked' || row.lastErrorCode !== 'PGRST202') continue;
+    await put('sync_outbox', { ...row, status: 'pending', retryable: true, lastError: undefined, lastErrorCode: undefined, lastErrorHint: undefined, nextAttemptAt: now, updatedAt: now }); retried += 1;
+  }
+  return retried;
+}
+
 export async function markOperationSending(operation: SyncOperation): Promise<SyncOperation> {
   const next: SyncOperation = { ...operation, status: 'sending', updatedAt: new Date().toISOString() };
   await put('sync_outbox', next);
