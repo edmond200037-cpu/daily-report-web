@@ -129,11 +129,11 @@ async function applyRemoteDraft(scope: SharedScope, change: ChangeRow, remote: R
       tx.objectStore('sync_conflicts').put(conflict);
       if (pending) tx.objectStore('sync_outbox').put({ ...pending, status: 'conflict', updatedAt: now });
       outcome = 'conflict';
-    } else if (!current || current.date === remote.report_date) {
+    } else {
       const next = structuredClone(remote.payload);
       next.id = 'current'; next.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: remote.id, reportDate: remote.report_date, revision: remote.revision };
-      draftStore.put(next);
       tx.objectStore('draft_partitions').put({ id: `${scope.userId}:${scope.siteId}:${remote.report_date}`, userId: scope.userId, siteId: scope.siteId, reportDate: remote.report_date, report: structuredClone(next), updatedAt: new Date().toISOString() });
+      if (!current || current.date === remote.report_date) draftStore.put(next);
       outcome = 'pulled';
     }
     const cursor: SyncCursor = { id: cursorId(scope), ...scope, cursor: change.sequence, updatedAt: new Date().toISOString() };

@@ -36,9 +36,8 @@ export async function recoverLegacyDailyConflictsCloudFirst(scope: SharedScope):
       if (!cloud) { queue.put({ ...operation, mutationId: crypto.randomUUID(), baseRevision: 0, status: 'pending', attempts: 0, lastError: undefined, lastErrorCode: undefined, lastErrorHint: undefined, retryable: true, nextAttemptAt: new Date().toISOString(), updatedAt: new Date().toISOString() }); result.resubmitted += 1; continue; }
       const remote = cloud.payload as DailyReportV3;
       tx.objectStore('sync_recovery_backups').put({ id: crypto.randomUUID(), ...scope, operationId: operation.id, entityId: operation.entityId, localPayload: operation.payload, remotePayload: remote, createdAt: new Date().toISOString() });
-      const report = structuredClone(remote); report.id = 'current'; report.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: String(cloud.id), reportDate: report.date, revision: Number(cloud.revision) };
-      tx.objectStore('live_report_draft').put(report);
-      tx.objectStore('draft_partitions').put({ id: `${scope.userId}:${scope.siteId}:${report.date}`, userId: scope.userId, siteId: scope.siteId, reportDate: report.date, report: structuredClone(report), updatedAt: new Date().toISOString() });
+      // Keep A's current draft intact: it may contain later v2 field mutations.
+      // Both versions remain available in the recovery backup for review.
       queue.delete(operation.id); conflicts.delete(operation.id); result.restoredFromCloud += 1;
     }
     await transactionDone(tx); return result;

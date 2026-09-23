@@ -126,6 +126,7 @@ let accountFeedback = '';
 let accountError = '';
 let accountSyncDiagnostics: SyncOperation[] = [];
 let syncInFlight = false;
+let syncRequestedWhileRunning = false;
 let stopSiteRealtime: (() => void) | undefined;
 let realtimeScopeKey = '';
 let activeSyncEpoch = 0;
@@ -451,7 +452,7 @@ function waterShell(settings: boolean): string { const shellClass = settings ? '
 function updateDailySaveStatus(): void {
   const status = app.querySelector<HTMLElement>('[data-save-status]');
   if (!status) return;
-  const label = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncPendingCount ? `已存本機・待同步 ${dailySyncPendingCount} 筆` : daily.report.shared ? '已同步' : dailyLastSavedAt ? `已保存 ${dailyLastSavedAt}` : '本機自動儲存';
+  const label = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncPendingCount ? `已存本機・待同步／衝突 ${dailySyncPendingCount} 筆` : daily.report.shared ? '已同步' : dailyLastSavedAt ? `已保存 ${dailyLastSavedAt}` : '本機自動儲存';
   status.dataset.state = dailySaveState;
   status.textContent = label;
 }
@@ -859,7 +860,8 @@ app.addEventListener('dragend', () => { draggedMaterialTypeId = null; });
 window.addEventListener('beforeunload', (event) => { if (settingsState.dirty || materialDirty() || contactDirty()) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('hashchange', () => { const route = parseRoute(location.hash); if (materialEditor && !discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; if (route.module === 'water-level') void daily.flush(); if (route.module === 'daily' && route.page === 'main') { daily.expandedId = null; dailyBasicsExpanded = false; } void renderApp(); });
 async function syncActiveSiteSilently(): Promise<void> {
-  if (syncInFlight || document.hidden || settingsState.dirty) return;
+  if (syncInFlight) { syncRequestedWhileRunning = true; return; }
+  if (document.hidden || settingsState.dirty) return;
   const epoch = activeSyncEpoch;
   syncInFlight = true;
   try {
@@ -883,7 +885,7 @@ async function syncActiveSiteSilently(): Promise<void> {
       await renderApp();
     }
   } catch { /* Offline and backend failures leave the durable outbox for the next trigger. */ }
-  finally { syncInFlight = false; }
+  finally { syncInFlight = false; if (syncRequestedWhileRunning) { syncRequestedWhileRunning = false; void syncActiveSiteSilently(); } }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else void syncActiveSiteSilently(); });
 window.addEventListener('online', () => { void syncActiveSiteSilently(); });
