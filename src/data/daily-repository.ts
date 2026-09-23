@@ -66,6 +66,14 @@ export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> {
     return normalizeDraft(await request(tx.objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined);
   } finally { database.close(); }
 }
+export async function loadDailyDraftForDate(reportDate: string): Promise<DailyReportV3 | undefined> {
+  const scope = await loadActiveSharedScope().catch(() => null); const database = await db();
+  try {
+    const partitions = await request(database.transaction('draft_partitions').objectStore('draft_partitions').getAll()) as DraftPartition[];
+    const row = scope ? partitions.find((item) => item.userId === scope.userId && item.siteId === scope.siteId && item.reportDate === reportDate) : partitions.find((item) => item.id === 'local' && item.reportDate === reportDate);
+    return row ? normalizeDraft(structuredClone(row.report)) : undefined;
+  } finally { database.close(); }
+}
 export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
   // Shared context lookup must never prevent the local-first save path.
   const scope = await loadActiveSharedScope().catch(() => null);

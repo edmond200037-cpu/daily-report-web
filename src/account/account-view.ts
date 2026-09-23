@@ -1,6 +1,7 @@
 import type { AuthSnapshot } from '../auth/auth-service';
 import type { SiteSummary } from '../domain/shared';
 import type { JoinRequestSummary, SiteMemberSummary } from '../data/remote/site-repository';
+import type { SyncOperation } from '../sync/types';
 
 export interface AccountPageState {
   auth: AuthSnapshot;
@@ -11,6 +12,7 @@ export interface AccountPageState {
   members: SiteMemberSummary[];
   feedback: string;
   error: string;
+  diagnostics?: SyncOperation[];
 }
 
 const escapeHtml = (value: string): string => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
@@ -27,5 +29,8 @@ export function renderAccountPage(state: AccountPageState): string {
     const memberRows = state.members.filter((member) => member.siteId === site.id).map(memberRow).join('');
     return `<section class="form-card account-administration"><h2>${escapeHtml(site.name)}</h2><section class="account-member-group"><h3>待審核申請</h3><div class="account-sites">${requestRows || '<p class="empty">目前沒有待審核申請。</p>'}</div></section><section class="account-member-group"><h3>現有成員</h3><div class="account-sites">${memberRows || '<p class="empty">目前沒有現有成員。</p>'}</div></section></section>`;
   }).join('');
-  return `<section class="account-content"><section class="form-card account-identity"><div><span>登入帳號</span><strong>${escapeHtml(userLabel)}</strong></div><button type="button" data-account-action="sign-out">登出</button></section>${state.feedback ? `<p class="account-feedback" role="status">${escapeHtml(state.feedback)}</p>` : ''}${state.error ? `<p class="issues" role="alert">${escapeHtml(state.error)}</p>` : ''}<section class="form-card account-site-panel"><div class="account-sites__header"><div><h2>我的工地</h2><small>${state.activeSiteId ? `目前使用中 · 待同步 ${state.pendingCount} 筆` : '請先選擇工地'}</small></div></div><div class="account-sites">${siteRows || '<p class="empty">目前還沒有可使用的工地。</p>'}</div></section><section class="account-actions"><form class="form-card" data-account-form="create-site"><h2>建立工地</h2><label>工地名稱<input name="name" maxlength="100" required autocomplete="organization"></label><button type="submit" class="primary">建立並成為管理員</button></form><form class="form-card" data-account-form="request-join"><h2>申請加入工地</h2><label>加入碼<input name="joinCode" maxlength="32" required autocapitalize="none" autocomplete="off"></label><button type="submit">送出申請</button></form></section>${administration}</section>`;
+  const type = (entity: SyncOperation['entity']) => entity.startsWith('daily') ? '施工日報' : entity.startsWith('water') ? '水位' : entity === 'memory' ? '主檔' : entity;
+  const failures = state.diagnostics ?? [];
+  const diagnostics = failures.length ? `<section class="form-card account-sync-diagnostics"><h2>同步診斷</h2><p>這些是尚未成功的操作，資料仍安全保留在此裝置。</p><ul>${failures.map((row) => `<li><strong>${type(row.entity)}</strong><span>${row.status === 'conflict' ? '需要處理衝突' : `第 ${row.attempts} 次失敗，將自動重試`}</span><small>${escapeHtml(row.lastError ?? '雲端版本衝突，請重新同步後確認資料。')}</small></li>`).join('')}</ul></section>` : '';
+  return `<section class="account-content"><section class="form-card account-identity"><div><span>登入帳號</span><strong>${escapeHtml(userLabel)}</strong></div><button type="button" data-account-action="sign-out">登出</button></section>${state.feedback ? `<p class="account-feedback" role="status">${escapeHtml(state.feedback)}</p>` : ''}${state.error ? `<p class="issues" role="alert">${escapeHtml(state.error)}</p>` : ''}<section class="form-card account-site-panel"><div class="account-sites__header"><div><h2>我的工地</h2><small>${state.activeSiteId ? `目前使用中 · 待同步 ${state.pendingCount} 筆` : '請先選擇工地'}</small></div></div><div class="account-sites">${siteRows || '<p class="empty">目前還沒有可使用的工地。</p>'}</div></section>${diagnostics}<section class="account-actions"><form class="form-card" data-account-form="create-site"><h2>建立工地</h2><label>工地名稱<input name="name" maxlength="100" required autocomplete="organization"></label><button type="submit" class="primary">建立並成為管理員</button></form><form class="form-card" data-account-form="request-join"><h2>申請加入工地</h2><label>加入碼<input name="joinCode" maxlength="32" required autocapitalize="none" autocomplete="off"></label><button type="submit">送出申請</button></form></section>${administration}</section>`;
 }

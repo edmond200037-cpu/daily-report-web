@@ -255,7 +255,7 @@ async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
       const result = await pushOperation(operation);
       if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
       else { await acceptMutation(operation, result); summary.applied += 1; }
-    } catch { await markOperationFailed(operation); summary.failed += 1; }
+    } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }
   }
   try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
   catch { summary.failed += 1; }

@@ -15,6 +15,7 @@ export interface SyncOperation extends SharedScope {
   nextAttemptAt: string;
   createdAt: string;
   updatedAt: string;
+  lastError?: string;
   /** Missing means a pre-collaboration full-snapshot outbox entry. */
   protocolVersion?: 1 | 2;
 }
