@@ -64,8 +64,8 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
   const database = await openDatabase() as IDBDatabase;
   try {
     const storeNames = operation.entity === 'memory' || operation.entity === 'water-snapshot' || operation.entity === 'water-patch'
-      ? [operation.entity === 'memory' ? 'memory_partitions' : 'water_partitions', 'sync_outbox']
-      : ['live_report_draft', 'draft_partitions', 'sync_outbox'];
+      ? [operation.entity === 'memory' ? 'memory_partitions' : 'water_partitions', 'sync_outbox', 'sync_conflicts']
+      : ['live_report_draft', 'draft_partitions', 'sync_outbox', 'sync_conflicts'];
     const tx = database.transaction(storeNames, 'readwrite');
     const queue = tx.objectStore('sync_outbox');
     if (operation.entity === 'memory') {
@@ -101,6 +101,10 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
     const queued = await request(queue.getAll()) as SyncOperation[];
     queued.filter((row) => row.id !== operation.id && row.entityId === operation.entityId && row.siteId === operation.siteId && row.userId === operation.userId && row.baseRevision === operation.baseRevision)
       .forEach((row) => queue.put({ ...row, baseRevision: result.revision, updatedAt: new Date().toISOString() }));
+    if (operation.resolvesConflictIds?.length) {
+      const conflicts = tx.objectStore('sync_conflicts');
+      for (const id of operation.resolvesConflictIds) { queue.delete(id); conflicts.delete(id); }
+    }
     queue.delete(operation.id);
     await transactionDone(tx);
   } finally { database.close(); }

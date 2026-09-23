@@ -19,6 +19,8 @@ export interface SyncOperation extends SharedScope {
   lastErrorCode?: string;
   lastErrorHint?: string;
   retryable?: boolean;
+  /** Old operations/conflict rows removable only after this replacement succeeds. */
+  resolvesConflictIds?: string[];
   /** Missing means a pre-collaboration full-snapshot outbox entry. */
   protocolVersion?: 1 | 2;
 }

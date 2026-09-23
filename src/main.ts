@@ -31,7 +31,7 @@ import { loadLastPulledAt, runSyncOnce, type SyncRunResult } from './sync/engine
 import { loadActiveSharedScope } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
-import { recoverLegacyDailyConflictsCloudFirst } from './sync/legacy-daily-recovery';
+import { exportConflictBackups, listConflictReviews, queueConflictResolution, type ConflictReview } from './sync/conflict-review';
 
 type AppRoute =
   | { module: 'daily'; page: 'main' }
@@ -127,6 +127,7 @@ let accountMembers: SiteMemberSummary[] = [];
 let accountFeedback = '';
 let accountError = '';
 let accountSyncDiagnostics: SyncOperation[] = [];
+let accountConflictReviews: ConflictReview[] = [];
 let syncInFlight = false;
 let activeSyncEpoch = 0;
 const escapeHtml = (value: string) => value.replace(/[&<>']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;' }[char]!));
@@ -509,7 +510,7 @@ async function switchActiveDataPartition(changeContext: () => Promise<void>): Pr
 async function refreshAccount(): Promise<void> {
   try {
     accountAuth = await loadAuthSnapshot();
-    if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; accountSyncDiagnostics = []; return; }
+    if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; accountSyncDiagnostics = []; accountConflictReviews = []; return; }
     const [sites, context] = await Promise.all([listAccessibleSites(accountAuth.user.id), loadSharedContext(accountAuth.user.id)]);
     accountSites = sites;
     [accountRequests, accountMembers] = await Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)]);
@@ -517,6 +518,7 @@ async function refreshAccount(): Promise<void> {
     if (context.activeSiteId && !accountActiveSiteId) await selectActiveSharedSite(accountAuth.user.id, null);
     accountPendingCount = accountActiveSiteId ? await countOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : 0;
     accountSyncDiagnostics = accountActiveSiteId ? await listSyncDiagnostics({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
+    accountConflictReviews = accountActiveSiteId ? await listConflictReviews({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : [];
   } catch (error) {
     accountError = error instanceof Error ? error.message : '無法讀取共用工地。';
   }
@@ -527,7 +529,7 @@ async function renderApp(): Promise<void> {
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
   const token = ++renderToken; const route = parseRoute(location.hash); const previousRoute = renderedRoute; renderedRoute = route; water = undefined;
   if ((route.module === 'daily' && route.page === 'settings' && previousRoute?.module === 'daily' && previousRoute.page === 'main') || (route.module === 'water-level' && route.page === 'settings' && previousRoute?.module === 'water-level' && previousRoute.page === 'main')) settingsReturnModule = previousRoute.module;
-  if (route.module === 'account') { await refreshAccount(); if (token !== renderToken) return; const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined; app.innerHTML = `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics })}</main>${pwaUpdateNotice()}`; return; }
+  if (route.module === 'account') { await refreshAccount(); if (token !== renderToken) return; const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined; app.innerHTML = `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, conflicts: accountConflictReviews })}</main>${pwaUpdateNotice()}`; return; }
   if (route.module === 'settings') { if (route.page === 'memory') { memoryCandidates = await listMemoryCandidates(); const keys = new Set(memoryCandidates.map((row) => row.key)); memoryReviewState.explicitKeys = new Set([...memoryReviewState.explicitKeys].filter((key) => keys.has(key))); memoryReviewState.expandedKeys = new Set([...memoryReviewState.expandedKeys].filter((key) => keys.has(key))); const groups = groupMemoryCandidates(memoryCandidates); if (memoryReviewState.openKind === undefined) memoryReviewState.openKind = groups[0]?.kind ?? null; else if (memoryReviewState.openKind !== null && !groups.some((group) => group.kind === memoryReviewState.openKind)) memoryReviewState.openKind = groups.find((group) => group.kind === memoryReviewState.nextKind)?.kind ?? groups[0]?.kind ?? null; memoryReviewState.nextKind = null; } else { if (settingsState.activeSection !== 'backup' && settingsState.activeSection !== 'debug') settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? dataSystemView() : memoryReviewView()}${pwaUpdateNotice()}`; return; }
   if (route.module === 'daily') {
     if (!accountAuth.enabled) await refreshAccount();
@@ -635,10 +637,17 @@ app.addEventListener('click', async (event) => {
     if (button.dataset.accountAction === 'sync-now' && accountAuth.user && accountActiveSiteId && !syncInFlight) {
       await syncActiveSiteNow();
     }
-    if (button.dataset.accountAction === 'recover-legacy-daily-conflicts' && accountAuth.user && accountActiveSiteId) {
-      const result = await recoverLegacyDailyConflictsCloudFirst({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
-      await reloadActiveDraftPartition();
-      accountFeedback = `已採用雲端日報 ${result.restoredFromCloud} 筆；本機舊內容已保留為復原副本。${result.resubmitted ? `雲端尚無資料的 ${result.resubmitted} 筆已重新送出。` : ''}`;
+    if (button.dataset.accountAction === 'export-conflict-backups' && accountAuth.user && accountActiveSiteId) {
+      const rows = await exportConflictBackups({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      const url = URL.createObjectURL(new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = `施工日報-同步衝突備份-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); accountFeedback = `已下載 ${rows.length} 筆衝突原始備份。`;
+    }
+    if (button.dataset.accountAction === 'resolve-conflict' && accountAuth.user && accountActiveSiteId && button.dataset.conflictId) {
+      const review = accountConflictReviews.find((row) => row.id === button.dataset.conflictId); const form = button.closest<HTMLFormElement>('[data-conflict-review]');
+      if (review && form) {
+        const localPaths = [...form.querySelectorAll<HTMLSelectElement>('[data-conflict-choice]')].filter((row) => row.value === 'local').map((row) => row.dataset.conflictChoice!).filter(Boolean);
+        try { await queueConflictResolution({ userId: accountAuth.user.id, siteId: accountActiveSiteId }, review, localPaths); const result = await syncActiveSiteNow(); accountFeedback = result?.failed ? '新同步操作送出失敗；原衝突與備份已保留，可再次重試。' : '已建立並送出新的同步操作；原衝突僅在雲端成功寫入後結案。'; }
+        catch (error) { accountError = error instanceof Error ? error.message : '衝突審核建立失敗，原始資料未變更。'; }
+      }
     }
     if (button.dataset.accountAction === 'retry-missing-rpc' && accountAuth.user && accountActiveSiteId) {
       const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
