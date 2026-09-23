@@ -13,7 +13,11 @@ interface ChangeRow { sequence: number; entity: string; entity_id: string; opera
 interface RemoteDraftRow { id: string; report_date: string; payload: DailyReportV3; revision: number; }
 interface RemoteMemoryRow { site_id: string; payload: MemorySnapshotPayload; revision: number; }
 interface RemoteWaterRow { site_id: string; payload: WaterSnapshotPayload; revision: number; }
-export interface SyncRunResult { applied: number; pulled: number; memoryPulled: number; waterPulled: number; conflicts: number; failed: number; pullError?: string; }
+export interface SyncRunResult {
+  applied: number; pulled: number; dailyApplied: number; dailyPulled: number;
+  memoryApplied: number; memoryPulled: number; waterApplied: number; waterPulled: number;
+  conflicts: number; failed: number; pullError?: string;
+}
 
 const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
 async function loadDailyTombstones(scope: SharedScope): Promise<ReadonlySet<string> | null> {
@@ -300,8 +304,8 @@ async function applyRemoteWater(scope: SharedScope, change: ChangeRow, remote: R
   } finally { database.close(); }
 }
 
-async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; memoryPulled: number; waterPulled: number; conflicts: number }> {
-  let cursor = await loadCursor(scope); let pulled = 0; let memoryPulled = 0; let waterPulled = 0; let conflicts = 0;
+async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; dailyPulled: number; memoryPulled: number; waterPulled: number; conflicts: number }> {
+  let cursor = await loadCursor(scope); let pulled = 0; let dailyPulled = 0; let memoryPulled = 0; let waterPulled = 0; let conflicts = 0;
   for (;;) {
     const { data, error } = await getSupabaseClient().rpc('pull_site_changes', { p_site_id: scope.siteId, p_cursor: cursor, p_limit: 100 });
     if (error) throw error;
@@ -311,7 +315,7 @@ async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; 
         const { data: remote, error: remoteError } = await getSupabaseClient().from('daily_drafts').select('id,report_date,payload,revision').eq('id', change.entity_id).single();
         if (remoteError) throw remoteError;
         const outcome = await applyRemoteDraft(scope, change, remote as unknown as RemoteDraftRow);
-        if (outcome === 'pulled') pulled += 1; else if (outcome === 'conflict') conflicts += 1;
+        if (outcome === 'pulled') { pulled += 1; dailyPulled += 1; } else if (outcome === 'conflict') conflicts += 1;
       } else if (change.entity === 'memory' && change.operation === 'upsert') {
         const { data: remote, error: remoteError } = await getSupabaseClient().from('memory_snapshots').select('site_id,payload,revision').eq('site_id', scope.siteId).single();
         if (remoteError) throw remoteError;
@@ -340,12 +344,19 @@ async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; 
     store.put({ ...previous, id: cursorId(scope), ...scope, cursor, updatedAt: stamp, lastPulledAt: stamp } satisfies SyncCursor);
     await transactionDone(tx);
   } finally { database.close(); }
-  return { pulled, memoryPulled, waterPulled, conflicts };
+  return { pulled, dailyPulled, memoryPulled, waterPulled, conflicts };
+}
+
+function recordApplied(summary: SyncRunResult, operation: SyncOperation): void {
+  summary.applied += 1;
+  if (operation.entity === 'daily-draft' || operation.entity === 'daily-patch') summary.dailyApplied += 1;
+  else if (operation.entity === 'memory') summary.memoryApplied += 1;
+  else if (operation.entity === 'water-snapshot' || operation.entity === 'water-patch') summary.waterApplied += 1;
 }
 
 async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
-  const summary: SyncRunResult = { applied: 0, pulled: 0, memoryPulled: 0, waterPulled: 0, conflicts: 0, failed: 0 };
-  try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
+  const summary: SyncRunResult = { applied: 0, pulled: 0, dailyApplied: 0, dailyPulled: 0, memoryApplied: 0, memoryPulled: 0, waterApplied: 0, waterPulled: 0, conflicts: 0, failed: 0 };
+  try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.dailyPulled += pulled.dailyPulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
   catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); return summary; }
   // Reconcile the cloud document before sending local field changes.
   for (const pending of await listReadyOperations(scope, new Date(), true)) {
@@ -353,11 +364,11 @@ async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {
     try {
       const result = await pushOperation(operation);
       if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
-      else { await acceptMutation(operation, result); summary.applied += 1; }
+      else { await acceptMutation(operation, result); recordApplied(summary, operation); }
     } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }
   }
   if (summary.applied) {
-    try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
+    try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.dailyPulled += pulled.dailyPulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
     catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); }
   }
   return summary;

@@ -27,7 +27,7 @@ import { renderAccountPage } from './account/account-view';
 import type { SiteSummary } from './domain/shared';
 import { countOperations, dailyOperationStatusSummary, listSyncDiagnostics, retryMissingRpcOperations } from './sync/outbox';
 import type { SyncOperation } from './sync/types';
-import { loadLastPulledAt, runSyncOnce } from './sync/engine';
+import { loadLastPulledAt, runSyncOnce, type SyncRunResult } from './sync/engine';
 import { loadActiveSharedScope } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
@@ -794,7 +794,7 @@ app.addEventListener('click', async (event) => {
   else if (action === 'delete-trade') daily.deleteTrade(button.dataset.id!);
   else if (action === 'complete') { const issues = daily.complete(button.dataset.id!); if (issues.length) alert(`尚未完成：\n${issues.join('\n')}`); }
   else if (action === 'copy') { await navigator.clipboard.writeText(formatDailyReport(daily.report)); dailyCopyFeedback = '已複製完整日報。'; window.setTimeout(() => { dailyCopyFeedback = ''; void renderApp(); }, 2400); }
-  else if (action === 'finalize') { const issues = validateDailyForFinalization(daily.report); if (issues.length) { alert(`尚未完成：\n${issues.join('\n')}`); return; } try { const output = formatDailyReport(daily.report); const finalized = await finalizeDailyReport(daily.report, output); daily.report = finalized.retainedDraft; [dailyTrades, dailyVendors, dailyTasks, materialTypes, materialMemory] = await Promise.all([listMemories('trades'), listMemories('vendors'), listMemories('tasks'), listMaterialTypes(), listMaterialMemory()]); await persistActiveMemoryPartition(); await navigator.clipboard.writeText(finalized.outputText); dailyCopyFeedback = finalized.created ? '已定稿、複製並更新記憶；草稿已保留。' : '內容未變，已再次複製；未重複建立定稿或記憶。'; dailyPreviewOpen = true; } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); return; } }
+  else if (action === 'finalize') { const issues = validateDailyForFinalization(daily.report); if (issues.length) { alert(`尚未完成：\n${issues.join('\n')}`); return; } try { const output = formatDailyReport(daily.report); const finalized = await finalizeDailyReport(daily.report, output); daily.report = finalized.retainedDraft; await daily.flush(); const syncResult = await syncActiveSiteNow(); const scope = await loadActiveSharedScope().catch(() => null); const syncState = scope ? await dailyOperationStatusSummary(scope) : null; [dailyTrades, dailyVendors, dailyTasks, materialTypes, materialMemory] = await Promise.all([listMemories('trades'), listMemories('vendors'), listMemories('tasks'), listMaterialTypes(), listMaterialMemory()]); await persistActiveMemoryPartition(); await navigator.clipboard.writeText(finalized.outputText); const cloudState = !scope ? '本機已定稿；尚未選擇共用工地。' : syncState && (syncState.pending || syncState.conflict || syncResult?.failed) ? '本機已定稿、雲端待同步。' : '本機已定稿、已同步雲端。'; dailyCopyFeedback = `${finalized.created ? '已定稿、複製並更新記憶；草稿已保留。' : '內容未變，已再次複製；未重複建立定稿或記憶。'} ${cloudState}`; dailyPreviewOpen = true; } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); return; } }
   else if (action === 'delete-contact') { const item = daily.report.contacts.find((row) => row.id === button.dataset.id); if (!item) { activeContactSearch = null; contactEditor = null; await renderApp(); return; } if (!window.confirm(`刪除聯絡事項？\n\n工種：${item.tradeNameSnapshot}\n廠商：${item.vendorNameSnapshot}\n施工項目：${item.items.length} 項\n\n此操作無法復原。`)) return; daily.update(() => { daily.report.contacts = daily.report.contacts.filter((row) => row.id !== item.id); daily.report.contacts.forEach((row, index) => row.sortOrder = index); }); activeContactSearch = null; contactEditor = null; }
   else if (action === 'add-special') { daily.addSpecial(); expandedSpecialId = daily.report.specialItems.at(-1)?.id ?? null; }
   else if (action === 'delete-special') daily.update(() => daily.report.specialItems = daily.report.specialItems.filter((item) => item.id !== button.dataset.id));
@@ -872,35 +872,40 @@ app.addEventListener('drop', async (event) => { const targetRow = (event.target 
 app.addEventListener('dragend', () => { draggedMaterialTypeId = null; });
 window.addEventListener('beforeunload', (event) => { if (settingsState.dirty || materialDirty() || contactDirty()) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('hashchange', () => { const route = parseRoute(location.hash); if (materialEditor && !discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; if (route.module === 'water-level') void daily.flush(); if (route.module === 'daily' && route.page === 'main') { daily.expandedId = null; dailyBasicsExpanded = false; } void renderApp(); });
-async function syncActiveSiteNow(): Promise<void> {
-  if (syncInFlight) return;
+function formatSyncFeedback(result: SyncRunResult, pending: number): string {
+  return `日報：送出 ${result.dailyApplied}／接收 ${result.dailyPulled}；水位：送出 ${result.waterApplied}／接收 ${result.waterPulled}；工地記憶：送出 ${result.memoryApplied}／接收 ${result.memoryPulled}；衝突 ${result.conflicts}、失敗 ${result.failed}；待同步 ${pending} 筆。${result.pullError ? ` 接收失敗：${result.pullError}` : ''}`;
+}
+async function syncActiveSiteNow(): Promise<SyncRunResult | null> {
+  if (syncInFlight) return null;
   const route = parseRoute(location.hash);
   if ((route.module === 'daily' && route.page === 'settings' && settingsState.dirty) || (route.module === 'daily' && route.page === 'main' && (materialDirty() || contactDirty()))) {
     syncFeedback = '請先儲存目前編輯中的表單，再按立即同步。';
-    return;
+    return null;
   }
   const epoch = activeSyncEpoch;
   syncInFlight = true;
   try {
     await daily.flush();
     const scope = await loadActiveSharedScope();
-    if (!scope) { syncFeedback = '請先登入並選擇共用工地。'; return; }
+    if (!scope) { syncFeedback = '請先登入並選擇共用工地。'; return null; }
     await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
     const result = await runSyncOnce(scope);
-    if (epoch !== activeSyncEpoch) return;
+    if (epoch !== activeSyncEpoch) return null;
     lastPulledAt = await loadLastPulledAt(scope);
     await refreshDailySyncStatus();
     if (result.memoryPulled) await refreshActiveMemoryCache();
     if (result.waterPulled && water) await water.refresh();
-    if (result.pulled) {
+    if (result.dailyPulled) {
       const refreshed = await loadDailyDraftForDate(daily.report.date);
       if (refreshed) daily.report = refreshed;
     }
-    syncFeedback = `送出 ${result.applied} 筆、接收 ${result.pulled} 筆、衝突 ${result.conflicts} 筆、失敗 ${result.failed} 筆；待同步 ${await countOperations(scope)} 筆。${result.pullError ? ` 接收失敗：${result.pullError}` : ''}`;
+    syncFeedback = formatSyncFeedback(result, await countOperations(scope));
     accountFeedback = `同步完成：${syncFeedback}`;
+    return result;
   } catch (error) {
     syncFeedback = error instanceof Error ? `同步失敗：${error.message}` : '同步失敗，請查看共用工地的診斷資訊。';
     accountError = syncFeedback;
+    return null;
   } finally { syncInFlight = false; }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } });
