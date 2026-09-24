@@ -131,6 +131,23 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('tradeSections.workerCount');
   });
 
+  it('衝突明細未載入時仍提供本機備份與重新讀取', () => {
+    const row: SyncOperation = {
+      id: 'op-1', mutationId: 'mutation-1', userId: 'user-1', siteId: 'site-1', entity: 'memory-entry',
+      entityId: 'task-1', baseRevision: 0, payload: { kind: 'task' }, status: 'conflict', attempts: 1,
+      nextAttemptAt: '', createdAt: '2026-09-23T00:00:00.000Z', updatedAt: '',
+    };
+    const html = renderAccountPage({
+      auth: { enabled: true, session: null, user: { id: 'user-1' } as never },
+      sites: [{ id: 'site-1', name: '測試工地', joinCode: 'code', role: 'editor', createdAt: '' }],
+      activeSiteId: 'site-1', pendingCount: 1, requests: [], members: [], feedback: '', error: '',
+      operations: [row], diagnostics: [row], conflicts: [],
+    });
+    expect(html).toContain('衝突明細尚未顯示');
+    expect(html).toContain('data-account-action="export-conflict-backups"');
+    expect(html).toContain('data-account-action="retry-load-account"');
+  });
+
   it('複製操作只用工地 ID 從記憶體查找加入碼，並保留成功與失敗回饋', () => {
     expect(main).toContain("button.dataset.accountAction === 'copy-join-code'");
     expect(main).toContain('accountSites.find((row) => row.id === button.dataset.siteId)');

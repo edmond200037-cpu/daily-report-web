@@ -81,9 +81,15 @@ export async function listConflictReviews(scope: SharedScope): Promise<ConflictR
 export async function exportConflictBackups(scope: SharedScope): Promise<unknown[]> {
   const database = await openDatabase() as IDBDatabase;
   try {
-    const tx = database.transaction(['sync_conflicts', 'sync_recovery_backups']);
-    const [conflicts, backups] = await Promise.all([request(tx.objectStore('sync_conflicts').getAll()), request(tx.objectStore('sync_recovery_backups').getAll())]);
-    return [...(conflicts as Array<Record<string, unknown>>), ...(backups as Array<Record<string, unknown>>)].filter((row) => row.userId === scope.userId && row.siteId === scope.siteId);
+    const tx = database.transaction(['sync_outbox', 'sync_conflicts', 'sync_recovery_backups']);
+    const [operations, conflicts, backups] = await Promise.all([
+      request(tx.objectStore('sync_outbox').getAll()),
+      request(tx.objectStore('sync_conflicts').getAll()),
+      request(tx.objectStore('sync_recovery_backups').getAll()),
+    ]);
+    const pendingConflicts = (operations as SyncOperation[]).filter((row) => row.status === 'conflict');
+    return [...pendingConflicts, ...(conflicts as Array<Record<string, unknown>>), ...(backups as Array<Record<string, unknown>>)]
+      .filter((row) => row.userId === scope.userId && row.siteId === scope.siteId);
   } finally { database.close(); }
 }
 
