@@ -99,8 +99,8 @@ begin
     or v_delta_usage<0 or v_delta_finalized<0 or v_delta_finalized>v_delta_usage
     or (v_learning_key is null and p_entry ? 'learning_delta')
     then raise exception 'invalid memory entry' using errcode='22023'; end if;
-  if v_name is distinct from case when v_kind='material-item' then coalesce(v_payload->>'fieldType','')||':'||coalesce(v_payload->>'normalizedValue','')
-    else v_payload->>'normalizedName' end
+  if v_name is distinct from (case when v_kind='material-item' then coalesce(v_payload->>'fieldType','')||':'||coalesce(v_payload->>'normalizedValue','')
+    else v_payload->>'normalizedName' end)
     or (v_kind<>'template' and coalesce(v_payload->>'status','confirmed')<>v_status)
     or (v_kind in ('vendor','task') and nullif(v_payload->>'tradeTypeId','')::uuid is distinct from v_parent)
     or (v_kind='material-item' and nullif(v_payload->>'materialTypeId','')::uuid is distinct from v_parent)
