@@ -33,6 +33,15 @@ function payloadForConflict(operation: SyncOperation, conflict: SyncConflict, cl
   return (operation.payload && typeof operation.payload === 'object' ? clone(operation.payload) : conflict.localPayload) as Record<string, unknown>;
 }
 
+/** An outbox conflict remains reviewable even if its separate diagnostic row is missing. */
+export function conflictRecordForOperation(operation: SyncOperation, conflicts: SyncConflict[]): SyncConflict {
+  return conflicts.find((row) => row.operationId === operation.id || row.id === operation.id) ?? {
+    id: operation.id, operationId: operation.id, userId: operation.userId, siteId: operation.siteId,
+    localPayload: operation.payload, remotePayload: null, remoteRevision: operation.baseRevision,
+    createdAt: operation.updatedAt,
+  };
+}
+
 async function latestCloud(scope: SharedScope, operation: SyncOperation, conflict: SyncConflict): Promise<{ payload: Record<string, unknown>; revision: number; entityId: string; reportDate?: string }> {
   if (operation.entity === 'memory-entry') {
     const { data, error } = await getSupabaseClient().from('memory_entries')
@@ -65,9 +74,8 @@ export async function listConflictReviews(scope: SharedScope): Promise<ConflictR
     [operations, conflicts] = await Promise.all([request(tx.objectStore('sync_outbox').getAll()) as Promise<SyncOperation[]>, request(tx.objectStore('sync_conflicts').getAll()) as Promise<SyncConflict[]>]);
   } finally { database.close(); }
   const result: ConflictReview[] = [];
-  for (const conflict of conflicts.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId)) {
-    const operation = operations.find((row) => row.id === conflict.operationId || row.id === conflict.id);
-    if (!operation || operation.status !== 'conflict') continue;
+  for (const operation of operations.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.status === 'conflict')) {
+    const conflict = conflictRecordForOperation(operation, conflicts);
     const kind: ConflictKind | undefined = operation.entity.startsWith('daily') ? 'daily' : operation.entity.startsWith('water') ? 'water' : operation.entity.startsWith('memory') ? 'memory' : undefined;
     if (!kind) continue;
     const latest = await latestCloud(scope, operation, conflict);
