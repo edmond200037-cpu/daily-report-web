@@ -593,10 +593,15 @@ async function refreshAccount(onProgress?: () => void): Promise<void> {
     onProgress?.();
     if (context.activeSiteId && !accountActiveSiteId) void selectActiveSharedSite(auth.user.id, null).catch(() => {});
     const scope = accountActiveSiteId ? { userId: auth.user.id, siteId: accountActiveSiteId } : null;
+    const queueTask = run('本機同步佇列', scope ? listAllOperations(scope) : Promise.resolve([])).then((operations) => { if (current()) { accountSyncOperations = operations; accountPendingCount = operations.length; accountSyncDiagnostics = operations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked'); accountQueueStatus = 'ready'; } return operations; }).catch((error) => { if (current()) accountQueueStatus = 'error'; throw error; });
     const optional = await Promise.allSettled([
       run('成員資料', Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)])).then(([requests, members]) => { if (current()) { accountRequests = requests; accountMembers = members; } }),
-      run('本機同步佇列', scope ? listAllOperations(scope) : Promise.resolve([])).then((operations) => { if (current()) { accountSyncOperations = operations; accountPendingCount = operations.length; accountSyncDiagnostics = operations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked'); accountQueueStatus = 'ready'; } }).catch((error) => { if (current()) accountQueueStatus = 'error'; throw error; }),
-      run('衝突資料', scope ? listConflictReviews(scope) : Promise.resolve([])).then((reviews) => { if (current()) accountConflictReviews = reviews; }),
+      queueTask,
+      run('衝突資料', scope ? queueTask.then(async (operations) => {
+        const reviews = await listConflictReviews(scope, operations);
+        if (operations.some((row) => row.status === 'conflict') && !reviews.length) throw new Error('本機衝突操作未產生衝突明細。');
+        return reviews;
+      }) : Promise.resolve([])).then((reviews) => { if (current()) accountConflictReviews = reviews; }),
     ]);
     if (!current()) return;
     accountLoadExtrasPending = false;
@@ -750,6 +755,25 @@ app.addEventListener('click', async (event) => {
     if (button.dataset.accountAction === 'retry-load-account') {
       const token = ++renderToken; accountError = ''; renderAccountLoading();
       await refreshAccount(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; if (accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); });
+      return;
+    }
+    if (button.dataset.accountAction === 'load-conflict-reviews' && accountAuth.user && accountActiveSiteId) {
+      const token = renderToken;
+      button.disabled = true; button.textContent = '讀取中…';
+      try {
+        const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+        const operations = await listAllOperations(scope);
+        const reviews = await listConflictReviews(scope, operations);
+        if (token !== renderToken || parseRoute(location.hash).module !== 'account') return;
+        accountSyncOperations = operations; accountPendingCount = operations.length;
+        accountSyncDiagnostics = operations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked');
+        accountConflictReviews = reviews;
+        if (operations.some((row) => row.status === 'conflict') && !reviews.length) accountError = '本機有衝突操作，但仍無法產生衝突明細；備份與原始操作均已保留。';
+      } catch (error) {
+        if (token !== renderToken || parseRoute(location.hash).module !== 'account') return;
+        accountError = `讀取衝突明細失敗：${error instanceof Error ? error.message : '未知錯誤'}。本機操作仍保留。`;
+      }
+      renderAccountLoaded();
       return;
     }
     if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }

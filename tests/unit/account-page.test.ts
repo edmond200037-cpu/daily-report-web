@@ -131,7 +131,7 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('tradeSections.workerCount');
   });
 
-  it('衝突明細未載入時仍提供本機備份與重新讀取', () => {
+  it('衝突明細未載入時仍提供本機備份與單獨讀取入口', () => {
     const row: SyncOperation = {
       id: 'op-1', mutationId: 'mutation-1', userId: 'user-1', siteId: 'site-1', entity: 'memory-entry',
       entityId: 'task-1', baseRevision: 0, payload: { kind: 'task' }, status: 'conflict', attempts: 1,
@@ -145,7 +145,9 @@ describe('共用工地帳號頁', () => {
     });
     expect(html).toContain('衝突明細尚未顯示');
     expect(html).toContain('data-account-action="export-conflict-backups"');
-    expect(html).toContain('data-account-action="retry-load-account"');
+    expect(html).toContain('data-account-action="load-conflict-reviews"');
+    expect(main).toContain('queueTask.then(async (operations)');
+    expect(main).toContain('listConflictReviews(scope, operations)');
   });
 
   it('複製操作只用工地 ID 從記憶體查找加入碼，並保留成功與失敗回饋', () => {

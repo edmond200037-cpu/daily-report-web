@@ -2,7 +2,7 @@ import { openDatabase, transactionDone } from '../data/db.js';
 import { getSupabaseClient } from '../data/remote/supabase-client';
 import type { SharedScope } from '../domain/shared';
 import { applyFieldMutations, buildFieldMutations, type FieldMutation } from './field-mutations';
-import { buildSyncOperation } from './outbox';
+import { buildSyncOperation, listAllOperations } from './outbox';
 import type { SyncConflict, SyncOperation } from './types';
 
 const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
@@ -66,12 +66,15 @@ async function latestCloud(scope: SharedScope, operation: SyncOperation, conflic
   return { payload: (data?.payload ?? conflict.remotePayload ?? {}) as Record<string, unknown>, revision: Number(data?.revision ?? conflict.remoteRevision), entityId: scope.siteId };
 }
 
-export async function listConflictReviews(scope: SharedScope): Promise<ConflictReview[]> {
+export async function listConflictReviews(scope: SharedScope, knownOperations?: SyncOperation[]): Promise<ConflictReview[]> {
   const database = await openDatabase() as IDBDatabase;
   let operations: SyncOperation[]; let conflicts: SyncConflict[];
   try {
-    const tx = database.transaction(['sync_outbox', 'sync_conflicts']);
-    [operations, conflicts] = await Promise.all([request(tx.objectStore('sync_outbox').getAll()) as Promise<SyncOperation[]>, request(tx.objectStore('sync_conflicts').getAll()) as Promise<SyncConflict[]>]);
+    const tx = database.transaction(knownOperations ? 'sync_conflicts' : ['sync_outbox', 'sync_conflicts']);
+    [operations, conflicts] = await Promise.all([
+      knownOperations ? Promise.resolve(knownOperations) : request(tx.objectStore('sync_outbox').getAll()) as Promise<SyncOperation[]>,
+      request(tx.objectStore('sync_conflicts').getAll()) as Promise<SyncConflict[]>,
+    ]);
   } finally { database.close(); }
   const result: ConflictReview[] = [];
   for (const operation of operations.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.status === 'conflict')) {
@@ -131,7 +134,7 @@ function mergeReview(review: ConflictReview, localPaths: Set<string>): Record<st
 }
 
 export async function queueConflictResolution(scope: SharedScope, reviewed: ConflictReview, localPaths: string[]): Promise<void> {
-  const current = (await listConflictReviews(scope)).find((item) => item.id === reviewed.id);
+  const current = (await listConflictReviews(scope, await listAllOperations(scope))).find((item) => item.id === reviewed.id);
   if (!current) throw new Error('此衝突已不存在，請重新載入。');
   if (current.cloudRevision !== reviewed.cloudRevision || current.cloudEntityId !== reviewed.cloudEntityId) throw new Error('雲端版本已更新；差異已重新整理，請重新確認。');
   const merged = mergeReview(current, new Set(localPaths));
