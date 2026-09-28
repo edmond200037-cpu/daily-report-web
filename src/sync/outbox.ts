@@ -18,9 +18,14 @@ export async function enqueueSyncOperation(input: EnqueueInput): Promise<SyncOpe
 
 export async function listReadyOperations(scope: SharedScope, now = new Date(), manual = false): Promise<SyncOperation[]> {
   const key = sharedScopeKey(scope);
+  const memoryRank = (row: SyncOperation): number => {
+    if (row.entity !== 'memory-entry') return 0;
+    const kind = (row.payload as { kind?: string })?.kind;
+    return kind === 'vendor' || kind === 'task' || kind === 'material-item' ? 2 : 1;
+  };
   return (await list('sync_outbox') as SyncOperation[])
     .filter((row) => sharedScopeKey(row) === key && (canRetryAt(row, now) || (manual && (row.status === 'failed' || row.status === 'pending'))))
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    .sort((a, b) => memoryRank(a) - memoryRank(b) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }
 
 export async function countOperations(scope: SharedScope): Promise<number> {

@@ -4,10 +4,11 @@ import { getSupabaseClient } from '../data/remote/supabase-client';
 import { openDatabase, transactionDone } from '../data/db.js';
 import { SHARED_MEMORY_STORES, memoryPayloadHash, type MemoryPartition, type MemorySnapshotPayload } from '../data/memory-partition';
 import { waterPayloadHash, type WaterPartition, type WaterSnapshotPayload } from '../data/water-partition';
-import { listReadyOperations, markOperationFailed, markOperationSending } from './outbox';
+import { listAllOperations, listReadyOperations, markOperationFailed, markOperationSending } from './outbox';
 import type { SyncConflict, SyncCursor, SyncOperation } from './types';
 import { applyFieldMutations, buildFieldMutations, mergeLegacyDailyWorkItems, type FieldMutation } from './field-mutations';
 import { memoryEntryStore, type RemoteMemoryEntry } from './memory-entries';
+import { adoptCloudMemoryEntry } from './recovery';
 
 interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
 interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
@@ -75,7 +76,7 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
     const tx = database.transaction(storeNames, 'readwrite');
     const queue = tx.objectStore('sync_outbox');
     if (operation.entity === 'memory-entry') {
-      tx.objectStore('memory_entry_versions').put({ id: `${operation.siteId}:${operation.entityId}`, revision: result.revision });
+      tx.objectStore('memory_entry_versions').put({ id: `${operation.siteId}:${result.entity_id}`, revision: result.revision });
     } else if (operation.entity === 'memory') {
       const id = `${operation.userId}:${operation.siteId}`;
       const store = tx.objectStore('memory_partitions');
@@ -391,20 +392,27 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
   try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.dailyPulled += pulled.dailyPulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
   catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); return summary; }
   // Reconcile the cloud document before sending local field changes.
+  const unresolvedMemory = new Set((await listAllOperations(scope)).filter((row) => row.entity === 'memory-entry').map((row) => row.entityId));
   for (const pending of await listReadyOperations(scope, new Date(), manual)) {
     if (pending.entity === 'memory') continue; // Preserve old snapshot operations for manual recovery.
+    if (pending.dependsOnEntityIds?.some((id) => unresolvedMemory.has(id))) continue;
     const operation = await markOperationSending(pending);
     try {
       const result = await pushOperation(operation);
       if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
       else {
         await acceptMutation(operation, result); recordApplied(summary, operation);
+        const identityChanged = operation.entity === 'memory-entry' && result.status === 'duplicate' && result.entity_id !== operation.entityId;
+        // Keep the old parent ID unresolved for this pass when the server
+        // adopts a different ID. adoptCloudMemoryEntry rewrites children in
+        // IndexedDB; the already captured ready list must wait for next pass.
+        if (operation.entity === 'memory-entry' && !identityChanged) unresolvedMemory.delete(operation.entityId);
         if (operation.entity === 'memory-entry' && result.status === 'duplicate') {
           const { data: remote, error } = await getSupabaseClient().from('memory_entries')
             .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
-            .eq('site_id', scope.siteId).eq('id', operation.entityId).single();
+            .eq('site_id', scope.siteId).eq('id', result.entity_id).single();
           if (error) throw error;
-          await applyRemoteMemoryEntry(scope, { sequence: await loadCursor(scope), entity: 'memory-entry', entity_id: operation.entityId, operation: 'upsert', revision: result.revision, changed_at: new Date().toISOString() }, remote as RemoteMemoryEntry);
+          await adoptCloudMemoryEntry(scope, operation.entityId, remote as RemoteMemoryEntry);
         }
       }
     } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }

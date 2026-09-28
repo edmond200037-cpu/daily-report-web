@@ -3,7 +3,7 @@ import { loadActiveSharedScope } from '../sync/context';
 import { buildSyncOperation } from '../sync/outbox';
 import type { SharedScope } from '../domain/shared';
 import type { SyncOperation } from '../sync/types';
-import { changedMemoryEntries, snapshotMemoryEntries, type MemoryEntryPayload } from '../sync/memory-entries';
+import { changedMemoryEntries, memoryIdentity, snapshotMemoryEntries, type MemoryEntryPayload } from '../sync/memory-entries';
 
 export const SHARED_MEMORY_STORES = ['sites', 'trade_types', 'trade_vendors', 'trade_tasks', 'location_memories', 'material_types', 'material_memory_items', 'app_settings'] as const;
 export interface MemorySnapshotPayload { schemaVersion: 1; stores: Record<string, unknown[]>; }
@@ -44,8 +44,10 @@ export async function persistActiveMemoryPartition(learningKey?: string): Promis
         const version = await request(versions.get(`${scope.siteId}:${entry.id}`)) as { revision: number } | undefined;
         const before = priorEntries.get(entry.id);
         const delta = { usage: Math.max(0, entry.usage_count - (before?.usage_count ?? 0)), finalized: Math.max(0, entry.finalized_usage_count - (before?.finalized_usage_count ?? 0)) };
-        queue.put(buildSyncOperation({ ...scope, entity: 'memory-entry', entityId: entry.id, baseRevision: version?.revision ?? 0,
-          payload: learningKey ? { ...entry, learning_key: learningKey, learning_delta: delta } : entry }));
+        const operation = buildSyncOperation({ ...scope, entity: 'memory-entry', entityId: entry.id, baseRevision: version?.revision ?? 0,
+          payload: learningKey ? { ...entry, learning_key: learningKey, learning_delta: delta } : entry });
+        if (entry.parent_id) operation.dependsOnEntityIds = [entry.parent_id];
+        queue.put(operation);
       }
     }
     await transactionDone(tx);
@@ -66,9 +68,10 @@ export async function queueMemoryImport(scope: SharedScope, entries: MemoryEntry
   const database = await openDatabase() as IDBDatabase;
   try {
     const tx = database.transaction(['sync_outbox', 'sync_recovery_backups', 'memory_partitions', ...SHARED_MEMORY_STORES], 'readwrite');
+    const queue = tx.objectStore('sync_outbox');
+    const existingOperations = await request(queue.getAll()) as SyncOperation[];
     if (retireLegacySnapshot) {
-      const queue = tx.objectStore('sync_outbox');
-      const old = (await request(queue.getAll()) as SyncOperation[]).filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory');
+      const old = existingOperations.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory');
       for (const operation of old) {
         tx.objectStore('sync_recovery_backups').put({ id: `memory-legacy:${operation.id}`, ...scope, operation, createdAt: new Date().toISOString() });
         queue.delete(operation.id);
@@ -76,7 +79,14 @@ export async function queueMemoryImport(scope: SharedScope, entries: MemoryEntry
     }
     const partition = await request(tx.objectStore('memory_partitions').get(partitionId(scope))) as MemoryPartition | undefined;
     const payload = structuredClone(partition?.payload ?? emptyMemoryPayload());
-    for (const entry of entries) {
+    const pendingIdentities = new Set(existingOperations
+      .filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry')
+      .map((row) => memoryIdentity(row.payload as MemoryEntryPayload)));
+    const ordered = [...entries].sort((a, b) => Number(Boolean(a.parent_id)) - Number(Boolean(b.parent_id)));
+    for (const entry of ordered) {
+      const identity = memoryIdentity(entry);
+      if (pendingIdentities.has(identity)) continue;
+      pendingIdentities.add(identity);
       if (entry.kind === 'template') {
         const setting = payload.stores.app_settings.find((row) => (row as { id: string }).id === 'daily_special_templates_v1') as { id: string; templates: unknown[] } | undefined;
         if (setting) { setting.templates = setting.templates.filter((row) => (row as { id: string }).id !== entry.id); setting.templates.push(entry.payload); }
@@ -87,7 +97,9 @@ export async function queueMemoryImport(scope: SharedScope, entries: MemoryEntry
         payload.stores[store].push(entry.payload);
       }
       const { base_revision, ...payloadEntry } = entry;
-      tx.objectStore('sync_outbox').put(buildSyncOperation({ ...scope, entity: 'memory-entry', entityId: entry.id, baseRevision: base_revision ?? 0, payload: payloadEntry }));
+      const operation = buildSyncOperation({ ...scope, entity: 'memory-entry', entityId: entry.id, baseRevision: base_revision ?? 0, payload: payloadEntry });
+      if (entry.parent_id) operation.dependsOnEntityIds = [entry.parent_id];
+      queue.put(operation);
     }
     tx.objectStore('memory_partitions').put({ id: partitionId(scope), ...scope, revision: partition?.revision ?? 0, payload, payloadHash: memoryPayloadHash(payload), updatedAt: new Date().toISOString() } satisfies MemoryPartition);
     for (const name of SHARED_MEMORY_STORES) {

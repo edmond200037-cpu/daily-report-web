@@ -38,6 +38,7 @@ import { previewMemoryImport, type MemoryImportPreview } from './sync/memory-imp
 import type { RemoteMemoryEntry } from './sync/memory-entries';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
 import { exportConflictBackups, listConflictReviews, queueConflictResolution, type ConflictReview } from './sync/conflict-review';
+import { applySyncRecovery, previewSyncRecovery, type SyncRecoveryPreview } from './sync/recovery';
 import { subscribeToSiteChanges } from './sync/realtime';
 
 type AppRoute =
@@ -629,7 +630,7 @@ function renderAccountLoading(): void {
 }
 function renderAccountLoaded(): void {
   const progress = accountLoadExtrasPending ? '<p class="hint" role="status">工地已可使用，成員與同步診斷仍在載入…</p>' : '';
-  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews, importPreview: memoryImportSiteId === accountActiveSiteId ? memoryImportPreview : null }));
+  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews, importPreview: memoryImportSiteId === accountActiveSiteId ? memoryImportPreview : null, recoveryPreview: syncRecoverySiteId === accountActiveSiteId ? syncRecoveryPreview : null }));
 }
 async function renderApp(): Promise<void> {
   if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
@@ -801,8 +802,35 @@ app.addEventListener('click', async (event) => {
       await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, button.dataset.siteId!, role); });
       accountActiveSiteId = button.dataset.siteId;
       accountActiveSiteRole = role;
+      syncRecoveryPreview = null; syncRecoverySiteId = null;
       accountFeedback = '已切換目前共用工地、獨立草稿與記憶快取。';
       scheduleBackgroundSync();
+    }
+    if (button.dataset.accountAction === 'preview-sync-recovery' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner') throw new Error('只有工地管理員可以修復舊同步項目。');
+      syncRecoveryPreview = await previewSyncRecovery({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      syncRecoverySiteId = accountActiveSiteId;
+      accountFeedback = `修復預覽完成：將封存 ${syncRecoveryPreview.legacyDaily + syncRecoveryPreview.legacyWater + syncRecoveryPreview.legacyMemory + syncRecoveryPreview.memoryProblems} 筆舊操作，接管 ${syncRecoveryPreview.cloudMemoryMatches} 筆雲端記憶，重新排送 ${syncRecoveryPreview.memoryToResend} 筆。`;
+    }
+    if (button.dataset.accountAction === 'export-sync-recovery-backup' && accountAuth.user && accountActiveSiteId) {
+      if (syncRecoverySiteId !== accountActiveSiteId || !syncRecoveryPreview) throw new Error('請先重新預覽修復內容。');
+      const local = await exportConflictBackups({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      const backup = { exportedAt: new Date().toISOString(), siteId: accountActiveSiteId, local, preview: syncRecoveryPreview };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = `施工日報-同步修復前備份-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url);
+      accountFeedback = `已下載處理前備份，包含 ${local.length} 筆本機問題資料與目前雲端比對內容。`;
+    }
+    if (button.dataset.accountAction === 'apply-sync-recovery' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner' || syncRecoverySiteId !== accountActiveSiteId || !syncRecoveryPreview) throw new Error('請先由管理員重新預覽修復內容。');
+      if (!window.confirm('執行前請先下載處理前備份。修復會封存舊操作、接管雲端同名記憶並重新排列可安全送出的項目，Supabase 現有資料不會刪除。是否繼續？')) return;
+      const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+      const result = await applySyncRecovery(scope, syncRecoveryPreview.fingerprint);
+      syncRecoveryPreview = null; syncRecoverySiteId = null;
+      if (result.requeued) await runSyncOnce(scope);
+      await refreshAccount();
+      accountFeedback = `修復完成：已封存 ${result.archived} 筆、接管雲端記憶 ${result.adoptedCloudMemory} 筆、重新排送 ${result.requeued} 筆、仍需人工處理 ${result.remainingManual} 筆。`;
     }
     if (button.dataset.accountAction === 'preview-memory-import' && accountAuth.user && accountActiveSiteId) {
       const site = accountSites.find((row) => row.id === accountActiveSiteId);
@@ -1174,6 +1202,8 @@ let memoryImportPreview: MemoryImportPreview | null = null;
 let memoryImportSiteId: string | null = null;
 let memoryImportSource: 'local' | 'legacy' = 'local';
 let memoryImportRemoteSignature = '';
+let syncRecoveryPreview: SyncRecoveryPreview | null = null;
+let syncRecoverySiteId: string | null = null;
 async function readCloudMemoryEntries(siteId: string): Promise<RemoteMemoryEntry[]> {
   const all: RemoteMemoryEntry[] = [];
   for (let offset = 0; ; offset += 500) {

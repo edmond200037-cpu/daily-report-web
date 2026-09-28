@@ -98,8 +98,8 @@ export async function exportConflictBackups(scope: SharedScope): Promise<unknown
       request(tx.objectStore('sync_conflicts').getAll()),
       request(tx.objectStore('sync_recovery_backups').getAll()),
     ]);
-    const pendingConflicts = (operations as SyncOperation[]).filter((row) => row.status === 'conflict');
-    return [...pendingConflicts, ...(conflicts as Array<Record<string, unknown>>), ...(backups as Array<Record<string, unknown>>)]
+    const pendingProblems = (operations as SyncOperation[]).filter((row) => row.status === 'conflict' || row.status === 'blocked');
+    return [...pendingProblems, ...(conflicts as Array<Record<string, unknown>>), ...(backups as Array<Record<string, unknown>>)]
       .filter((row) => row.userId === scope.userId && row.siteId === scope.siteId);
   } finally { database.close(); }
 }

@@ -21,6 +21,8 @@ export interface SyncOperation extends SharedScope {
   retryable?: boolean;
   /** Old operations/conflict rows removable only after this replacement succeeds. */
   resolvesConflictIds?: string[];
+  /** Child memory entries wait until these parent entry operations finish. */
+  dependsOnEntityIds?: string[];
   /** Missing means a pre-collaboration full-snapshot outbox entry. */
   protocolVersion?: 1 | 2;
 }
