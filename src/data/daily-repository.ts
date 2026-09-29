@@ -4,6 +4,7 @@ import { loadActiveSharedScope } from '../sync/context';
 import { buildSyncOperation } from '../sync/outbox';
 import type { SyncOperation } from '../sync/types';
 import { buildFieldMutations } from '../sync/field-mutations';
+import { APP_VERSION } from '../version';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
 export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; }
@@ -196,7 +197,7 @@ export async function exportMemories(): Promise<MemoryBackupPayload> {
   try {
     const data: Record<string, unknown[]> = {};
     for (const store of MEMORY_STORES) data[store] = await request(database.transaction(store).objectStore(store).getAll()) as unknown[];
-    return { schemaVersion: 2, exportType: 'memories', exportedAt: now(), appVersion: '0.1.0', data };
+    return { schemaVersion: 2, exportType: 'memories', exportedAt: now(), appVersion: APP_VERSION, data };
   } finally { database.close(); }
 }
 

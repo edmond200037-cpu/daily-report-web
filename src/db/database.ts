@@ -4,6 +4,7 @@
  */
 import type { BackupPayload, Draft, Entity, ReportSnapshot } from '../types/domain';
 import { STORES, get, list, put, remove, withTransaction } from '../data/db.js';
+import { APP_VERSION } from '../version';
 
 export const STORE_NAMES = STORES as readonly string[];
 export type StoreName = 'sites' | 'trade_types' | 'trade_vendors' | 'trade_tasks' | 'location_memories' | 'material_types' | 'material_memory_items' | 'material_memories' | 'supplier_memories' | 'floor_options' | 'daily_reports' | 'daily_memory_commits' | 'app_settings' | 'live_report_draft' | 'water_level_points' | 'water_level_logs' | 'water_level_readings' | 'debug_logs' | 'reports' | 'drafts' | 'vendor_tasks' | 'materials' | 'material_specifications' | 'special_categories' | 'special_templates' | 'special_template_variables' | 'migration_metadata' | 'shared_context' | 'sync_outbox' | 'sync_cursors' | 'sync_conflicts' | 'draft_partitions' | 'memory_partitions' | 'water_partitions';
@@ -18,7 +19,7 @@ export class Database {
     const names = type === 'full' ? STORE_NAMES : STORE_NAMES.filter((name) => !['reports', 'drafts', 'migration_metadata', 'live_report_draft', 'daily_reports', 'water_level_points', 'water_level_logs', 'water_level_readings'].includes(name));
     const data: Record<string, unknown[]> = {};
     for (const name of names as StoreName[]) data[name] = await this.list(name);
-    return { schemaVersion: 2, exportType: type, exportedAt: new Date().toISOString(), appVersion: '0.1.0', data };
+    return { schemaVersion: 2, exportType: type, exportedAt: new Date().toISOString(), appVersion: APP_VERSION, data };
   }
   async replaceFromBackup(payload: BackupPayload): Promise<void> {
     const names = Object.keys(payload.data).filter((name) => STORE_NAMES.includes(name));

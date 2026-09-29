@@ -40,6 +40,7 @@ import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data
 import { exportConflictBackups, listConflictReviews, queueConflictResolution, type ConflictReview } from './sync/conflict-review';
 import { applySyncRecovery, previewSyncRecovery, type SyncRecoveryPreview } from './sync/recovery';
 import { subscribeToSiteChanges } from './sync/realtime';
+import { APP_VERSION } from './version';
 
 type AppRoute =
   | { module: 'daily'; page: 'main' }
@@ -453,7 +454,7 @@ function debugSnapshot(): Record<string, unknown> {
   const counts = { pending: 0, sending: 0, failed: 0, blocked: 0, conflict: 0 };
   for (const operation of accountSyncOperations) counts[operation.status] += 1;
   return {
-    appVersion: '0.1.0', databaseVersion: DB_VERSION, route: location.hash,
+    appVersion: APP_VERSION, databaseVersion: DB_VERSION, route: location.hash,
     online: navigator.onLine, serviceWorker: navigator.serviceWorker?.controller ? 'active' : 'not active',
     authEnabled: accountAuth.enabled, signedIn: Boolean(accountAuth.user), activeSiteSelected: Boolean(accountActiveSiteId),
     accountLoad: { stage: accountLoadStage, elapsedMs: accountLoadStartedAt ? Date.now() - accountLoadStartedAt : 0, coreReady: accountLoadCoreReady, detailsPending: accountLoadExtrasPending, events: accountLoadEvents },
