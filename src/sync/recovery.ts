@@ -182,10 +182,10 @@ function putMemoryEntry(payload: MemorySnapshotPayload, entry: MemoryEntryPayloa
 }
 
 /** Replace a local import identity with the server-confirmed row and rebind queued children. */
-export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string, remote: RemoteMemoryEntry): Promise<void> {
+export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string, remote: RemoteMemoryEntry, sourceOperation?: SyncOperation): Promise<void> {
   const database = await openDatabase() as IDBDatabase;
   try {
-    const stores = ['memory_partitions', 'memory_entry_versions', 'sync_outbox', ...SHARED_MEMORY_STORES];
+    const stores = ['memory_partitions', 'memory_entry_versions', 'sync_outbox', 'sync_recovery_backups', ...SHARED_MEMORY_STORES];
     const tx = database.transaction([...new Set(stores)], 'readwrite');
     const partitionStore = tx.objectStore('memory_partitions');
     const partition = await request(partitionStore.get(`${scope.userId}:${scope.siteId}`)) as MemoryPartition | undefined;
@@ -210,8 +210,30 @@ export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string,
         dependsOnEntityIds: [remote.id], status: 'pending', attempts: 0, lastError: undefined, lastErrorCode: undefined,
         lastErrorHint: undefined, retryable: true, nextAttemptAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     }
+    if (sourceOperation) {
+      tx.objectStore('sync_recovery_backups').put({
+        id: `memory-duplicate:${sourceOperation.id}`, ...scope, operation: sourceOperation,
+        remotePayload: remote, createdAt: new Date().toISOString(),
+      });
+      queue.delete(sourceOperation.id);
+    }
     await transactionDone(tx);
   } finally { database.close(); }
+}
+
+/** Resolve one 23505 operation by its natural key without resending it. */
+export async function recoverDuplicateMemoryOperation(scope: SharedScope, operation: SyncOperation): Promise<boolean> {
+  if (operation.entity !== 'memory-entry' || operation.lastErrorCode !== '23505') return false;
+  const entry = operation.payload as MemoryEntryPayload;
+  let query = getSupabaseClient().from('memory_entries')
+    .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
+    .eq('site_id', scope.siteId).eq('kind', entry.kind).eq('normalized_name', entry.normalized_name).is('deleted_at', null);
+  query = entry.parent_id ? query.eq('parent_id', entry.parent_id) : query.is('parent_id', null);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  if (!data) return false;
+  await adoptCloudMemoryEntry(scope, entry.id, data as RemoteMemoryEntry, operation);
+  return true;
 }
 
 export async function applySyncRecovery(scope: SharedScope, expectedFingerprint: string): Promise<SyncRecoveryResult> {

@@ -8,7 +8,7 @@ import { listAllOperations, listReadyOperations, markOperationFailed, markOperat
 import type { SyncConflict, SyncCursor, SyncOperation } from './types';
 import { applyFieldMutations, buildFieldMutations, mergeLegacyDailyWorkItems, type FieldMutation } from './field-mutations';
 import { memoryEntryStore, type RemoteMemoryEntry } from './memory-entries';
-import { adoptCloudMemoryEntry } from './recovery';
+import { adoptCloudMemoryEntry, recoverDuplicateMemoryOperation } from './recovery';
 
 interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
 interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
@@ -391,6 +391,14 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
   const summary: SyncRunResult = { applied: 0, pulled: 0, dailyApplied: 0, dailyPulled: 0, memoryApplied: 0, memoryPulled: 0, waterApplied: 0, waterPulled: 0, conflicts: 0, failed: 0 };
   try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.dailyPulled += pulled.dailyPulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
   catch (error) { summary.failed += 1; summary.pullError = error instanceof Error ? error.message : String(error); return summary; }
+  // Adopt server rows for older clients that already recorded a natural-key
+  // 23505. Every removal is backed up in the same IndexedDB transaction.
+  const beforeRecovery = await listAllOperations(scope);
+  for (const operation of beforeRecovery.filter((row) => row.entity === 'memory-entry' && row.status === 'blocked' && row.lastErrorCode === '23505')) {
+    try {
+      if (await recoverDuplicateMemoryOperation(scope, operation)) recordApplied(summary, operation);
+    } catch { summary.failed += 1; }
+  }
   // Reconcile the cloud document before sending local field changes.
   const unresolvedMemory = new Set((await listAllOperations(scope)).filter((row) => row.entity === 'memory-entry').map((row) => row.entityId));
   for (const pending of await listReadyOperations(scope, new Date(), manual)) {
@@ -415,7 +423,17 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
           await adoptCloudMemoryEntry(scope, operation.entityId, remote as RemoteMemoryEntry);
         }
       }
-    } catch (error) { await markOperationFailed(operation, error); summary.failed += 1; }
+    } catch (error) {
+      const duplicate = operation.entity === 'memory-entry' && (error as { code?: unknown })?.code === '23505';
+      try {
+        if (duplicate && await recoverDuplicateMemoryOperation(scope, { ...operation, lastErrorCode: '23505' })) {
+          recordApplied(summary, operation);
+          unresolvedMemory.delete(operation.entityId);
+          continue;
+        }
+      } catch { /* Keep the original operation below when reconciliation fails. */ }
+      await markOperationFailed(operation, error); summary.failed += 1;
+    }
   }
   if (summary.applied) {
     try { const pulled = await pullRemoteChanges(scope); summary.pulled += pulled.pulled; summary.dailyPulled += pulled.dailyPulled; summary.memoryPulled += pulled.memoryPulled; summary.waterPulled += pulled.waterPulled; summary.conflicts += pulled.conflicts; }
