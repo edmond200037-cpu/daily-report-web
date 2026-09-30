@@ -719,7 +719,6 @@ bindWorkGestures(app, {
 });
 bindWorkInput(app, {
   trade: (id) => daily.trade(id), tasks: () => dailyTasks,
-  move: (id, workId, offset) => { const index = daily.trade(id)?.workItems.findIndex((row) => row.id === workId) ?? -1; daily.reorderWorkItems(id, index, index + offset); },
   add: (id, text, taskId) => { daily.addWorkItem(id, text, taskId); },
   edit: (id, workId, text, taskId) => { daily.updateTradeOutputData(id, (trade) => { const work = trade.workItems.find((item) => item.id === workId); if (work) { work.taskTextSnapshot = text; work.taskId = taskId; } }); },
   commit: async () => { await daily.flush(); await commitInputMemories(false); }, render: renderApp,

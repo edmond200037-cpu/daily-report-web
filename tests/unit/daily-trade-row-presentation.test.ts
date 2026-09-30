@@ -39,11 +39,13 @@ describe('工程資料列呈現契約', () => {
     expect(input).toContain('row.tradeTypeId === trade.tradeTypeId');
     expect(input).toContain('待審核');
   });
-  it('點工項即編輯文字，附加操作列包含位置樓層、備註及刪除', () => {
+  it('點工項即編輯文字，附加操作列只保留位置樓層與備註', () => {
     expect(input).toContain('data-inline-work');
     expect(input).toContain('data-work-detail="location"');
     expect(input).toContain('data-work-detail="note"');
-    expect(input).toContain('data-daily-action="delete-work-item"');
+    expect(input).not.toContain('data-work-detail="more"');
+    expect(input).not.toContain('data-work-move');
+    expect(input).not.toContain('data-daily-action="delete-work-item"');
   });
   it('使用與聯絡事項一致的外框卡片；桌面使用四欄，手機改為兩層資料列，淡紅提示僅存在未完成狀態欄', () => {
     expect(tokens).toContain('--daily-incomplete-bg: #f5deda');
