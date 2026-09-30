@@ -1,3 +1,4 @@
+import { bindWorkGestures } from './daily/work-gestures';
 import './styles.css';
 import './presentation.css';
 import './daily/material.css';
@@ -674,6 +675,7 @@ async function performMemoryReviewWrite(action: () => Promise<void>, failureLabe
 function prepareNextMemoryGroup(): void { const groups = groupMemoryCandidates(memoryCandidates); const current = groups.findIndex((group) => group.kind === memoryReviewState.openKind); memoryReviewState.nextKind = current >= 0 ? groups[current + 1]?.kind ?? groups.find((_, index) => index !== current)?.kind ?? null : groups[0]?.kind ?? null; }
 function refreshContactSearch(target: HTMLInputElement): void { if (!contactEditor) return; const field = target.dataset.contactField as ContactSearchField; activeContactSearch = field; if (field === 'trade') { contactEditor.tradeQuery = target.value; contactEditor.value.tradeNameSnapshot = target.value; contactEditor.value.tradeTypeId = null; } else if (field === 'vendor') { contactEditor.vendorQuery = target.value; contactEditor.value.vendorNameSnapshot = target.value; contactEditor.value.vendorId = null; } else contactEditor.taskQuery = target.value; void renderApp().then(() => { const input = app.querySelector<HTMLInputElement>(`[data-contact-field="${field}"]`); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); }
 function activateContactSearch(target: HTMLInputElement): void { const field = target.dataset.contactField as ContactSearchField | undefined; if (!contactEditor || !field || activeContactSearch === field) return; activeContactSearch = field; if (field === 'trade') contactEditor.tradeQuery = target.value; else if (field === 'vendor') contactEditor.vendorQuery = target.value; else contactEditor.taskQuery = target.value; void renderApp().then(() => { const input = app.querySelector<HTMLInputElement>(`[data-contact-field="${field}"]`); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); }
+let finalizeInFlight = false;
 let memoryCommitTail: Promise<void> = Promise.resolve();
 function capturePendingWork(): void {
   for (const [id, text] of consumeWorkDrafts()) for (const value of text.split('、').map((part) => part.trim()).filter(Boolean)) daily.addWorkItem(id, value);
@@ -700,6 +702,21 @@ async function commitInputMemories(capture = true): Promise<void> {
   });
   const next = memoryCommitTail.then(commit, commit); memoryCommitTail = next.catch(() => undefined); return next;
 }
+bindWorkGestures(app, {
+  editable: () => !isReadOnlySite() && !workspaceSwitching,
+  move: (id, workId, offset) => { const index = daily.trade(id)?.workItems.findIndex((row) => row.id === workId) ?? -1; daily.reorderWorkItems(id, index, index + offset); },
+  remove: (id, workId) => {
+    const trade = daily.trade(id); const index = trade?.workItems.findIndex((row) => row.id === workId) ?? -1;
+    if (!trade || index < 0) return;
+    const item = structuredClone(trade.workItems[index]); const date = daily.report.date;
+    daily.updateTradeOutputData(id, (current) => { current.workItems.splice(index, 1); current.workItems.forEach((row, order) => row.sortOrder = order); });
+    return () => { if (daily.report.date !== date || !daily.trade(id) || daily.trade(id)!.workItems.some((row) => row.id === workId)) return;
+      daily.updateTradeOutputData(id, (current) => { current.workItems.splice(Math.min(index, current.workItems.length), 0, item); current.workItems.forEach((row, order) => row.sortOrder = order); });
+    };
+  },
+  save: () => daily.flush(), render: renderApp,
+  error: (error) => { dailyCopyFeedback = error instanceof Error ? error.message : '儲存失敗，請重試。'; updateDailySaveStatus(); },
+});
 bindWorkInput(app, {
   trade: (id) => daily.trade(id), tasks: () => dailyTasks,
   move: (id, workId, offset) => { const index = daily.trade(id)?.workItems.findIndex((row) => row.id === workId) ?? -1; daily.reorderWorkItems(id, index, index + offset); },
@@ -1033,9 +1050,11 @@ app.addEventListener('click', async (event) => {
   if (action === 'finish-entry' || action === 'next-entry') {
     const trade = daily.trade(actionElement.dataset.id!); if (!trade) return;
     await daily.flush(); await commitInputMemories();
-    if (action === 'next-entry') { const next = daily.addTrade(trade.tradeNameSnapshot, '', trade.tradeTypeId); daily.expandedId = next?.id ?? null; }
+    if (action === 'next-entry') { daily.addBlankTrade(); }
     else daily.expandedId = null;
-    await renderApp(); return;
+    await renderApp();
+    if (action === 'next-entry') app.querySelector<HTMLInputElement>('[data-daily-field="tradeNameSnapshot"]')?.focus();
+    return;
   }
   if (action === 'toggle-basics') { dailyBasicsExpanded = !dailyBasicsExpanded; await renderApp(); return; }
   if (action === 'toggle-preview') { if (!isReadOnlySite()) await savePendingDailyInput(); dailyPreviewOpen = !dailyPreviewOpen; await renderApp(); return; }
@@ -1089,7 +1108,31 @@ app.addEventListener('click', async (event) => {
   else if (action === 'delete-trade') daily.deleteTrade(button.dataset.id!);
   else if (action === 'complete') { const issues = daily.complete(button.dataset.id!); if (issues.length) alert(`尚未完成：\n${issues.join('\n')}`); }
   else if (action === 'copy') { await navigator.clipboard.writeText(formatDailyReport(daily.report)); dailyCopyFeedback = '已複製完整日報。'; window.setTimeout(() => { dailyCopyFeedback = ''; void renderApp(); }, 2400); }
-  else if (action === 'finalize') { capturePendingWork(); await daily.flush(); const issues = validateDailyForFinalization(daily.report); if (issues.length) { alert(`尚未完成：\n${issues.join('\n')}`); return; } try { const output = formatDailyReport(daily.report); const finalized = await finalizeDailyReport(daily.report, output); daily.report = finalized.retainedDraft; await daily.flush(); await commitInputMemories(); const syncResult = await syncActiveSiteNow(); const scope = await loadActiveSharedScope().catch(() => null); const syncState = scope ? await dailyOperationStatusSummary(scope) : null; [dailyTrades, dailyVendors, dailyTasks, materialTypes, materialMemory] = await Promise.all([listMemories('trades', undefined, 'all'), listMemories('vendors', undefined, 'all'), listMemories('tasks', undefined, 'all'), listMaterialTypes(), listMaterialMemory()]); await persistActiveMemoryPartition(); await navigator.clipboard.writeText(finalized.outputText); const cloudState = !scope ? '本機已定稿；尚未選擇共用工地。' : syncState && (syncState.pending || syncState.conflict || syncResult?.failed) ? '本機已定稿、雲端待同步。' : '本機已定稿；草稿已同步雲端，定稿快照仍保存在此裝置。'; dailyCopyFeedback = `${finalized.created ? '已定稿、複製並更新記憶；草稿已保留。' : '內容未變，已再次複製；未重複建立定稿或記憶。'} ${cloudState}`; dailyPreviewOpen = true; } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); return; } }
+  else if (action === 'finalize') {
+    if (finalizeInFlight) return;
+    finalizeInFlight = true; button.setAttribute('disabled', ''); button.textContent = '本機定稿中…';
+    try {
+      capturePendingWork(); await daily.flush();
+      const issues = validateDailyForFinalization(daily.report);
+      if (issues.length) { alert('尚未完成：\n' + issues.join('\n')); return; }
+      const finalized = await finalizeDailyReport(daily.report, formatDailyReport(daily.report));
+      daily.report = finalized.retainedDraft;
+      try {
+        await navigator.clipboard.writeText(finalized.outputText);
+        dailyCopyFeedback = finalized.created ? '已在本機定稿並複製；草稿已保留。' : '內容未變，已再次複製。';
+      } catch {
+        dailyCopyFeedback = '本機已定稿，但剪貼簿未允許寫入；請再按「複製」。';
+      }
+      dailyCopyFeedback += ' 記憶與草稿同步於背景處理，定稿快照保存在此裝置。';
+      dailyPreviewOpen = true;
+      void commitInputMemories().then(scheduleBackgroundSync).catch((error) => {
+        dailyCopyFeedback = '本機定稿已保留；記憶更新待重試：' + (error instanceof Error ? error.message : '保存失敗');
+        updateDailySaveStatus();
+      });
+    } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); }
+    finally { finalizeInFlight = false; await renderApp(); }
+    return;
+  }
   else if (action === 'delete-contact') { const item = daily.report.contacts.find((row) => row.id === button.dataset.id); if (!item) { activeContactSearch = null; contactEditor = null; await renderApp(); return; } if (!window.confirm(`刪除聯絡事項？\n\n工種：${item.tradeNameSnapshot}\n廠商：${item.vendorNameSnapshot}\n施工項目：${item.items.length} 項\n\n此操作無法復原。`)) return; daily.update(() => { daily.report.contacts = daily.report.contacts.filter((row) => row.id !== item.id); daily.report.contacts.forEach((row, index) => row.sortOrder = index); }); activeContactSearch = null; contactEditor = null; }
   else if (action === 'add-special') { daily.addSpecial(); expandedSpecialId = daily.report.specialItems.at(-1)?.id ?? null; }
   else if (action === 'delete-special') daily.update(() => daily.report.specialItems = daily.report.specialItems.filter((item) => item.id !== button.dataset.id));
