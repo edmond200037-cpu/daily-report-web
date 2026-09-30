@@ -22,7 +22,7 @@ export function workInputView(trade: TradeSection): string {
     <span class="work-token__detail" data-work-panel="location" hidden><strong>這個工項做在哪裡？</strong><span class="work-floor-fields"><label>起始樓層<input data-daily-field="startFloorRaw" value="${esc(work.startFloorRaw)}" placeholder="例：3F"></label><label>結束樓層<input data-daily-field="endFloorRaw" value="${esc(work.endFloorRaw)}" placeholder="選填"></label></span><label>位置<input data-daily-field="locationTextSnapshot" value="${esc(work.locationTextSnapshot)}" placeholder="例：東側"></label><button type="button" data-work-detail="close">完成，返回工項</button></span>
     <span class="work-token__detail" data-work-panel="note" hidden><label>有什麼需要交代？<textarea data-daily-field="note" placeholder="例：待監造確認後續作" rows="2">${esc(work.note)}</textarea></label><button type="button" data-work-detail="close">完成，返回工項</button></span>
     <span class="work-item-context">${esc([work.startFloorRaw, work.endFloorRaw ? `至 ${work.endFloorRaw}` : '', work.locationTextSnapshot, work.note ? '有備註' : ''].filter(Boolean).join(' · '))}${sameWorkNames(trade, work.taskTextSnapshot, work.id).length ? '<span class="work-same-name">同名工項，請確認位置</span>' : ''}</span><span class="work-separator" aria-hidden="true">、</span></span>`).join('')}
-    ${trade.workItems.length ? '' : '<span class="work-empty">從上方加入工項，新增後會排列在這裡。</span>'}</div><p class="hint work-input-hint">左側握把：長按上下排序，左滑刪除。點文字可編輯。</p>`;
+    ${trade.workItems.length ? '' : '<span class="work-empty">從上方加入工項，新增後會排列在這裡。</span>'}</div><p class="hint work-input-hint">工項列左滑刪除；長按左側握把排序。點文字可編輯。</p>`;
 }
 
 interface WorkInputActions {

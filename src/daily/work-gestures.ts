@@ -1,4 +1,4 @@
-/** Gestures use a dedicated touch target so text selection and page scrolling stay native. */
+/** The row accepts horizontal swipes; only the grip starts long-press sorting. */
 export function swipeDeletes(dx: number, dy: number): boolean { return dx <= -72 && Math.abs(dx) > Math.abs(dy) * 1.5; }
 interface Actions {
   editable(): boolean;
@@ -18,7 +18,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   root.addEventListener('contextmenu', preventGripMenu, { capture: true });
   root.addEventListener('dragstart', preventGripMenu, { capture: true });
   root.addEventListener('selectstart', preventGripMenu, { capture: true });
-  let active: { row: HTMLElement; handle: HTMLElement; pointer: number; x: number; y: number; dx: number; dy: number; drag: boolean; offset: number; timer: number } | undefined;
+  let active: { row: HTMLElement; handle: HTMLElement; pointer: number; x: number; y: number; dx: number; dy: number; drag: boolean; swipe: boolean; offset: number; timer: number } | undefined;
   let suppressClick = false;
   let dropLine: HTMLElement | undefined;
   const showDropLine = (others: HTMLElement[], index: number) => {
@@ -31,11 +31,15 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   };
   const clear = () => { dropLine?.remove(); dropLine = undefined; if (!active) return; window.clearTimeout(active.timer); active.row.style.transform = ''; active.row.classList.remove('work-token--dragging', 'work-token--deleting'); if (active.handle.hasPointerCapture(active.pointer)) active.handle.releasePointerCapture(active.pointer); active = undefined; };
   root.addEventListener('pointerdown', (event) => {
-    const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-work-gesture]');
-    const row = handle?.closest<HTMLElement>('[data-work]');
-    if (!handle || !row || active || !actions.editable() || !event.isPrimary || event.button !== 0) return;
-    event.preventDefault(); event.stopPropagation(); handle.setPointerCapture(event.pointerId);
-    active = { row, handle, pointer: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, drag: false, offset: 0, timer: 0 };
+    const target = event.target as HTMLElement;
+    const grip = target.closest<HTMLElement>('[data-work-gesture]');
+    const row = target.closest<HTMLElement>('.work-token--item[data-work]');
+    if (!row || active || !actions.editable() || !event.isPrimary || event.button !== 0) return;
+    if (!grip && (target.closest('.work-token__detail,.work-token__tools,.work-token__results,button,textarea,select') || event.pointerType === 'mouse')) return;
+    const handle = grip ?? row;
+    if (grip) { event.preventDefault(); event.stopPropagation(); handle.setPointerCapture(event.pointerId); }
+    active = { row, handle, pointer: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, drag: false, swipe: false, offset: 0, timer: 0 };
+    if (!grip) return;
     active.timer = window.setTimeout(() => {
       if (!active) return;
       active.drag = true; active.row.classList.add('work-token--dragging');
@@ -45,12 +49,20 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   });
   root.addEventListener('pointermove', (event) => {
     if (!active || event.pointerId !== active.pointer) return;
-    event.preventDefault(); active.dx = event.clientX - active.x; active.dy = event.clientY - active.y;
+    active.dx = event.clientX - active.x; active.dy = event.clientY - active.y;
     if (!active.drag) {
       if (Math.hypot(active.dx, active.dy) > 10) window.clearTimeout(active.timer);
+      if (!active.swipe) {
+        if (Math.abs(active.dy) > 10 && Math.abs(active.dy) >= Math.abs(active.dx)) { clear(); return; }
+        if (active.dx > 10) { clear(); return; }
+        if (active.dx > -12 || Math.abs(active.dx) <= Math.abs(active.dy) * 1.5) return;
+        active.swipe = true; active.handle.setPointerCapture(event.pointerId);
+      }
+      event.preventDefault();
       active.row.style.transform = `translateX(${Math.max(-100, Math.min(0, active.dx))}px)`;
       active.row.classList.toggle('work-token--deleting', swipeDeletes(active.dx, active.dy)); return;
     }
+    event.preventDefault();
     const rows = [...active.row.parentElement!.querySelectorAll<HTMLElement>('.work-token--item')];
     const from = rows.indexOf(active.row);
     const others = rows.filter((row) => row !== active!.row);
@@ -64,8 +76,8 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   root.addEventListener('pointerup', async (event) => {
     if (!active || event.pointerId !== active.pointer) return;
     const state = active; const trade = state.row.closest<HTMLElement>('[data-trade]')?.dataset.trade; const work = state.row.dataset.work;
-    const deleted = !state.drag && swipeDeletes(state.dx, state.dy); clear();
-    suppressClick = state.drag || deleted; window.setTimeout(() => suppressClick = false, 0);
+    const deleted = state.swipe && !state.drag && swipeDeletes(state.dx, state.dy); clear();
+    suppressClick = state.drag || state.swipe; window.setTimeout(() => suppressClick = false, 0);
     if (!trade || !work || !actions.editable()) return;
     let undo: (() => void) | undefined;
     if (deleted) undo = actions.remove(trade, work);
@@ -81,5 +93,5 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
       }
     } catch (error) { actions.error(error); }
   });
-  root.addEventListener('click', (event) => { if (suppressClick && (event.target as HTMLElement).closest('[data-work-gesture]')) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  root.addEventListener('click', (event) => { if (suppressClick && (event.target as HTMLElement).closest('.work-token--item')) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
 }
