@@ -9,6 +9,15 @@ interface Actions {
   error(error: unknown): void;
 }
 export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
+  // Cancel native long-press menus only on the gesture grip, not editable text.
+  const preventGripMenu = (event: Event) => {
+    if (!(event.target instanceof Element) || !event.target.closest('[data-work-gesture]')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  root.addEventListener('contextmenu', preventGripMenu, { capture: true });
+  root.addEventListener('dragstart', preventGripMenu, { capture: true });
+  root.addEventListener('selectstart', preventGripMenu, { capture: true });
   let active: { row: HTMLElement; handle: HTMLElement; pointer: number; x: number; y: number; dx: number; dy: number; drag: boolean; offset: number; timer: number } | undefined;
   let suppressClick = false;
   const clear = () => { if (!active) return; window.clearTimeout(active.timer); active.row.style.transform = ''; active.row.classList.remove('work-token--dragging', 'work-token--deleting'); if (active.handle.hasPointerCapture(active.pointer)) active.handle.releasePointerCapture(active.pointer); active = undefined; };

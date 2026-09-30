@@ -42,7 +42,7 @@
 .daily-page .trade-card__content .subsection-title { margin:12px 0 6px; }
 .daily-page .trade-card__content .action-row { gap:8px; margin-top:10px; }
 .daily-page .continuous-work .work-token--item { display:grid; grid-template-columns:44px minmax(0,1fr); width:100%; box-sizing:border-box; border-bottom:1px solid var(--line); padding:4px 0; }
-.work-gesture { touch-action:none; user-select:none; min-width:44px; min-height:44px; padding:8px; border:0; background:transparent; cursor:grab; }
+.work-gesture { touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; min-width:44px; min-height:44px; padding:8px; border:0; background:transparent; cursor:grab; }
 .work-gesture svg { pointer-events:none; }
 .work-token--dragging { z-index:30; background:var(--daily-orange-soft); outline:2px solid var(--daily-orange); }
 .work-token--deleting { background:#f5deda; }
