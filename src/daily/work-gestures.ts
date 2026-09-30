@@ -20,14 +20,28 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   root.addEventListener('selectstart', preventGripMenu, { capture: true });
   let active: { row: HTMLElement; handle: HTMLElement; pointer: number; x: number; y: number; dx: number; dy: number; drag: boolean; offset: number; timer: number } | undefined;
   let suppressClick = false;
-  const clear = () => { if (!active) return; window.clearTimeout(active.timer); active.row.style.transform = ''; active.row.classList.remove('work-token--dragging', 'work-token--deleting'); if (active.handle.hasPointerCapture(active.pointer)) active.handle.releasePointerCapture(active.pointer); active = undefined; };
+  let dropLine: HTMLElement | undefined;
+  const showDropLine = (others: HTMLElement[], index: number) => {
+    if (!active || !others.length) return;
+    const container = active.row.parentElement!;
+    if (!dropLine) { dropLine = document.createElement('span'); dropLine.className = 'work-drop-line'; dropLine.setAttribute('aria-hidden', 'true'); container.append(dropLine); }
+    const next = others[index];
+    const anchor = (next ?? others[others.length - 1]).getBoundingClientRect();
+    dropLine.style.top = `${(next ? anchor.top : anchor.bottom) - container.getBoundingClientRect().top + container.scrollTop - container.clientTop}px`;
+  };
+  const clear = () => { dropLine?.remove(); dropLine = undefined; if (!active) return; window.clearTimeout(active.timer); active.row.style.transform = ''; active.row.classList.remove('work-token--dragging', 'work-token--deleting'); if (active.handle.hasPointerCapture(active.pointer)) active.handle.releasePointerCapture(active.pointer); active = undefined; };
   root.addEventListener('pointerdown', (event) => {
     const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-work-gesture]');
     const row = handle?.closest<HTMLElement>('[data-work]');
     if (!handle || !row || active || !actions.editable() || !event.isPrimary || event.button !== 0) return;
     event.preventDefault(); event.stopPropagation(); handle.setPointerCapture(event.pointerId);
     active = { row, handle, pointer: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, drag: false, offset: 0, timer: 0 };
-    active.timer = window.setTimeout(() => { if (!active) return; active.drag = true; active.row.classList.add('work-token--dragging'); }, 400);
+    active.timer = window.setTimeout(() => {
+      if (!active) return;
+      active.drag = true; active.row.classList.add('work-token--dragging');
+      const rows = [...active.row.parentElement!.querySelectorAll<HTMLElement>('.work-token--item')];
+      showDropLine(rows.filter((row) => row !== active!.row), rows.indexOf(active.row));
+    }, 400);
   });
   root.addEventListener('pointermove', (event) => {
     if (!active || event.pointerId !== active.pointer) return;
@@ -42,6 +56,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     const others = rows.filter((row) => row !== active!.row);
     const to = others.filter((row) => { const rect = row.getBoundingClientRect(); return event.clientY > rect.top + rect.height / 2; }).length;
     active.offset = to - from; active.row.style.transform = `translateY(${active.dy}px)`;
+    showDropLine(others, to);
     if (event.clientY < 80) window.scrollBy(0, -12); else if (event.clientY > window.innerHeight - 80) window.scrollBy(0, 12);
   });
   root.addEventListener('pointercancel', clear);
