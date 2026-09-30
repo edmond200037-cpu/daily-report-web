@@ -17,14 +17,11 @@ describe('工項拖曳呈現契約', () => {
     expect(daily).toContain('Math.hypot(event.clientX - workItemDrag.startX, event.clientY - workItemDrag.startY) < 6');
   });
 
-  it('用同施工卡的 sortable rows 輸出 placeholder、首中尾插入線', () => {
-    expect(daily).toContain('function workItemsView');
-    expect(daily).toContain('data-sortable-work');
-    expect(daily).toContain('work-item--drag-placeholder');
-    expect(daily).toContain("indicator(sortableItems.length, true)");
-    expect(daily).toContain('.filter((row) => row.dataset.work !== workItemDrag.workItemId)');
+  it('連續輸入保留工項識別，沿用控制器排序能力', () => {
+    const input = source('src/daily/work-input.ts');
+    expect(input).toContain('data-work="${work.id}"');
+    expect(input).toContain('data-sortable-work');
   });
-
   it('預覽完整工項、停用 clone 互動，且 pointer cancel 與 Escape 清理狀態', () => {
     expect(daily).toContain('function startWorkItemDrag');
     expect(daily).toContain("preview.className = 'work-item-drag-preview'");
@@ -34,11 +31,9 @@ describe('工項拖曳呈現契約', () => {
     expect(daily).toContain('clearWorkItemDrag(); event.preventDefault(); void renderApp(); return;');
   });
 
-  it('維持既有輸入器與操作欄契約', () => {
-    expect(daily).toContain('function workItemComposerView');
-    expect(daily).toContain('aria-label="工項操作"');
-    expect(styles).toContain('--work-item-action-column: var(--daily-touch-target)');
+  it('連續編輯器保留工項及附加資料入口', () => {
+    const input = source('src/daily/work-input.ts');
+    expect(input).toContain('data-work-item-input');
+    expect(input).toContain('data-work-detail');
     expect(styles).toContain('.work-item-drag-preview { position: fixed;');
-    expect(styles).toContain('.work-item-drop-indicator { height: 4px;');
-  });
-});
+  });});

@@ -31,10 +31,13 @@ export function validateDailyForFinalization(report: DailyReportV3): string[] {
   if (!report.date) issues.push('請填寫日報日期。');
   if (!report.siteNameSnapshot.trim()) issues.push('請填寫工地名稱。');
   if (!report.tradeSections.length) issues.push('請至少完成一個工種。');
-  if (report.tradeSections.some((trade) => trade.status !== 'complete')) issues.push('尚有工種草稿，請完成或刪除後再定稿。');
-  if (!report.tradeSections.some((trade) => trade.status === 'complete')) issues.push('請至少完成一個工種。');
+
+
   if (report.standaloneMaterialEntries.some((entry) => entry.entryType === 'independent' && !entry.connectedTradeSectionId)) issues.push('尚有未連結的獨立進料，請先連接至施工工種。');
   if (duplicateVendorTradeIds(report).size) issues.push('同一工種不可有重複廠商施工卡，請整理後再定稿。');
-  report.tradeSections.filter((trade) => trade.status === 'complete').forEach((trade) => validateTrade(trade, report.standaloneMaterialEntries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId === trade.id)).forEach((issue) => issues.push(`${trade.tradeNameSnapshot || '工種'}：${issue.message}`)));
+  report.tradeSections.forEach((trade) => validateTrade(trade, report.standaloneMaterialEntries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId === trade.id)).forEach((issue) => issues.push(`${trade.tradeNameSnapshot || '工種'}：${issue.message}`)));
+  report.standaloneMaterialEntries.filter((entry) => entry.entryType !== 'independent').forEach((entry) => validateMaterialEntry(entry).forEach((message) => issues.push(`進料：${message}`)));
+  report.contacts.forEach((item) => { if (!item.tradeNameSnapshot.trim() || !item.vendorNameSnapshot.trim() || !item.items.length || item.items.some((task) => !task.content.trim())) issues.push('聯絡事項：請填寫工種、廠商與內容。'); });
+  if (report.specialItems.some((item) => !item.content.trim())) issues.push('特殊事項：請補填內容或刪除空白項目。');
   return [...new Set(issues)];
 }

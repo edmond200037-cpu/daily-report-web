@@ -27,9 +27,8 @@ describe('日報紙本表單重整前功能基線', () => {
     expect(report).toEqual(before);
   });
 
-  it('草稿工種與未連結獨立進料維持定稿阻擋', () => {
+  it('自動完整性取代手動草稿狀態，未連結獨立進料仍阻擋定稿', () => {
     expect(validateDailyForFinalization(blockedPopulatedDailyReport())).toEqual(expect.arrayContaining([
-      '尚有工種草稿，請完成或刪除後再定稿。',
       '尚有未連結的獨立進料，請先連接至施工工種。',
     ]));
   });
@@ -62,7 +61,7 @@ describe('日報紙本表單重整前功能基線', () => {
     expect(saveState).not.toHaveBeenCalled();
   });
 
-  it('現行預覽開關只更新 UI 狀態，不呼叫日報 mutation 或 flush', () => {
+  it('預覽保存連續輸入的尾端文字，但不觸發記憶套用計數', () => {
     // The event handler has no exported seam; keep this source contract until the
     // Phase 5 Bottom Sheet controller exposes a behaviour-level test seam.
     const source = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
@@ -72,7 +71,8 @@ describe('日報紙本表單重整前功能基線', () => {
     expect(branch).toContain('await renderApp()');
     expect(branch).toContain('return');
     expect(branch).not.toContain('daily.update');
-    expect(branch).not.toContain('daily.flush');
+    expect(branch).toContain('savePendingDailyInput');
+    expect(branch).not.toContain('commitInputMemories');
   });
 
   it('定稿 repository 保存呼叫端產生的 outputText，並以單一交易保留草稿與提交紀錄', () => {

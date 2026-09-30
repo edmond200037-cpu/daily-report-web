@@ -11,7 +11,9 @@ describe('日報定稿契約', () => {
   it('要求日期、工地及所有工種完成後才能定稿', () => {
     expect(validateDailyForFinalization(draft())).toEqual([]);
     const incomplete = draft(); incomplete.tradeSections[0].status = 'draft';
-    expect(validateDailyForFinalization(incomplete)).toContain('尚有工種草稿，請完成或刪除後再定稿。');
+    expect(validateDailyForFinalization(incomplete)).toEqual([]);
+    incomplete.tradeSections[0].workerCount = '';
+    expect(validateDailyForFinalization(incomplete).some((issue) => issue.includes('施工人數'))).toBe(true);
     const missingSite = draft(); missingSite.siteNameSnapshot = '';
     expect(validateDailyForFinalization(missingSite)).toContain('請填寫工地名稱。');
   });

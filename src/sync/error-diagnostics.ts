@@ -9,6 +9,7 @@ export function classifySyncError(error: unknown): SyncErrorDiagnostic {
   const message = clean(row.message) || clean(error) || '未取得雲端錯誤訊息。';
   const hint = clean(row.hint ?? row.details) || undefined;
   const text = `${code ?? ''} ${message}`.toLowerCase();
+  if (code === '40001' || code === '40P01') return { code, message, hint, retryable: true, guidance: '同時寫入，將使用原事件識別自動重試。' };
   if (code === '42501' || /forbidden|permission|not authorized|row-level security/.test(text)) return { code, message, hint, retryable: false, guidance: '目前帳號沒有此工地的編輯權限；請確認成員角色。' };
   if (code === '42883' || code === 'PGRST202' || /function .* does not exist|could not find the function/.test(text)) return { code, message, hint, retryable: false, guidance: '線上資料庫缺少同步函式；請套用最新版 Supabase migration。' };
   if (/^22/.test(code ?? '') || /invalid|malformed|schema|json/.test(text)) return { code, message, hint, retryable: false, guidance: '本機資料格式不符合雲端協定；請保留資料並更新前端後再處理。' };

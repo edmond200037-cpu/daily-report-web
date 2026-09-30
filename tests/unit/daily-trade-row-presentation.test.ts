@@ -6,6 +6,7 @@ const source = (path: string) => readFileSync(new URL(`../../${path}`, import.me
 
 describe('工程資料列呈現契約', () => {
   const daily = source('src/main.ts');
+  const input = source('src/daily/work-input.ts');
   const styles = source('src/daily/daily.css');
   const presentation = source('src/presentation.css');
   const tokens = source('src/styles.css');
@@ -18,7 +19,7 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain('trade-row-summary__status');
     expect(daily).toContain('const nonEmptyWorkItems = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).filter');
     expect(daily).toContain('另 ${nonEmptyWorkItems.length - 1} 項');
-    expect(daily).toContain("trade.status === 'complete' ? '已完成' : '未完成'");
+    expect(daily).toContain("trade.status === 'complete' ? '資料齊全'");
   });
 
   it('保留原有拖曳與展開按鈕的分離語意', () => {
@@ -29,40 +30,21 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain('title="${escapeHtml(taskSummary)}"');
   });
 
-  it('輔助編輯器可明確收合，且工項輸入欄、摘要與上方搜尋欄共用對齊基準', () => {
-    expect(daily).toContain('data-daily-action="close-work-aux"');
-    expect(daily).toContain('class="work-item__actions"');
-    expect(daily).toContain('const closeEditor =');
-    expect(daily).toContain("if (action === 'close-work-aux')");
-    expect(styles).toContain('--work-item-action-column: var(--daily-touch-target)');
-    expect(styles).toContain('--work-item-column-gap: .5rem');
-    expect(styles).toContain('.work-item { padding: .55rem 0;');
-    expect(styles).toContain('.work-item__main-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-action-column); align-items: center; gap: var(--work-item-column-gap);');
-    expect(styles).toContain('.work-item__actions { position: relative; grid-column: 3;');
-    expect(styles).toContain('.work-item-composer { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) var(--work-item-action-column); align-items: start; gap: var(--work-item-column-gap);');
-    expect(styles).toContain('padding-inline-start: calc(var(--work-item-leading-column) + var(--work-item-column-gap));');
-    expect(styles).not.toContain('.work-item-composer { grid-template-columns: 1fr; }');
+  it('工項附加資料可返回文字輸入，位置與備註維持獨立欄位', () => {
+    expect(input).toContain('data-work-detail="close"');
+    expect(input).toContain('data-daily-field="locationTextSnapshot"');
+    expect(input).toContain('data-daily-field="note"');
   });
-
-  it('搜尋建議只在輸入非空文字時顯示，加入後清空即可收合建議', () => {
-    expect(daily).toContain('active && trade.tradeTypeId && composer.query.trim() ?');
-    expect(daily).toContain('composer.query = \'\'; composer.taskId = null;');
+  it('搜尋包含待審核記憶，並限定目前工種', () => {
+    expect(input).toContain('row.tradeTypeId === trade.tradeTypeId');
+    expect(input).toContain('待審核');
   });
-
-  it('所有尺寸共用單一工項操作入口，選單包含位置、備註與刪除', () => {
-    expect(daily).toContain('aria-label="工項操作"');
-    expect(daily).toContain('aria-controls="\${menuId}"');
-    expect(daily).toContain('data-work-aux-menu="\${work.id}"');
-    expect(daily).toContain('>⋯</button>');
-    expect(daily).toContain('>刪除工項</button>');
-    expect(daily).toContain('function focusWorkAuxMenu');
-    expect(daily).toContain('function focusWorkActionsTrigger');
-    expect(daily).toContain("if (workAuxMenuId) { const id = workAuxMenuId;");
-    expect(daily).toContain('title="位置：\${escapeHtml(location)}"');
-    expect(daily).not.toContain('work-item__desktop-tools');
-    expect(daily).not.toContain('work-item__mobile-tools');
+  it('點工項即編輯文字，附加操作列包含位置樓層、備註及刪除', () => {
+    expect(input).toContain('data-inline-work');
+    expect(input).toContain('data-work-detail="location"');
+    expect(input).toContain('data-work-detail="note"');
+    expect(input).toContain('data-daily-action="delete-work-item"');
   });
-
   it('使用與聯絡事項一致的外框卡片；桌面使用四欄，手機改為兩層資料列，淡紅提示僅存在未完成狀態欄', () => {
     expect(tokens).toContain('--daily-incomplete-bg: #f5deda');
     expect(tokens).toContain('--daily-incomplete-ink: #7a302b');

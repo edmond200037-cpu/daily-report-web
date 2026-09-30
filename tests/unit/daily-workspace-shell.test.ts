@@ -19,8 +19,8 @@ describe('日報共用工作區骨架', () => {
     expect(main).toContain('${dailyTabs()}${activeTabContent()}</section>');
   });
 
-  it('基本資料保留既有展開與欄位行為，但採日報專用欄線區段', () => {
-    expect(main).toContain('class="basics daily-basics basics--${dailyBasicsExpanded ? \'expanded\' : \'collapsed\'}"');
+  it('工地與日期直接顯示，採日報專用欄線區段', () => {
+    expect(main).toContain('class="basics daily-basics basics--expanded"');
     expect(dailyCss).toContain('.daily-page .daily-basics {');
     expect(dailyCss).toContain('border-inline: 0;');
     expect(dailyCss).toContain('border-radius: 0;');

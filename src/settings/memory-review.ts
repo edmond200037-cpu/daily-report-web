@@ -6,7 +6,7 @@ export interface MemoryCandidateGroup { kind: MemoryKind; rows: MemoryCandidate[
 const kindOrder: MemoryKind[] = ['sites', 'trades', 'vendors', 'tasks', 'locations', 'material-types', 'material-items'];
 const normalized = (value: string | undefined): string => (value ?? '').trim().replace(/　/g, ' ').replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
 const candidateOrder = (a: MemoryCandidate, b: MemoryCandidate): number =>
-  b.finalizedUsageCount - a.finalizedUsageCount
+  b.usageCount - a.usageCount
   || (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '')
   || normalized(a.name).localeCompare(normalized(b.name));
 

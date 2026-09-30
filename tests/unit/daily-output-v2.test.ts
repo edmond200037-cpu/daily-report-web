@@ -38,12 +38,12 @@ describe('日報輸出模板 v2', () => {
     expect(validateDailyForFinalization(draft)).toContain('同一工種不可有重複廠商施工卡，請整理後再定稿。');
   });
 
-  it('實際施工輸出異動會讓完成施工卡退回草稿，UI 收合不會', () => {
+  it('施工異動後自動重新檢查完整性，UI 收合不影響資料', () => {
     Object.assign(globalThis, { window: { clearTimeout, setTimeout } });
     const controller = new DailyController(report());
     controller.toggle('t1');
     expect(controller.trade('t1')?.status).toBe('complete');
     controller.updateTradeOutputData('t1', (section) => { section.workItems[0].locationTextSnapshot = 'A區'; });
-    expect(controller.trade('t1')?.status).toBe('draft');
+    expect(controller.trade('t1')?.status).toBe('complete');
   });
 });

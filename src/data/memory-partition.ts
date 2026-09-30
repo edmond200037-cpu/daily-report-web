@@ -39,7 +39,7 @@ export async function persistActiveMemoryPartition(learningKey?: string): Promis
       // A newly selected site starts empty. Existing cached partitions are the
       // baseline; local-only memories must go through explicit import.
       for (const entry of changedMemoryEntries(existing?.payload ?? emptyMemoryPayload(), payload)) {
-        const old = queued.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry' && row.entityId === entry.id && row.status === 'pending' && row.attempts === 0);
+        const old = queued.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry' && row.entityId === entry.id && row.status === 'pending' && row.attempts === 0 && !(row.payload as MemoryEntryPayload).learning_key);
         if (old) queue.delete(old.id);
         const version = await request(versions.get(`${scope.siteId}:${entry.id}`)) as { revision: number } | undefined;
         const before = priorEntries.get(entry.id);

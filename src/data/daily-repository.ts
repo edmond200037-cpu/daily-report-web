@@ -1,3 +1,4 @@
+import { mergeEditorIntent, refreshCompleteness } from '../daily/input-workflow';
 import { DAILY_TEMPLATE_VERSION, timestamp, type DailyReportV3, type FinalizedDailyReport, type TradeSection, type WorkItem, type MaterialEntry, type ContactItem } from '../domain/daily';
 import { openDatabase, STORES } from './db.js';
 import { loadActiveSharedScope } from '../sync/context';
@@ -20,7 +21,7 @@ const now = () => new Date().toISOString();
 export interface MaterialType { id: string; name: string; normalizedName: string; sortOrder: number; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; recentUnit: string; recentSupplierName: string; createdAt: string; updatedAt: string; status: MemoryStatus; }
 export type MaterialMemoryField = 'itemName' | 'specification' | 'unit' | 'supplier';
 export interface MaterialMemoryItem { id: string; materialTypeId: string; fieldType: MaterialMemoryField; value: string; normalizedValue: string; usageCount: number; finalizedUsageCount: number; lastUsedAt: string; createdAt: string; updatedAt: string; status: MemoryStatus; }
-export interface DailyMemoryCommit { id: 'current'; fingerprint: string; snapshotId: string; outputText: string; committedAt: string; }
+export interface DailyMemoryCommit { id: string; fingerprint: string; snapshotId: string; outputText: string; committedAt: string; }
 export interface FinalizeResult { snapshot: FinalizedDailyReport; retainedDraft: DailyReportV3; outputText: string; created: boolean; }
 export type MemoryKind = 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations' | 'material-types' | 'material-items';
 export type MemoryCandidateKey = `${MemoryKind}:${string}`;
@@ -75,9 +76,10 @@ export async function loadDailyDraftForDate(reportDate: string): Promise<DailyRe
     return row ? normalizeDraft(structuredClone(row.report)) : undefined;
   } finally { database.close(); }
 }
-export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
+export async function saveDailyDraft(report: DailyReportV3, baseline?: DailyReportV3): Promise<DailyReportV3> {
   // Shared context lookup must never prevent the local-first save path.
-  const scope = await loadActiveSharedScope().catch(() => null);
+  const scope = await loadActiveSharedScope();
+  if (report.shared && (!scope || report.shared.userId !== scope.userId || report.shared.siteId !== scope.siteId)) throw new Error('工地已切換，已停止舊工地寫入。');
   if (scope && (!report.shared || report.shared.userId !== scope.userId || report.shared.siteId !== scope.siteId || report.shared.reportDate !== report.date)) {
     report.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: crypto.randomUUID(), reportDate: report.date, revision: 0 };
   }
@@ -88,6 +90,10 @@ export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
     const tx = database.transaction(stores, 'readwrite');
     const partitionIdValue = partitionId(scope?.userId ?? null, scope?.siteId ?? null, report.date);
     const partitionBefore = await request(tx.objectStore('draft_partitions').get(partitionIdValue)) as DraftPartition | undefined;
+    const shared = report.shared;
+    if (baseline && partitionBefore && baseline.date === report.date) report = mergeEditorIntent(partitionBefore.report, baseline, report);
+    if (scope) report.shared ??= shared;
+    refreshCompleteness(report);
     tx.objectStore('live_report_draft').put(report);
     const partition: DraftPartition = { id: partitionIdValue, userId: scope?.userId ?? null, siteId: scope?.siteId ?? null, reportDate: report.date, report: structuredClone(report), updatedAt: now() };
     tx.objectStore('draft_partitions').put(partition);
@@ -101,6 +107,7 @@ export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
       if (changes.length) queue.put(buildSyncOperation({ ...scope, entity: 'daily-patch', entityId: report.shared.cloudId, baseRevision: report.shared.revision, payload: { reportDate: report.date, changes } }));
     }
     await txDone(tx);
+    return report;
   } finally { database.close(); }
 }
 
@@ -253,7 +260,7 @@ export async function mergeMemoryBackup(raw: unknown): Promise<MemoryMergeSummar
 const calendarStart = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).valueOf();
 export function isFinalizedReportExpired(finalizedAt: string, reference = new Date()): boolean { const cutoff = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - 7).valueOf(); return calendarStart(new Date(finalizedAt)) <= cutoff; }
 export async function pruneExpiredReports(reference = new Date()): Promise<number> { const database = await db(); try { const tx = database.transaction('daily_reports', 'readwrite'); const reports = await request(tx.objectStore('daily_reports').getAll()) as FinalizedDailyReport[]; const expired = reports.filter((report) => isFinalizedReportExpired(report.finalizedAt, reference)); expired.forEach((report) => tx.objectStore('daily_reports').delete(report.id)); await txDone(tx); return expired.length; } finally { database.close(); } }
-export async function listRecentFinalizedReports(): Promise<FinalizedDailyReport[]> { await pruneExpiredReports(); const database = await db(); try { return (await request(database.transaction('daily_reports').objectStore('daily_reports').getAll()) as FinalizedDailyReport[]).filter((report) => !isFinalizedReportExpired(report.finalizedAt)).sort((a, b) => b.finalizedAt.localeCompare(a.finalizedAt)); } finally { database.close(); } }
+export async function listRecentFinalizedReports(): Promise<FinalizedDailyReport[]> { const scope = await loadActiveSharedScope(); await pruneExpiredReports(); const database = await db(); try { return (await request(database.transaction('daily_reports').objectStore('daily_reports').getAll()) as FinalizedDailyReport[]).filter((report) => !isFinalizedReportExpired(report.finalizedAt) && (scope ? report.shared?.userId === scope.userId && report.shared?.siteId === scope.siteId : !report.shared)).sort((a, b) => b.finalizedAt.localeCompare(a.finalizedAt)); } finally { database.close(); } }
 
 export async function outputFingerprint(outputText: string): Promise<string> {
   const bytes = new TextEncoder().encode(outputText);
@@ -271,30 +278,30 @@ function incrementNamed(rows: NamedMemory[], store: IDBObjectStore, value: strin
   const name = cleanName(value); if (!name) return undefined;
   const normalizedName = normalizeName(name);
   const current = rows.find((row) => row.normalizedName === normalizedName && (tradeTypeId === undefined || row.tradeTypeId === tradeTypeId));
-  const finalizedUsageCount = (current?.finalizedUsageCount ?? 0) + 1;
+  const finalizedUsageCount = current?.finalizedUsageCount ?? 0;
   const row: NamedMemory = current
-    ? { ...current, name, usageCount: (current.usageCount ?? 0) + 1, finalizedUsageCount, lastUsedAt: stamp, updatedAt: stamp, status: finalizedUsageCount >= 3 ? 'confirmed' : (current.status ?? 'confirmed') }
-    : { id: crypto.randomUUID(), name, normalizedName, usageCount: 1, finalizedUsageCount: 1, lastUsedAt: stamp, createdAt: stamp, updatedAt: stamp, status: 'candidate', manuallyCreated: false, manuallyConfirmed: false, firstUsedAt: stamp, ...(tradeTypeId ? { tradeTypeId } : {}) };
+    ? { ...current, name, usageCount: (current.usageCount ?? 0), finalizedUsageCount, lastUsedAt: stamp, updatedAt: stamp, status: (current?.usageCount ?? 0) >= 4 ? 'confirmed' : (current.status ?? 'confirmed') }
+    : { id: crypto.randomUUID(), name, normalizedName, usageCount: 0, finalizedUsageCount: 0, lastUsedAt: stamp, createdAt: stamp, updatedAt: stamp, status: 'candidate', manuallyCreated: false, manuallyConfirmed: false, firstUsedAt: stamp, ...(tradeTypeId ? { tradeTypeId } : {}) };
   store.put(row); if (!current) rows.push(row); else rows.splice(rows.indexOf(current), 1, row);
   return row;
 }
 
 function incrementMaterialType(rows: MaterialType[], store: IDBObjectStore, value: string, stamp: string): MaterialType | undefined {
   const name = cleanName(value); if (!name) return undefined;
-  const current = rows.find((row) => row.normalizedName === normalizeName(name)); const finalizedUsageCount = (current?.finalizedUsageCount ?? 0) + 1;
+  const current = rows.find((row) => row.normalizedName === normalizeName(name)); const finalizedUsageCount = (current?.finalizedUsageCount ?? 0);
   const row: MaterialType = current
-    ? { ...current, name, usageCount: (current.usageCount ?? 0) + 1, finalizedUsageCount, lastUsedAt: stamp, updatedAt: stamp, status: finalizedUsageCount >= 3 ? 'confirmed' : (current.status ?? 'confirmed') }
-    : { id: crypto.randomUUID(), name, normalizedName: normalizeName(name), sortOrder: rows.length, usageCount: 1, finalizedUsageCount: 1, lastUsedAt: stamp, recentUnit: '', recentSupplierName: '', createdAt: stamp, updatedAt: stamp, status: 'candidate' };
+    ? { ...current, name, usageCount: (current.usageCount ?? 0), finalizedUsageCount, lastUsedAt: stamp, updatedAt: stamp, status: (current?.usageCount ?? 0) >= 4 ? 'confirmed' : (current.status ?? 'confirmed') }
+    : { id: crypto.randomUUID(), name, normalizedName: normalizeName(name), sortOrder: rows.length, usageCount: 0, finalizedUsageCount: 0, lastUsedAt: stamp, recentUnit: '', recentSupplierName: '', createdAt: stamp, updatedAt: stamp, status: 'candidate' };
   store.put(row); if (!current) rows.push(row); else rows.splice(rows.indexOf(current), 1, row);
   return row;
 }
 
 function incrementMaterialItem(rows: MaterialMemoryItem[], store: IDBObjectStore, materialTypeId: string, fieldType: MaterialMemoryField, value: string, stamp: string): void {
   const cleaned = cleanName(value); if (!cleaned) return;
-  const normalizedValue = normalizeName(cleaned); const current = rows.find((row) => row.materialTypeId === materialTypeId && row.fieldType === fieldType && row.normalizedValue === normalizedValue); const finalizedUsageCount = (current?.finalizedUsageCount ?? 0) + 1;
+  const normalizedValue = normalizeName(cleaned); const current = rows.find((row) => row.materialTypeId === materialTypeId && row.fieldType === fieldType && row.normalizedValue === normalizedValue); const finalizedUsageCount = (current?.finalizedUsageCount ?? 0);
   const row: MaterialMemoryItem = current
-    ? { ...current, value: cleaned, usageCount: (current.usageCount ?? 0) + 1, finalizedUsageCount, lastUsedAt: stamp, updatedAt: stamp, status: finalizedUsageCount >= 3 ? 'confirmed' : (current.status ?? 'confirmed') }
-    : { id: crypto.randomUUID(), materialTypeId, fieldType, value: cleaned, normalizedValue, usageCount: 1, finalizedUsageCount: 1, lastUsedAt: stamp, createdAt: stamp, updatedAt: stamp, status: 'candidate' };
+    ? { ...current, value: cleaned, usageCount: (current.usageCount ?? 0), finalizedUsageCount, lastUsedAt: stamp, updatedAt: stamp, status: (current?.usageCount ?? 0) >= 4 ? 'confirmed' : (current.status ?? 'confirmed') }
+    : { id: crypto.randomUUID(), materialTypeId, fieldType, value: cleaned, normalizedValue, usageCount: 0, finalizedUsageCount: 0, lastUsedAt: stamp, createdAt: stamp, updatedAt: stamp, status: 'candidate' };
   store.put(row); if (!current) rows.push(row); else rows.splice(rows.indexOf(current), 1, row);
 }
 
@@ -302,9 +309,10 @@ function incrementMaterialItem(rows: MaterialMemoryItem[], store: IDBObjectStore
 function distinct<T>(values: T[], key: (value: T) => string): T[] { const seen = new Set<string>(); return values.filter((value) => { const valueKey = key(value); return Boolean(valueKey) && !seen.has(valueKey) && (seen.add(valueKey), true); }); }
 
 export async function finalizeDailyReport(report: DailyReportV3, outputText: string): Promise<FinalizeResult> {
+  const commitId = report.shared ? `${report.shared.userId}:${report.shared.siteId}:${report.date}` : `local:${report.date}`;
   const fingerprint = await outputFingerprint(outputText); const database = await db();
   try {
-    const current = await request(database.transaction('daily_memory_commits').objectStore('daily_memory_commits').get('current')) as DailyMemoryCommit | undefined;
+    const current = await request(database.transaction('daily_memory_commits').objectStore('daily_memory_commits').get(commitId)) as DailyMemoryCommit | undefined;
     if (current?.fingerprint === fingerprint) {
       const snapshot = await request(database.transaction('daily_reports').objectStore('daily_reports').get(current.snapshotId)) as FinalizedDailyReport | undefined;
       return { snapshot: snapshot ?? { ...structuredClone(report), id: current.snapshotId, outputText: current.outputText, templateVersion: DAILY_TEMPLATE_VERSION, finalizedAt: current.committedAt, updatedAt: current.committedAt }, retainedDraft: structuredClone(report), outputText: current.outputText, created: false };
@@ -332,7 +340,7 @@ export async function finalizeDailyReport(report: DailyReportV3, outputText: str
     const materialFields: Array<[MaterialEntry, MaterialMemoryField, string]> = retainedDraft.standaloneMaterialEntries.flatMap((entry): Array<[MaterialEntry, MaterialMemoryField, string]> => ([['itemName', entry.itemName], ['specification', entry.specification], ['unit', entry.unit], ['supplier', entry.supplierNameSnapshot]] as Array<[MaterialMemoryField, string]>).map(([fieldType, value]) => [entry, fieldType, value]));
     for (const [entry, fieldType, value] of distinct(materialFields, ([material, field, fieldValue]) => `${material.materialTypeId ?? ''}\u0000${field}\u0000${normalizeName(fieldValue)}`)) { if (entry.materialTypeId) incrementMaterialItem(materialItems, tx.objectStore('material_memory_items'), entry.materialTypeId, fieldType, value, stamp); }
     retainedDraft.updatedAt = stamp; const snapshot: FinalizedDailyReport = { ...structuredClone(retainedDraft), id: crypto.randomUUID(), outputText, templateVersion: DAILY_TEMPLATE_VERSION, finalizedAt: stamp, updatedAt: stamp };
-    tx.objectStore('daily_reports').put(snapshot); tx.objectStore('live_report_draft').put(retainedDraft); tx.objectStore('daily_memory_commits').put({ id: 'current', fingerprint, snapshotId: snapshot.id, outputText, committedAt: stamp } satisfies DailyMemoryCommit);
+    tx.objectStore('daily_reports').put(snapshot); tx.objectStore('live_report_draft').put(retainedDraft); tx.objectStore('daily_memory_commits').put({ id: commitId, fingerprint, snapshotId: snapshot.id, outputText, committedAt: stamp } satisfies DailyMemoryCommit);
     await txDone(tx); await pruneExpiredReports(); return { snapshot, retainedDraft, outputText, created: true };
   } finally { database.close(); }
 }

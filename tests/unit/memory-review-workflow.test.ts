@@ -14,9 +14,9 @@ const candidate = (overrides: Partial<MemoryCandidate> = {}): MemoryCandidate =>
 describe('記憶例外收件匣 workflow', () => {
   it('每個分區先排接近自動確認者，再排最近使用者', () => {
     const groups = groupMemoryCandidates([
-      candidate({ key: 'tasks:one', id: 'one', finalizedUsageCount: 1, lastUsedAt: '2026-08-20T10:00:00.000Z' }),
-      candidate({ key: 'tasks:old-two', id: 'old-two', finalizedUsageCount: 2, lastUsedAt: '2026-08-18T10:00:00.000Z' }),
-      candidate({ key: 'tasks:new-two', id: 'new-two', finalizedUsageCount: 2, lastUsedAt: '2026-08-19T10:00:00.000Z' }),
+      candidate({ key: 'tasks:one', id: 'one', usageCount: 1, lastUsedAt: '2026-08-20T10:00:00.000Z' }),
+      candidate({ key: 'tasks:old-two', id: 'old-two', usageCount: 2, lastUsedAt: '2026-08-18T10:00:00.000Z' }),
+      candidate({ key: 'tasks:new-two', id: 'new-two', usageCount: 2, lastUsedAt: '2026-08-19T10:00:00.000Z' }),
     ]);
     expect(groups[0].rows.map((row) => row.key)).toEqual(['tasks:new-two', 'tasks:old-two', 'tasks:one']);
     expect(groups[0].kind).toBe('tasks');
@@ -66,9 +66,9 @@ describe('記憶審核呈現契約', () => {
     expect(css).toContain('.memory-review__action-bar { position: fixed;');
     expect(css).toContain('background: var(--daily-paper-raised);');
   });
-  it('候選列顯示定稿進度並可按需展開詳細資料', () => {
+  it('候選列顯示套用進度並可按需展開詳細資料', () => {
     expect(main).toContain('data-memory-detail-toggle');
-    expect(main).toContain('finalizedUsageCount');
+    expect(main).toContain('Math.min(row.usageCount, 4)');
     expect(css).toContain('.memory-candidate__detail');
     expect(main).toContain('class="memory-candidate__select"');
     expect(css).toContain('min-width: var(--daily-touch-target);');

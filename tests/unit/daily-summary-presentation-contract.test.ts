@@ -16,8 +16,8 @@ describe('日報收合摘要高度契約', () => {
     expect(presentation).toContain('.collapsed-summary { height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }');
   });
 
-  it('將四類條目、填報資訊與日報預覽接到共同摘要列', () => {
-    expect(daily.match(/collapsed-summary/g)).toHaveLength(7);
+  it('將四類條目與日報預覽接到共同摘要列', () => {
+    expect(daily.match(/collapsed-summary/g)).toHaveLength(6);
     expect(daily).toContain('type DailyEntrySummary');
     expect(daily).toContain('function dailyEntrySummary');
     expect(daily).toContain("kind: 'engineering'");
@@ -66,32 +66,12 @@ describe('日報收合摘要高度契約', () => {
     expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder');
   });
 
-  it('將新增工項設為對齊輸入欄的列表尾端操作', () => {
-    expect(daily).toContain('class="work-item-list"');
-    expect(daily).toContain('data-work-item-input');
-    expect(daily).toContain("if (action === 'add-work') {");
-    expect(daily).toContain('focusWorkItemId');
-    expect(daily).not.toContain('data-daily-action="move-work-item"');
-    expect(daily).not.toContain('work-item__order-tools');
-    expect(dailyCss).toContain('--work-item-stack-gap: var(--space-2)');
-    expect(dailyCss).toContain('grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-action-column);');
-    expect(dailyCss).toContain('.work-item-composer { position: relative;');
-    expect(dailyCss).toContain('.work-item-composer > button { width: 100%; min-width: 0; min-height: var(--daily-touch-target);');
+  it('以獨立工項輸入元件組成施工紀錄，保留進料與預覽入口', () => {
+    expect(daily).toContain('workInputView(trade)');
     expect(daily).toContain('data-daily-action="manage-material-connections"');
     expect(daily).toContain('class="daily-output__actions"');
-    expect(dialog).toContain('.daily-output__actions { display: grid; gap: var(--space-2); }');
   });
-
-  it('將施工工項改為輸入器加已加入清單', () => {
-    expect(daily).toContain('data-work-item-composer');
-    expect(daily).toContain('placeholder="輸入工項"');
-    expect(daily).toContain('data-daily-action="add-work-item"');
-    expect(daily).toContain('data-work-item-suggestions');
-    expect(daily).not.toContain('class="work-item-add-row"');
-    expect(daily).not.toContain('<label class="work-item__task">工項');
-    expect(daily).toContain('aria-label="工項 ${index + 1}"');
-    expect(daily).toContain('workItemComposerByTrade');
-    expect(dailyCss).toContain('.work-item-composer');
-    expect(dailyCss).toContain('@media (max-width: 360px)');
-  });
-});
+  it('新工項輸入由可獨立驗證的連續編輯器負責', () => {
+    expect(daily).toContain('bindWorkInput(app');
+    expect(daily).toContain("from './daily/work-input'");
+  });});

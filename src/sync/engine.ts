@@ -1,3 +1,5 @@
+import { withWorkspaceLock } from './workspace-lock';
+import { loadActiveSharedScope } from './context';
 import type { DailyReportV3 } from '../domain/daily';
 import type { SharedScope } from '../domain/shared';
 import { getSupabaseClient } from '../data/remote/supabase-client';
@@ -45,7 +47,7 @@ async function pushOperation(operation: SyncOperation): Promise<MutationResult> 
           p_base_revision: operation.baseRevision, p_payload: operation.payload,
         })
       : operation.entity === 'memory-entry'
-        ? getSupabaseClient().rpc('apply_memory_entry_mutation', {
+        ? getSupabaseClient().rpc((operation.payload as { learning_key?: string }).learning_key?.startsWith('apply:') ? 'apply_memory_application' : 'apply_memory_entry_mutation', {
             p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
             p_base_revision: operation.baseRevision, p_entry: operation.payload,
           })
@@ -108,7 +110,7 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
       }
     }
     const queued = await request(queue.getAll()) as SyncOperation[];
-    queued.filter((row) => row.id !== operation.id && row.entityId === operation.entityId && row.siteId === operation.siteId && row.userId === operation.userId && row.baseRevision === operation.baseRevision)
+    queued.filter((row) => row.id !== operation.id && row.entityId === operation.entityId && row.siteId === operation.siteId && row.userId === operation.userId && row.baseRevision === operation.baseRevision && row.attempts === 0 && row.status === 'pending')
       .forEach((row) => queue.put({ ...row, baseRevision: result.revision, updatedAt: new Date().toISOString() }));
     if (operation.resolvesConflictIds?.length) {
       const conflicts = tx.objectStore('sync_conflicts');
@@ -310,10 +312,12 @@ async function applyRemoteWater(scope: SharedScope, change: ChangeRow, remote: R
     const tx = database.transaction(['water_partitions', 'water_level_points', 'water_level_logs', 'sync_outbox', 'sync_conflicts', 'sync_cursors'], 'readwrite');
     const queueStore = tx.objectStore('sync_outbox');
     const queue = await request(queueStore.getAll()) as SyncOperation[];
-    const pending = queue.find((row) => row.userId === scope.userId && row.siteId === scope.siteId && (row.entity === 'water-snapshot' || row.entity === 'water-patch'));
+    const pendingRows = queue.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && (row.entity === 'water-snapshot' || row.entity === 'water-patch')).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    const pending = pendingRows[0];
     let outcome: 'pulled' | 'conflict';
     if (pending?.entity === 'water-patch') {
-      const payload = applyFieldMutations(remote.payload as unknown as Record<string, unknown>, (pending.payload as { changes: FieldMutation[] }).changes) as unknown as WaterSnapshotPayload;
+      let payload = structuredClone(remote.payload);
+      for (const row of pendingRows.filter((item) => item.entity === 'water-patch')) payload = applyFieldMutations(payload as unknown as Record<string, unknown>, (row.payload as { changes: FieldMutation[] }).changes) as unknown as WaterSnapshotPayload;
       const now = new Date().toISOString();
       tx.objectStore('water_partitions').put({ id: `${scope.userId}:${scope.siteId}`, ...scope, revision: remote.revision, payload, payloadHash: waterPayloadHash(payload), updatedAt: now } satisfies WaterPartition);
       const points = tx.objectStore('water_level_points'); const logs = tx.objectStore('water_level_logs'); points.clear(); logs.clear();
@@ -401,7 +405,9 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
   }
   // Reconcile the cloud document before sending local field changes.
   const unresolvedMemory = new Set((await listAllOperations(scope)).filter((row) => row.entity === 'memory-entry').map((row) => row.entityId));
-  for (const pending of await listReadyOperations(scope, new Date(), manual)) {
+  for (const captured of await listReadyOperations(scope, new Date(), manual)) {
+    const pending = (await listAllOperations(scope)).find((row) => row.id === captured.id);
+    if (!pending) continue;
     if (pending.entity === 'memory') continue; // Preserve old snapshot operations for manual recovery.
     if (pending.dependsOnEntityIds?.some((id) => unresolvedMemory.has(id))) continue;
     const operation = await markOperationSending(pending);
@@ -410,12 +416,12 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
       if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
       else {
         await acceptMutation(operation, result); recordApplied(summary, operation);
-        const identityChanged = operation.entity === 'memory-entry' && result.status === 'duplicate' && result.entity_id !== operation.entityId;
+        const identityChanged = operation.entity === 'memory-entry' && result.entity_id !== operation.entityId;
         // Keep the old parent ID unresolved for this pass when the server
         // adopts a different ID. adoptCloudMemoryEntry rewrites children in
         // IndexedDB; the already captured ready list must wait for next pass.
         if (operation.entity === 'memory-entry' && !identityChanged) unresolvedMemory.delete(operation.entityId);
-        if (operation.entity === 'memory-entry' && result.status === 'duplicate') {
+        if (operation.entity === 'memory-entry' && (result.status === 'duplicate' || result.entity_id !== operation.entityId)) {
           const { data: remote, error } = await getSupabaseClient().from('memory_entries')
             .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
             .eq('site_id', scope.siteId).eq('id', result.entity_id).single();
@@ -443,7 +449,9 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
 }
 
 export async function runSyncOnce(scope: SharedScope, manual = true): Promise<SyncRunResult> {
-  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
-  if (!locks) return runSyncOnceUnlocked(scope, manual);
-  return locks.request(`construction-report-sync:${scope.userId}:${scope.siteId}`, () => runSyncOnceUnlocked(scope, manual));
+  return withWorkspaceLock(async () => {
+    const active = await loadActiveSharedScope();
+    if (!active || active.userId !== scope.userId || active.siteId !== scope.siteId) throw new Error('工地已切換，取消舊工地同步。');
+    return runSyncOnceUnlocked(scope, manual);
+  });
 }

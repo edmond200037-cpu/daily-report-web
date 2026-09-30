@@ -1,6 +1,7 @@
 import { createContact, createSpecial, createSupply, createTrade, createWorkItem, createMaterialEntry, timestamp, type ContactItem, type DailyReportV3, type MaterialEntry, type SpecialItem, type SupplyType, type TradeSection } from '../domain/daily';
 import { localToday } from '../format/date-format';
 import { saveDailyDraft } from '../data/daily-repository';
+import { mergeEditorIntent, refreshCompleteness } from './input-workflow';
 import { validateTrade } from './daily-validator';
 import { duplicateVendorTradeIds } from './daily-output-model';
 
@@ -10,10 +11,25 @@ export type DailyDeleteUndo = TradeDeleteUndo | { kind: 'material'; entry: Mater
 export interface MaterialConnectionUndo { materialId: string; tradeId: string; }
 
 export class DailyController {
-  report: DailyReportV3; expandedId: string | null = null; private timer?: number;
-  constructor(report?: DailyReportV3, private readonly onSaveState?: (state: DailySaveState) => void) { const now = timestamp(); this.report = { id: 'current', date: localToday(), siteId: null, siteNameSnapshot: '', activeTab: 'engineering', tradeSections: [], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now, ...report }; this.report.siteId ??= null; this.report.supplies ??= []; this.report.standaloneMaterialEntries ??= []; this.report.tradeSections.forEach((trade) => trade.materialEntries ??= []); this.report.contacts ??= []; this.report.specialItems ??= []; this.normalizeMaterialConnections(); }
-  update(mutator: () => void): void { mutator(); this.report.updatedAt = timestamp(); this.onSaveState?.('saving'); window.clearTimeout(this.timer); this.timer = window.setTimeout(() => { void this.flush().catch(() => undefined); }, 600); }
-  async flush(): Promise<void> { window.clearTimeout(this.timer); this.onSaveState?.('saving'); try { await saveDailyDraft(this.report); this.onSaveState?.('saved'); window.dispatchEvent(new Event('local-data-saved')); } catch (error) { this.onSaveState?.('error'); throw error; } }
+  report: DailyReportV3; private baseline!: DailyReportV3; private saves: Promise<void> = Promise.resolve(); expandedId: string | null = null; private timer?: number;
+  constructor(report?: DailyReportV3, private readonly onSaveState?: (state: DailySaveState) => void) { const now = timestamp(); this.report = { id: 'current', date: localToday(), siteId: null, siteNameSnapshot: '', activeTab: 'engineering', tradeSections: [], standaloneMaterialEntries: [], supplies: [], contacts: [], specialItems: [], createdAt: now, updatedAt: now, ...report }; this.report.siteId ??= null; this.report.supplies ??= []; this.report.standaloneMaterialEntries ??= []; this.report.tradeSections.forEach((trade) => trade.materialEntries ??= []); this.report.contacts ??= []; this.report.specialItems ??= []; this.normalizeMaterialConnections(); refreshCompleteness(this.report); this.baseline = structuredClone(this.report); }
+  update(mutator: () => void): void { mutator(); refreshCompleteness(this.report); this.report.updatedAt = timestamp(); this.onSaveState?.('saving'); window.clearTimeout(this.timer); this.timer = window.setTimeout(() => { void this.flush().catch(() => undefined); }, 600); }
+  replaceReport(report: DailyReportV3): void { this.report = report; refreshCompleteness(this.report); this.baseline = structuredClone(report); }
+  mergeRemote(report: DailyReportV3): void { this.report = mergeEditorIntent(report, this.baseline, this.report); this.baseline = structuredClone(report); }
+  async flush(): Promise<void> {
+    window.clearTimeout(this.timer);
+    const run = async () => {
+      this.onSaveState?.('saving');
+      const submitted = structuredClone(this.report);
+      try {
+        const saved = await saveDailyDraft(submitted, this.baseline);
+        this.report = mergeEditorIntent(saved, submitted, this.report);
+        this.baseline = structuredClone(saved);
+        this.onSaveState?.('saved'); window.dispatchEvent(new Event('local-data-saved'));
+      } catch (error) { this.onSaveState?.('error'); throw error; }
+    };
+    const next = this.saves.then(run, run); this.saves = next.catch(() => undefined); return next;
+  }
   switchTab(tab: DailyReportV3['activeTab']): void { if (this.report.activeTab === tab) return; this.update(() => { if (this.report.activeTab === 'engineering') this.expandedId = null; this.report.activeTab = tab; }); }
   trade(id: string): TradeSection | undefined { return this.report.tradeSections.find((item) => item.id === id); }
   findDuplicate(tradeTypeId: string | null, tradeName: string, vendorId: string | null, vendorName: string, exceptId?: string): TradeSection | undefined { const normalizedTrade = tradeName.trim().toLocaleLowerCase(); const normalizedVendor = vendorName.trim().toLocaleLowerCase(); return this.report.tradeSections.find((item) => { const sameTrade = tradeTypeId && item.tradeTypeId ? item.tradeTypeId === tradeTypeId : !tradeTypeId && !item.tradeTypeId ? item.tradeNameSnapshot.trim().toLocaleLowerCase() === normalizedTrade : false; const sameVendor = vendorId && item.vendorId ? item.vendorId === vendorId : !vendorId && !item.vendorId ? item.vendorNameSnapshot.trim().toLocaleLowerCase() === normalizedVendor : false; return item.id !== exceptId && sameTrade && sameVendor; }); }

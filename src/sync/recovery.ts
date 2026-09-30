@@ -202,6 +202,11 @@ export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string,
     const queue = tx.objectStore('sync_outbox'); const operations = await request(queue.getAll()) as SyncOperation[];
     for (const operation of operations.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry')) {
       const entry = structuredClone(operation.payload) as MemoryEntryPayload;
+      if (operation.entityId === localId && localId !== remote.id && entry.learning_key?.startsWith('apply:')) {
+        const rebound = { ...entry, id: remote.id, payload: { ...entry.payload, id: remote.id } };
+        queue.put({ ...operation, entityId: remote.id, payload: rebound, baseRevision: remote.revision, mutationId: crypto.randomUUID(), status: 'pending', attempts: 0, updatedAt: new Date().toISOString() });
+        continue;
+      }
       if (entry.parent_id !== localId) continue;
       entry.parent_id = remote.id;
       if (entry.kind === 'vendor' || entry.kind === 'task') entry.payload.tradeTypeId = remote.id;
