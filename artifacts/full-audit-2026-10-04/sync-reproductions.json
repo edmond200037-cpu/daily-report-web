@@ -1,0 +1,25 @@
+[
+  {
+    "id": "replayed-conflict-as-duplicate",
+    "summary": {
+      "applied": 1,
+      "pulled": 0,
+      "dailyApplied": 1,
+      "dailyPulled": 0,
+      "memoryApplied": 0,
+      "memoryPulled": 0,
+      "waterApplied": 0,
+      "waterPulled": 0,
+      "conflicts": 0,
+      "failed": 0
+    },
+    "remaining": [],
+    "backups": []
+  },
+  {
+    "id": "resolution-discards-original",
+    "remaining": [],
+    "conflicts": [],
+    "backups": []
+  }
+]

@@ -1,0 +1,35 @@
+vite v6.4.3 building for production...
+transforming...
+✓ 106 modules transformed.
+rendering chunks...
+computing gzip size...
+artifacts/full-audit-2026-10-04/build/assets/icon-CUvPfXrN.svg                      0.31 kB │ gzip:   0.22 kB
+artifacts/full-audit-2026-10-04/build/manifest.webmanifest                          0.41 kB
+artifacts/full-audit-2026-10-04/build/index.html                                    1.01 kB │ gzip:   0.64 kB
+artifacts/full-audit-2026-10-04/build/assets/index-CZOkkAFU.css                    84.76 kB │ gzip:  14.07 kB
+artifacts/full-audit-2026-10-04/build/assets/workbox-window.prod.es5-BBnX5xw4.js    5.75 kB │ gzip:   2.36 kB
+artifacts/full-audit-2026-10-04/build/assets/controller-ipBD70Db.js                13.77 kB │ gzip:   4.95 kB
+artifacts/full-audit-2026-10-04/build/assets/index-ecpr81zn.js                    511.91 kB │ gzip: 140.23 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 944ms
+
+PWA v1.3.0
+Building src/service-worker.ts service worker ("es" format)...
+vite v6.4.3 building for production...
+transforming...
+✓ 79 modules transformed.
+rendering chunks...
+computing gzip size...
+artifacts/full-audit-2026-10-04/build/service-worker.mjs  17.54 kB │ gzip: 5.87 kB
+✓ built in 146ms
+
+PWA v1.3.0
+mode      injectManifest
+format:   es
+precache  9 entries (602.73 KiB)
+files generated
+  artifacts/full-audit-2026-10-04/build/service-worker.js
