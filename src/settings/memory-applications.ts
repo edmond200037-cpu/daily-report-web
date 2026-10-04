@@ -1,4 +1,5 @@
 import type { DailyReportV3 } from '../domain/daily';
+import { contactTaskMemoryText } from '../daily/entry-workflow';
 import { normalizeName } from '../format/normalization';
 import { openDatabase, transactionDone } from '../data/db.js';
 import { emptyMemoryPayload, memoryPayloadHash, SHARED_MEMORY_STORES, type MemoryPartition } from '../data/memory-partition';
@@ -26,7 +27,7 @@ export function collectMemoryApplications(report: DailyReportV3): MemoryApplicat
     if (!contact.tradeNameSnapshot.trim()) continue;
     add('trade_types', contact.tradeNameSnapshot, `trade:${contact.id}`);
     add('trade_vendors', contact.vendorNameSnapshot, `vendor:${contact.id}`, contact.tradeNameSnapshot);
-    for (const task of contact.items) add('trade_tasks', task.content, `task:${task.id}`, contact.tradeNameSnapshot);
+    for (const task of contact.items) add('trade_tasks', contactTaskMemoryText(task.content), `task:${task.id}`, contact.tradeNameSnapshot);
   }
   for (const item of report.standaloneMaterialEntries) {
     if (!item.materialTypeSnapshot.trim()) continue;

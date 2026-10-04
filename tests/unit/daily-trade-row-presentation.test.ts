@@ -37,7 +37,8 @@ describe('工程資料列呈現契約', () => {
   });
   it('搜尋包含待審核記憶，並限定目前工種', () => {
     expect(input).toContain('row.tradeTypeId === trade.tradeTypeId');
-    expect(input).toContain('待審核');
+    expect(input).not.toContain('<small>待審核</small>');
+    expect(input).toContain('workSuggestions(trade, actions.tasks()');
   });
   it('點工項即編輯文字，附加操作列只保留位置樓層與備註', () => {
     expect(input).toContain('data-inline-work');

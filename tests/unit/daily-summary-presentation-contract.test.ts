@@ -17,7 +17,9 @@ describe('日報收合摘要高度契約', () => {
   });
 
   it('將四類條目與日報預覽接到共同摘要列', () => {
-    expect(daily.match(/collapsed-summary/g)).toHaveLength(6);
+    // Editors use a plain title and return action; collapsed records retain the shared summary.
+    expect(daily.match(/collapsed-summary/g)).toHaveLength(5);
+    expect(daily).toContain('class="entry-editor-header"');
     expect(daily).toContain('type DailyEntrySummary');
     expect(daily).toContain('function dailyEntrySummary');
     expect(daily).toContain("kind: 'engineering'");

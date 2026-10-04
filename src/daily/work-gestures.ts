@@ -1,5 +1,10 @@
 /** The row accepts horizontal swipes; only the grip starts long-press sorting. */
 export function swipeDeletes(dx: number, dy: number): boolean { return dx <= -72 && Math.abs(dx) > Math.abs(dy) * 1.5; }
+export function workSwipeIntent(dx: number, dy: number): 'swipe' | 'scroll' | 'cancel' | 'pending' {
+  if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) return 'scroll';
+  if (dx > 10) return 'cancel';
+  return dx <= -12 && Math.abs(dx) > Math.abs(dy) * 1.5 ? 'swipe' : 'pending';
+}
 interface Actions {
   editable(): boolean;
   move(trade: string, work: string, offset: number): void;
@@ -9,6 +14,26 @@ interface Actions {
   error(error: unknown): void;
 }
 export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
+  // Hidden toolbar still needs a keyboard equivalent to the touch gesture.
+  root.addEventListener('keydown', async (event) => {
+    const grip = (event.target as Element).closest<HTMLElement>('[data-work-gesture]');
+    if (!grip || event.key !== 'Delete' || event.isComposing || !actions.editable()) return;
+    const row = grip.closest<HTMLElement>('[data-work]');
+    const trade = row?.closest<HTMLElement>('[data-trade]')?.dataset.trade;
+    const work = row?.dataset.work;
+    if (!trade || !work) return;
+    event.preventDefault();
+    const undo = actions.remove(trade, work);
+    try { await actions.save(); await actions.render(); showUndo(undo); }
+    catch (error) { actions.error(error); }
+  });
+  const showUndo = (undo: (() => void) | undefined) => {
+    if (!undo) return;
+    const notice = document.createElement('div'); notice.className = 'work-gesture-undo'; notice.setAttribute('role', 'status');
+    notice.append('已刪除工項 '); const button = document.createElement('button'); button.type = 'button'; button.textContent = '復原';
+    button.onclick = async () => { if (!actions.editable()) return; button.disabled = true; undo(); try { await actions.save(); await actions.render(); } catch (error) { actions.error(error); } notice.remove(); };
+    notice.append(button); root.prepend(notice);
+  };
   // Cancel native long-press menus only on the gesture grip, not editable text.
   const preventGripMenu = (event: Event) => {
     if (!(event.target instanceof Element) || !event.target.closest('[data-work-gesture]')) return;
@@ -35,7 +60,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     const grip = target.closest<HTMLElement>('[data-work-gesture]');
     const row = target.closest<HTMLElement>('.work-token--item[data-work]');
     if (!row || active || !actions.editable() || !event.isPrimary || event.button !== 0) return;
-    if (!grip && (target.closest('.work-token__detail,.work-token__tools,.work-token__results,button,textarea,select') || event.pointerType === 'mouse')) return;
+    if (!grip && target.closest('.work-token__detail,.work-token__tools,.work-token__results,button,textarea,select')) return;
     const handle = grip ?? row;
     if (grip) { event.preventDefault(); event.stopPropagation(); handle.setPointerCapture(event.pointerId); }
     active = { row, handle, pointer: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, drag: false, swipe: false, offset: 0, timer: 0 };
@@ -53,10 +78,11 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     if (!active.drag) {
       if (Math.hypot(active.dx, active.dy) > 10) window.clearTimeout(active.timer);
       if (!active.swipe) {
-        if (Math.abs(active.dy) > 10 && Math.abs(active.dy) >= Math.abs(active.dx)) { clear(); return; }
-        if (active.dx > 10) { clear(); return; }
-        if (active.dx > -12 || Math.abs(active.dx) <= Math.abs(active.dy) * 1.5) return;
+        const intent = workSwipeIntent(active.dx, active.dy);
+        if (intent === 'scroll' || intent === 'cancel') { clear(); return; }
+        if (intent !== 'swipe') return;
         active.swipe = true; active.handle.setPointerCapture(event.pointerId);
+        active.row.querySelector<HTMLInputElement>('[data-inline-work]')?.blur();
       }
       event.preventDefault();
       active.row.style.transform = `translateX(${Math.max(-100, Math.min(0, active.dx))}px)`;
@@ -85,12 +111,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     else return;
     try {
       await actions.save(); await actions.render();
-      if (undo) {
-        const notice = document.createElement('div'); notice.className = 'work-gesture-undo'; notice.setAttribute('role', 'status');
-        notice.append('已刪除工項 '); const button = document.createElement('button'); button.type = 'button'; button.textContent = '復原';
-        button.onclick = async () => { if (!actions.editable()) return; button.disabled = true; undo!(); try { await actions.save(); await actions.render(); } catch (error) { actions.error(error); } notice.remove(); };
-        notice.append(button); root.prepend(notice);
-      }
+      showUndo(undo);
     } catch (error) { actions.error(error); }
   });
   root.addEventListener('click', (event) => { if (suppressClick && (event.target as HTMLElement).closest('.work-token--item')) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);

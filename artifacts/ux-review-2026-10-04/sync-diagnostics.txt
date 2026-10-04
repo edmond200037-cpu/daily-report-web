@@ -1,0 +1,59 @@
+偵錯資訊
+
+僅包含狀態與安全錯誤碼，不包含登入憑證、加入碼或日報內容。
+
+{
+  "appVersion": "0.1.2",
+  "databaseVersion": 17,
+  "route": "#settings/account",
+  "online": true,
+  "serviceWorker": "active",
+  "authEnabled": true,
+  "signedIn": true,
+  "activeSiteSelected": true,
+  "accountLoad": {
+    "stage": null,
+    "elapsedMs": 14504,
+    "coreReady": true,
+    "detailsPending": false,
+    "events": [
+      {
+        "stage": "帳號驗證",
+        "status": "ok",
+        "durationMs": 0
+      },
+      {
+        "stage": "工地清單",
+        "status": "ok",
+        "durationMs": 67
+      },
+      {
+        "stage": "本機同步佇列",
+        "status": "ok",
+        "durationMs": 5
+      },
+      {
+        "stage": "成員資料",
+        "status": "ok",
+        "durationMs": 92
+      },
+      {
+        "stage": "衝突資料",
+        "status": "ok",
+        "durationMs": 6
+      }
+    ]
+  },
+  "syncQueue": {
+    "status": "ready",
+    "counts": {
+      "pending": 20,
+      "sending": 0,
+      "failed": 0,
+      "blocked": 26,
+      "conflict": 0
+    }
+  },
+  "lastPulledAt": "2026-10-04T07:06:02.511Z"
+}
+複製偵錯資訊

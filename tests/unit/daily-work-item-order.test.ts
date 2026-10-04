@@ -34,4 +34,21 @@ describe('工項排序', () => {
     expect(first?.taskId).toBe('task-1');
     expect(duplicateWorkItemIds(controller.trade('t1')!)).toEqual(new Set([second?.id]));
   });
+  it('撤回指定穩定 ID，不觸發確認；復原保留其他新增工項並且只還原一次', () => {
+    const controller = new DailyController(report());
+    const restore = controller.removeWorkItemForUndo('t1', 'w2');
+    const added = controller.addWorkItem('t1', '新增施工', null);
+    restore?.(); restore?.();
+    expect(controller.trade('t1')!.workItems.map((item) => item.id)).toEqual(['w1', 'w2', 'w3', added!.id]);
+    expect(controller.trade('t1')!.workItems.map((item) => item.sortOrder)).toEqual([0, 1, 2, 3]);
+  });
+  it('工項復原不能跨日期或工地', () => {
+    for (const change of ['date', 'siteId'] as const) {
+      const controller = new DailyController(report());
+      const restore = controller.removeWorkItemForUndo('t1', 'w2');
+      controller.report[change] = change === 'date' ? '2026-08-18' : 'another-site';
+      restore?.();
+      expect(controller.trade('t1')!.workItems.map((item) => item.id)).toEqual(['w1', 'w3']);
+    }
+  });
 });
