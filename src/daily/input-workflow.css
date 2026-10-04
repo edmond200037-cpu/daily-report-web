@@ -125,3 +125,6 @@
 .daily-page .work-token--item, .daily-page .work-token--item .work-token__text { touch-action:pan-y pinch-zoom; }
 .daily-page .work-token--item .work-gesture { touch-action:none; }
 .daily-page .work-gesture[aria-expanded="true"] { color:var(--daily-orange-strong); background:var(--daily-orange-soft); border-radius:8px; }
+
+/* Lift the entire item stacking context above sticky completion actions. */
+.daily-page .work-token--item:has(.work-token__tools:not([hidden])) { z-index:40; }

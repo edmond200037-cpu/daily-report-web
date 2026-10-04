@@ -1,0 +1,6 @@
+#!/bin/sh
+# Keep local validation aligned with the GitHub Pages build job.
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+echo '發布前檢查：測試與正式建置'
+npm run check:release

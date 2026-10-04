@@ -9,7 +9,7 @@ export interface ContactEditorDraft {
 export interface EntryDraft { contact: ContactEditorDraft | null; work: Array<[string, string]>; }
 
 export function contactTaskMemoryText(content: string): string {
-  return content.replace(/^(?:0[1-9]|1[0-2])\/(?:0[1-9]|[12]\d|3[01])\s+/, '').replace(/（數量／規格：[^]*）$/, '').trim();
+  return content.replace(/^(?:\d{4}[-/])?(?:0?[1-9]|1[0-2])[-/](?:0?[1-9]|[12]\d|3[01])\s+/, '').replace(/（數量／規格：[^]*）$/, '').trim();
 }
 
 /** Editor-only text is partitioned independently from validated report data. */
@@ -36,4 +36,16 @@ export function appendContactTask(editor: ContactEditorDraft, text = editor.task
   editor.value.items.push({ id: crypto.randomUUID(), content: prefix + content + (detail ? `（數量／規格：${detail}）` : ''), sortOrder: editor.value.items.length, createdAt: stamp, updatedAt: stamp });
   editor.taskQuery = ''; editor.taskDetails = ''; editor.errors = [];
   return true;
+}
+
+/** Apply a newly chosen date to existing undated tasks as well as pending input. */
+export function applyContactPlannedDate(editor: ContactEditorDraft): void {
+  if (!editor.plannedDate) return;
+  const prefix = `${editor.plannedDate.slice(5).replace('-', '/')} `;
+  for (const item of editor.value.items) {
+    if (!/^(?:\d{4}[-/])?\d{1,2}[-/]\d{1,2}\s+/.test(item.content.trim())) {
+      item.content = prefix + item.content.trim();
+      item.updatedAt = new Date().toISOString();
+    }
+  }
 }

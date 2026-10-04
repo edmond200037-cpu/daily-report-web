@@ -20,7 +20,7 @@ export function collectMemoryApplications(report: DailyReportV3): MemoryApplicat
     add('trade_vendors', trade.vendorNameSnapshot, `vendor:${trade.id}`, trade.tradeNameSnapshot);
     for (const work of trade.workItems) {
       add('trade_tasks', work.taskTextSnapshot, `task:${work.id}`, trade.tradeNameSnapshot);
-      add('location_memories', work.locationTextSnapshot, `location:${work.id}`);
+
     }
   }
   for (const contact of report.contacts) {

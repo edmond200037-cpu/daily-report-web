@@ -1,3 +1,4 @@
+import { contactTaskMemoryText } from '../daily/entry-workflow';
 import { mergeEditorIntent, refreshCompleteness } from '../daily/input-workflow';
 import { DAILY_TEMPLATE_VERSION, timestamp, type DailyReportV3, type FinalizedDailyReport, type TradeSection, type WorkItem, type MaterialEntry, type ContactItem } from '../domain/daily';
 import { openDatabase, STORES } from './db.js';
@@ -329,10 +330,10 @@ export async function finalizeDailyReport(report: DailyReportV3, outputText: str
     for (const row of distinct(allTradeRows, (item) => `${normalizeName(item.tradeNameSnapshot)}\u0000${normalizeName(item.vendorNameSnapshot)}`)) { const trade = trades.find((item) => item.normalizedName === normalizeName(row.tradeNameSnapshot)); if (!trade) continue; const vendor = incrementNamed(vendors, tx.objectStore('trade_vendors'), row.vendorNameSnapshot, stamp, trade.id); if (vendor && 'vendorId' in row) { row.vendorId = vendor.id; row.vendorNameSnapshot = vendor.name; } }
     const taskValues = [
       ...retainedDraft.tradeSections.flatMap((trade) => trade.workItems.map((work) => ({ tradeName: trade.tradeNameSnapshot, value: work.taskTextSnapshot }))),
-      ...retainedDraft.contacts.flatMap((contact) => contact.items.map((item) => ({ tradeName: contact.tradeNameSnapshot, value: item.content }))),
+      ...retainedDraft.contacts.flatMap((contact) => contact.items.map((item) => ({ tradeName: contact.tradeNameSnapshot, value: contactTaskMemoryText(item.content) }))),
     ];
     for (const taskValue of distinct(taskValues, (item) => `${normalizeName(item.tradeName)}\u0000${normalizeName(item.value)}`)) { const trade = trades.find((item) => item.normalizedName === normalizeName(taskValue.tradeName)); if (trade) incrementNamed(tasks, tx.objectStore('trade_tasks'), taskValue.value, stamp, trade.id); }
-    for (const locationValue of distinct(retainedDraft.tradeSections.flatMap((trade) => trade.workItems.map((work) => work.locationTextSnapshot)), normalizeName)) incrementNamed(locations, tx.objectStore('location_memories'), locationValue, stamp);
+
     for (const trade of retainedDraft.tradeSections) { const tradeMemory = trades.find((item) => item.normalizedName === normalizeName(trade.tradeNameSnapshot)); if (!tradeMemory) continue; for (const work of trade.workItems) { const task = tasks.find((item) => item.tradeTypeId === tradeMemory.id && item.normalizedName === normalizeName(work.taskTextSnapshot)); if (task) { work.taskId = task.id; work.taskTextSnapshot = task.name; } const location = locations.find((item) => item.normalizedName === normalizeName(work.locationTextSnapshot)); if (location) { work.locationId = location.id; work.locationTextSnapshot = location.name; } } }
     for (const contact of retainedDraft.contacts) { const trade = trades.find((item) => item.normalizedName === normalizeName(contact.tradeNameSnapshot)); if (!trade) continue; contact.tradeTypeId = trade.id; const vendor = vendors.find((item) => item.tradeTypeId === trade.id && item.normalizedName === normalizeName(contact.vendorNameSnapshot)); if (vendor) contact.vendorId = vendor.id; }
     for (const entry of distinct(retainedDraft.standaloneMaterialEntries, (item) => normalizeName(item.materialTypeSnapshot))) { const type = incrementMaterialType(types, tx.objectStore('material_types'), entry.materialTypeSnapshot, stamp); if (!type) continue; type.recentUnit = entry.unit || type.recentUnit; type.recentSupplierName = entry.supplierNameSnapshot || type.recentSupplierName; tx.objectStore('material_types').put(type); }
