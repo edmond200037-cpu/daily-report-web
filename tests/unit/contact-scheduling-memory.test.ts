@@ -11,13 +11,13 @@ describe('日期輸出與共用工項記憶', () => {
     const editor: ContactEditorDraft = { id: value.id, originalId: null, value, errors: [], tradeQuery: '', vendorQuery: '', taskQuery: '上下設備施作' };
     appendContactTask(editor); editor.plannedDate = '2026-10-05';
     applyContactPlannedDate(editor); applyContactPlannedDate(editor);
-    expect(value.items[0].content).toBe('10/05 上下設備施作');
-    const report = createDailyDraft(); report.contacts.push(value);
-    expect(formatDailyReport(report)).toContain('10/05 上下設備施作');
+    expect(value.items[0].content).toBe('預定10/05(一)上下設備施作');
+    const report = createDailyDraft(null, '', '2026-10-04'); report.contacts.push(value);
+    expect(formatDailyReport(report)).toContain('1.鷹架工程-元昌預定10/05(一)上下設備施作。');
     expect(collectMemoryApplications(report).filter(row => row.store === 'trade_tasks').map(row => row.name)).toEqual(['上下設備施作']);
   });
   it('不同日期格式及數量規格不進入共用記憶', () => {
-    for (const date of ['10/05', '10/5', '2026-10-05']) {
+    for (const date of ['10/05', '10/5', '2026-10-05', '預定10/05(一)', '預定10/05(ㄧ)']) {
       expect(contactTaskMemoryText(`${date} 配管（數量／規格：2.5 方）`)).toBe('配管');
     }
   });

@@ -14,7 +14,7 @@ describe('逐筆新增草稿與完成', () => {
   });
   it('日期選填，只有明確選擇才加在內容，下一筆不沿用', () => {
     const draft = editor(); draft.plannedDate = '2026-10-05'; appendContactTask(draft);
-    expect(draft.value.items[0].content).toBe('10/05 上下設備施作');
+    expect(draft.value.items[0].content).toBe('預定10/05(一)上下設備施作');
     expect(contactTaskMemoryText(draft.value.items[0].content)).toBe('上下設備施作');
     const next = editor(); appendContactTask(next);
     expect(next.value.items[0].content).toBe('上下設備施作');

@@ -26,7 +26,7 @@ describe('叫料格式與驗證', () => {
   it('聯絡事項依施工項目排序使用全形分號輸出', () => {
     const draft = report();
     draft.contacts = [{ id: 'c1', tradeTypeId: 't1', tradeNameSnapshot: '鋼筋工程', vendorId: 'v1', vendorNameSnapshot: '萬大禾', items: [{ id: 'i2', content: '門窗開口補強', sortOrder: 1, createdAt: '', updatedAt: '' }, { id: 'i1', content: '1FL～3FL門窗角隅補強', sortOrder: 0, createdAt: '', updatedAt: '' }], sortOrder: 0, createdAt: '', updatedAt: '' }];
-    expect(formatDailyReport(draft)).toContain('鋼筋工程－萬大禾：1FL～3FL門窗角隅補強；門窗開口補強。');
+    expect(formatDailyReport(draft)).toContain('1.鋼筋工程-萬大禾1FL～3FL門窗角隅補強；門窗開口補強。');
   });
   it('連接、改接與解除不改變已完成工項狀態，且一筆進料只保留一個工種', () => {
     const draft = report();
