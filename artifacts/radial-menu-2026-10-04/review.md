@@ -1,5 +1,7 @@
 # 三扇區輪盤與附加資料清除
 
+> 輪盤已依最新回饋移除，改為直式懸浮選單。請見 `../floating-menu-2026-10-04/review.md`。
+
 - 將按鈕面板改為直徑 216px 的圓形三扇區：位置／樓層、備註、移除位置與備註。圓面、分隔線与點擊區域一致。
 - 移除關閉按鈕；再點握把、點選單外或 Escape 即可收合。
 - 輪盤移除只清空 startFloorRaw/endFloorRaw、樓層正規化值、locationId/locationTextSnapshot、note，保留工項 ID、taskId、文字、順序及其他資料。

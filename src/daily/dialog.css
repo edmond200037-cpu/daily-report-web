@@ -3,6 +3,7 @@
 .trade-picker h2 { margin: .1rem 0 .8rem; color: var(--ink); font-size: 1.125rem; letter-spacing: -.01em; }
 .trade-picker input { font-size: 1rem; }
 .trade-picker .settings-list { margin-top: var(--space-4); }
+.trade-picker button.settings-item { border: 1px solid var(--line-strong); }
 .trade-picker .form-actions--submit, .dialog-actions { margin-top: var(--space-4); }
 .dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
 .dialog-actions > button { width: 100%; min-height: 44px; }

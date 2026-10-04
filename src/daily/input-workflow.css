@@ -113,21 +113,12 @@
 .entry-editor-header .trade-change summary .hint { font-size:.75rem; }
 .daily-page .continuous-work .work-token__text, .work-gesture-undo button { min-height:48px; }
 
-/* Three radial sectors share one circular surface; no close button. */
-.daily-page .work-token__tools:not([hidden]) { display:block; position:absolute; top:44px; left:0; width:216px; height:216px; padding:0; box-sizing:border-box; border:0; border-radius:50%; background:var(--daily-paper-raised); box-shadow:0 8px 20px #29201526; z-index:30; }
-.work-wheel-surface { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-.work-wheel-surface path { fill:var(--daily-paper-raised); stroke:var(--line); stroke-width:1; }
-.work-wheel-surface circle { fill:var(--daily-orange-strong); }
-.daily-page .work-token__tools button { position:absolute; inset:0; width:100%; height:100%; min-height:0; padding:0; border:0; border-radius:0; background:transparent; font-size:14px; }
+/* Compact floating actions anchored to the work-item grip. */
+.daily-page .work-token__tools:not([hidden]) { display:flex; flex-direction:column; position:absolute; top:48px; left:0; width:184px; padding:4px; gap:0; box-sizing:border-box; border:1px solid var(--line); border-radius:10px; background:var(--daily-paper-raised); box-shadow:0 6px 18px #29201526; z-index:30; }
+.daily-page .work-token__tools button { position:static; width:100%; min-height:48px; padding:10px 12px; border:0; border-radius:6px; background:transparent; text-align:left; font-size:14px; }
 .daily-page .work-token__tools button:hover, .daily-page .work-token__tools button:focus-visible { background:var(--daily-orange-soft); }
-.daily-page .work-token__tools [data-work-detail="location"] { clip-path:polygon(50% 50%,6.7% 25%,14.6% 14.6%,25% 6.7%,37.1% 1.7%,50% 0%,62.9% 1.7%,75% 6.7%,85.4% 14.6%,93.3% 25%); }
-.daily-page .work-token__tools [data-work-detail="note"] { clip-path:polygon(50% 50%,50% 100%,37.1% 98.3%,25% 93.3%,14.6% 85.4%,6.7% 75%,1.7% 62.9%,0% 50%,1.7% 37.1%,6.7% 25%); }
-.daily-page .work-token__tools [data-work-clear-details] { clip-path:polygon(50% 50%,93.3% 25%,98.3% 37.1%,100% 50%,98.3% 62.9%,93.3% 75%,85.4% 85.4%,75% 93.3%,62.9% 98.3%,50% 100%); color:var(--danger, #7a302b); }
-.work-token__tools button > span { position:absolute; transform:translate(-50%,-50%); min-width:54px; min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; white-space:nowrap; }
-.work-token__tools [data-work-detail="location"] > span { left:50%; top:25%; }
-.work-token__tools [data-work-detail="note"] > span { left:25%; top:65%; }
-.work-token__tools [data-work-clear-details] > span { left:75%; top:65%; }
-.work-token__tools small { font-size:10px; }
+.daily-page .work-token__tools [data-work-clear-details] { color:var(--danger, #7a302b); border-top:1px solid var(--line); border-radius:0 0 6px 6px; }
+.work-token__tools button > span { position:static; display:block; white-space:nowrap; }
 .daily-page .work-token--item, .daily-page .work-token--item .work-token__text { touch-action:pan-y pinch-zoom; }
 .daily-page .work-token--item .work-gesture { touch-action:none; }
 .daily-page .work-gesture[aria-expanded="true"] { color:var(--daily-orange-strong); background:var(--daily-orange-soft); border-radius:8px; }
