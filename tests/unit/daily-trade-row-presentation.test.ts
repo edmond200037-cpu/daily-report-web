@@ -54,7 +54,7 @@ describe('工程資料列呈現契約', () => {
     expect(tokens).toContain('--daily-incomplete-border: #d7a29b');
     expect(styles).toContain('.daily-page .trade-card { background: var(--daily-paper-raised); }');
     expect(presentation).toContain('.daily-entry, .compact-entry { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md);');
-    expect(styles).toContain('.daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(7rem, 1fr) minmax(8rem, 1.25fr) minmax(8rem, 1fr) auto;');
+    expect(styles).toContain('.daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) 10rem;');
     expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: transparent; background: var(--daily-incomplete-bg); box-shadow: inset 0 0 0 1px var(--daily-incomplete-border); color: var(--daily-incomplete-ink); }');
     expect(styles).toContain('@media (max-width: 639px)');
     expect(styles).toContain('.daily-page .trade-row-summary { height: 72px; min-height: 72px; max-height: 72px; }');
