@@ -21,7 +21,7 @@ describe('進料接線盤呈現契約', () => {
   it('以非互動 SVG 曲線呈現關聯與目前選取狀態', () => {
     expect(main).toContain('class="material-connection-canvas" aria-hidden="true"');
     expect(main).toContain('class="connection-curve${active ? \' is-active\' : \'\'}"');
-    expect(main).toContain('data-connection-curve data-material-id="${entry.id}" data-trade-id="${entry.connectedTradeSectionId}"');
+    expect(main).toContain('data-connection-curve data-material-id="${escapeHtml(entry.id)}" data-trade-id="${entry.connectedTradeSectionId}"');
     expect(main).toContain('function syncMaterialConnectionCurves(): void');
     expect(main).toContain('getBoundingClientRect()');
     expect(main).toContain(".connection-node[data-material-id]");

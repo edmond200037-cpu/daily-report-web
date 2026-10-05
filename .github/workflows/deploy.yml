@@ -15,7 +15,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  database-tests:
+    uses: ./.github/workflows/database-tests.yml
   build:
+    needs: database-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +30,10 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
+          BASE_PATH: ./
+      - run: npm run build
+        env:
+          BASE_PATH: /daily-report-web/
           # Vite 只會在建置階段讀取 VITE_*；部署版不可依賴開發機的 .env.local。
           # 請在 GitHub repository Actions secrets 設定這兩個值。
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}

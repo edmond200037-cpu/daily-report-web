@@ -11,6 +11,38 @@ const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, r
 const partitionId = (scope: SharedScope | null): string => scope ? `${scope.userId}:${scope.siteId}` : 'local';
 export const waterPayloadHash = (payload: WaterSnapshotPayload): string => JSON.stringify(payload);
 
+/** A user edit and its shared intent commit together; retention never enters here. */
+export async function commitActiveWaterPartition<T>(mutate: (payload: WaterSnapshotPayload) => T): Promise<T> {
+  const scope = await loadActiveSharedScope();
+  const database = await openDatabase() as IDBDatabase;
+  try {
+    const tx = database.transaction(['water_level_points', 'water_level_logs', 'water_partitions', 'sync_outbox'], 'readwrite');
+    const done = transactionDone(tx);
+    try {
+      const id = partitionId(scope);
+      const [points, logs, existing] = await Promise.all([
+        request(tx.objectStore('water_level_points').getAll()), request(tx.objectStore('water_level_logs').getAll()),
+        request(tx.objectStore('water_partitions').get(id)) as Promise<WaterPartition | undefined>,
+      ]);
+      const payload: WaterSnapshotPayload = { schemaVersion: 1, points, logs };
+      const result = mutate(payload);
+      for (const [store, rows] of [['water_level_points', payload.points], ['water_level_logs', payload.logs]] as const) {
+        const target = tx.objectStore(store); target.clear(); for (const row of rows) target.put(row);
+      }
+      const partition: WaterPartition = { id, userId: scope?.userId ?? '', siteId: scope?.siteId ?? '', revision: existing?.revision ?? 0, payload, payloadHash: waterPayloadHash(payload), updatedAt: new Date().toISOString() };
+      tx.objectStore('water_partitions').put(partition);
+      if (scope) {
+        const changes = buildFieldMutations('water', existing?.payload as unknown as Record<string, unknown> | undefined, payload as unknown as Record<string, unknown>);
+        if (changes.length) tx.objectStore('sync_outbox').put(buildSyncOperation({ ...scope, entity: 'water-patch', entityId: scope.siteId, baseRevision: partition.revision, payload: { changes } }));
+      }
+      await done; return result;
+    } catch (error) {
+      try { tx.abort(); } catch { /* A failed transaction may already be aborted. */ }
+      await done.catch(() => undefined); throw error;
+    }
+  } finally { database.close(); }
+}
+
 async function capture(database: IDBDatabase): Promise<WaterSnapshotPayload> {
   const tx = database.transaction(['water_level_points', 'water_level_logs']);
   const [points, logs] = await Promise.all([

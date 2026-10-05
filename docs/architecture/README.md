@@ -33,7 +33,7 @@
 
 - `main.ts` 同時承擔 UI、事件、路由與流程編排，後續可按日報、水位、設定拆出畫面與事件模組，保留 Repository 邊界。
 - `src/core/*` 與 `src/db/database.ts` 包含舊版介面；正式入口使用新的 daily 模組，不應將舊 ReportStore 畫成主流程。
-- README 的 `_site` 與「定稿後建立新草稿」已落後現行實作：部署使用 `dist`，定稿保留 `retainedDraft`。
+- 部署使用 `dist`，定稿保留 `retainedDraft`；現行共享與記憶規則見 [ADR-014](../adr/014-current-memory-and-sharing-contract.md)。
 - 偵錯 UI 的 databaseVersion 寫死為 4，實際 schema 為 9；可改用共用常數避免漂移。
 - 架構圖為模組層級概覽，將型別、格式、驗證等輔助依賴收斂在所屬模組內，非完整 import graph。
 

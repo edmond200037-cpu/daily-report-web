@@ -1,0 +1,45 @@
+PostgreSQL 17.10, fresh local database, auth.uid fixture; no production connection.
+PASS RLS owner only sees accessible sites
+PASS RPC owner read permission
+PASS RPC owner edit permission
+PASS RLS owner2 only sees accessible sites
+PASS RPC owner2 read permission
+PASS RPC owner2 edit permission
+PASS RLS editor only sees accessible sites
+PASS RPC editor read permission
+PASS RPC editor edit permission
+PASS RLS viewer only sees accessible sites
+PASS RPC viewer read permission
+PASS RPC viewer edit permission
+PASS RLS outsider only sees accessible sites
+PASS RPC outsider read permission
+PASS RPC outsider edit permission
+PASS RLS removed only sees accessible sites
+PASS RPC removed read permission
+PASS RPC removed edit permission
+PASS RLS anon only sees accessible sites
+PASS RPC anon read permission
+PASS RPC anon edit permission
+PASS RLS direct insert is denied even for an editor
+PASS forbidden cross-site water and membership mutation
+PASS first daily patches from two connections both survive
+PASS first water patches from two connections both survive
+PASS same mutation concurrent replay emits one change
+PASS legacy conflict replay retains conflict outcome and payload
+PASS v1 and v2 first write share the same lock
+PASS deleted IDs stay tombstoned; a new undo identity is visible
+PASS invalid schema 0 rejected
+PASS invalid schema 1 rejected
+PASS invalid schema 2 rejected
+PASS invalid schema 3 rejected
+PASS invalid schema 4 rejected
+PASS invalid schema 5 rejected
+PASS invalid schema 6 rejected
+PASS invalid schema 7 rejected
+PASS invalid schema 8 rejected
+PASS oversize payload rejected
+PASS memory conflict replay is preserved
+PASS approved or rejected requests cannot overwrite existing members
+PASS parallel owner demotion/removal retains a last owner
+PASS revoked member loses read and mutation access
+Database behavior checks: 43 passed

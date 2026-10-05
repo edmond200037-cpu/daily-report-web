@@ -34,7 +34,7 @@ describe('設定端直達導覽契約', () => {
   it('日報主檔以兩個暫態工作面與直列管理清單呈現既有內容', () => {
     expect(main).toContain("type DailySettingsArea = 'foundation' | 'materials';");
     expect(main).toContain("const dailySettingsAreas: Array<{ id: DailySettingsArea;");
-    expect(main).toContain('data-settings-area="${area.id}"');
+    expect(main).toContain('data-settings-area="${escapeHtml(area.id)}"');
     expect(main).toContain('class="settings-management-list"');
     expect(main).toContain('class="settings-management-panel"');
     expect(main).not.toContain('class="settings-section-grid"');

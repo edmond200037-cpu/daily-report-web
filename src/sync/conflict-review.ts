@@ -148,6 +148,14 @@ export async function queueConflictResolution(scope: SharedScope, reviewed: Conf
   const operation = buildSyncOperation({ ...scope, entity, entityId: current.cloudEntityId, baseRevision: current.cloudRevision, payload });
   operation.resolvesConflictIds = [current.id, current.operationId];
   const database = await openDatabase() as IDBDatabase;
-  try { const tx = database.transaction('sync_outbox', 'readwrite'); tx.objectStore('sync_outbox').put(operation); await transactionDone(tx); }
+  try {
+    const tx = database.transaction(['sync_outbox', 'sync_conflicts', 'sync_recovery_backups'], 'readwrite');
+    const source = await request(tx.objectStore('sync_outbox').get(current.operationId));
+    const conflict = await request(tx.objectStore('sync_conflicts').get(current.id));
+    if (!source || source.userId !== scope.userId || source.siteId !== scope.siteId) { tx.abort(); throw new Error('衝突來源已變更，請重新載入。'); }
+    tx.objectStore('sync_recovery_backups').put({ id: `resolution:${operation.id}`, ...scope, sourceOperation: source, conflict: conflict ?? null, review: current, localPaths: [...localPaths], createdAt: new Date().toISOString() });
+    tx.objectStore('sync_outbox').put(operation);
+    await transactionDone(tx);
+  }
   finally { database.close(); }
 }

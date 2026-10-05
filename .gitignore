@@ -4,3 +4,7 @@ node_modules/
 .env.local
 .env.*.local
 !.env.example
+artifacts/audit-fixes/clean-install/
+artifacts/audit-fixes/db-tools/
+artifacts/audit-fixes/pg-data-*/
+scripts/db-tests/node_modules/

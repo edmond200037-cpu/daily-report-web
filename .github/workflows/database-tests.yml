@@ -1,0 +1,29 @@
+name: Database behavior checks
+on:
+  workflow_call:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: audit_test_only
+          POSTGRES_DB: audit_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d audit_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --prefix scripts/db-tests
+      - run: node scripts/db-behavior-tests.mjs
+        env:
+          AUDIT_DATABASE_URL: postgres://postgres:audit_test_only@localhost:5432/audit_ci

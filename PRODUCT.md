@@ -45,7 +45,7 @@ web
 - IndexedDB 與資料邊界：`src/db/`、`src/data/`
 - PWA 資源：`manifest.webmanifest`、`service-worker.js`、`public/`
 - 單元測試：`tests/unit/`
-- 目前沒有外部帳號、後端 API、使用者見證或可引用的第三方產品證據；未來工作不得捏造這些內容。
+- 已實作 Supabase 帳號、工地權限、同步 RPC 與 Realtime 整合；正式環境 OAuth、跨裝置同步與使用者驗收須另行驗證。沒有使用者見證或可引用的第三方產品證據。
 
 ## Product Principles
 

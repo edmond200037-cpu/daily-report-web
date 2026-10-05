@@ -21,11 +21,17 @@ npx supabase test db
 
 1. 在使用者自己的 Supabase 專案套用 `supabase/migrations/`。
 2. 在 Auth 啟用 Google provider，設定 Google OAuth client。
-3. Redirect allow list 加入本機網址與正式 GitHub Pages URL；應用程式回呼落在 `#account`。
+3. Redirect allow list 加入本機網址與正式 GitHub Pages URL，含 `?auth_callback=1` 回呼；帳號介面位於設定中的共用工地。
 4. 在 GitHub Pages build 設定 `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY`。
 5. 先以兩個測試帳號驗證非成員、viewer、editor、owner，再導入實際工地資料。
 
 未設定兩個環境變數時，應用程式維持原本的本機模式。
+
+## 稽核修復與隔離檢查
+
+`supabase/repairs/audit_hardening.sql` 是待轉正式 migration 的修復來源，尚未部署。於可執行 Supabase CLI 的環境執行 `node scripts/prepare-audit-migration.mjs`，由 CLI 產生檔名後填入修復 SQL；不會自動推送雲端。
+
+隔離 PostgreSQL 行為檢查：先 `npm ci --prefix scripts/db-tests`，設定 `AUDIT_DATABASE_URL` 為 localhost 上空白且名稱以 `audit_` 開頭的測試資料庫，再執行 `node scripts/db-behavior-tests.mjs`。腳本拒絕遠端與非測試名稱；CI 建立 PostgreSQL 17 service 執行同一檢查。Auth 使用測試 shim，不能代表真實 OAuth 或 Realtime 驗收。
 # 工地記憶逐筆化（202609230002）
 
 部署 `202609230002_memory_entries_sync.sql` 前先備份資料庫。遷移會在同一交易內，把每個 `memory_snapshots` 的工地、工種、廠商、工項、位置、材料與特殊事項模板複製到 `memory_entries`，驗證筆數及 JSON 內容後記錄於 `memory_snapshot_migrations`。遇到重複 ID、父層遺失或內容不符會讓整個交易失敗，原快照仍在。其他 `app_settings` 偏好不會上傳。

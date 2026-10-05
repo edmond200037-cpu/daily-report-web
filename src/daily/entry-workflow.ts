@@ -1,4 +1,5 @@
 import type { ContactItem } from '../domain/daily';
+import { assertSafePayload, assertRenderablePayload } from '../sync/payload-safety';
 
 export interface ContactEditorDraft {
   id: string; originalId: string | null; value: ContactItem; errors: string[];
@@ -33,10 +34,13 @@ export function readEntryDraft(storage: Pick<Storage, 'getItem'>, key: string): 
   const raw = storage.getItem(key);
   if (!raw) return { contact: null, work: [] };
   const value = JSON.parse(raw) as EntryDraft;
+  assertSafePayload(value);
   if (!Array.isArray(value.work) || value.work.some((item) => !Array.isArray(item) || item.length !== 2 || item.some((part) => typeof part !== 'string')) ||
     (value.contact && (!value.contact.value || !Array.isArray(value.contact.value.items) || typeof value.contact.taskQuery !== 'string'))) {
     throw new Error('本機輸入草稿格式異常，請先匯出備份。');
   }
+  for (const [id] of value.work) assertSafePayload({ id });
+  if (value.contact) assertRenderablePayload(value.contact.value);
   return value;
 }
 export function appendContactTask(editor: ContactEditorDraft, text = editor.taskQuery): boolean {

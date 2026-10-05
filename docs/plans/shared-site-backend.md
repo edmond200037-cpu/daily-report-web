@@ -1,5 +1,7 @@
 # 工地共用後端與跨裝置同步實作計畫
 
+> 歷史文件：共享與記憶門檻以 [ADR-014](../adr/014-current-memory-and-sharing-contract.md) 為準；本文保留原決策與計畫供追溯。
+
 建立日期：2026-09-21  
 狀態：規劃完成，功能尚未實作；以下未勾選項目均為待辦。  
 範圍：`daily-report-web`。相鄰 `dailt-report-export` 不在本計畫改造範圍。

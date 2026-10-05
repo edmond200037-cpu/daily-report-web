@@ -40,7 +40,7 @@ function diffCollection(before: Record<string, unknown>[], after: Record<string,
 export function buildFieldMutations(kind: 'daily' | 'water', before: Record<string, unknown> | undefined, after: Record<string, unknown>): FieldMutation[] {
   const result: FieldMutation[] = []; const old = before ?? {};
   for (const [field, value] of Object.entries(after)) {
-    if (field === 'shared' || ignored.has(field) || collections[kind].includes(field) || JSON.stringify(old[field]) === JSON.stringify(value)) continue;
+    if (field === 'date' || field === 'shared' || ignored.has(field) || collections[kind].includes(field) || JSON.stringify(old[field]) === JSON.stringify(value)) continue;
     result.push({ op: 'set', collection: '$document', id: kind, field, value: structuredClone(value) });
   }
   for (const collection of collections[kind]) diffCollection(records(old[collection]), records(after[collection]), collection, undefined, result);

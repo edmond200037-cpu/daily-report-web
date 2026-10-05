@@ -1,3 +1,4 @@
+import { assertRenderablePayload } from './payload-safety';
 import { withWorkspaceLock } from './workspace-lock';
 import { loadActiveSharedScope } from './context';
 import type { DailyReportV3 } from '../domain/daily';
@@ -12,7 +13,7 @@ import { applyFieldMutations, buildFieldMutations, mergeLegacyDailyWorkItems, ty
 import { memoryEntryStore, type RemoteMemoryEntry } from './memory-entries';
 import { adoptCloudMemoryEntry, recoverDuplicateMemoryOperation } from './recovery';
 
-interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
+interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; duplicate_of_status?: 'applied' | 'conflict'; replayed?: boolean; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
 interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
 interface RemoteDraftRow { id: string; report_date: string; payload: DailyReportV3; revision: number; }
 interface RemoteWaterRow { site_id: string; payload: WaterSnapshotPayload; revision: number; }
@@ -75,7 +76,7 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
       : operation.entity === 'memory' || operation.entity === 'water-snapshot' || operation.entity === 'water-patch'
       ? [operation.entity === 'memory' ? 'memory_partitions' : 'water_partitions', 'sync_outbox', 'sync_conflicts']
       : ['live_report_draft', 'draft_partitions', 'sync_outbox', 'sync_conflicts'];
-    const tx = database.transaction(storeNames, 'readwrite');
+    const tx = database.transaction([...storeNames, 'sync_recovery_backups'], 'readwrite');
     const queue = tx.objectStore('sync_outbox');
     if (operation.entity === 'memory-entry') {
       tx.objectStore('memory_entry_versions').put({ id: `${operation.siteId}:${result.entity_id}`, revision: result.revision });
@@ -114,7 +115,15 @@ async function acceptMutation(operation: SyncOperation, result: MutationResult):
       .forEach((row) => queue.put({ ...row, baseRevision: result.revision, updatedAt: new Date().toISOString() }));
     if (operation.resolvesConflictIds?.length) {
       const conflicts = tx.objectStore('sync_conflicts');
-      for (const id of operation.resolvesConflictIds) { queue.delete(id); conflicts.delete(id); }
+      for (const id of operation.resolvesConflictIds) {
+        const source = await request(queue.get(id)) as SyncOperation | undefined;
+        const conflict = await request(conflicts.get(id)) as SyncConflict | undefined;
+        if (source || conflict) {
+          if ((source && (source.userId !== operation.userId || source.siteId !== operation.siteId)) || (conflict && (conflict.userId !== operation.userId || conflict.siteId !== operation.siteId))) throw new Error('衝突來源不屬於目前工地。');
+          tx.objectStore('sync_recovery_backups').put({ id: `accepted-resolution:${operation.id}:${id}`, userId: operation.userId, siteId: operation.siteId, sourceOperation: source ?? null, conflict: conflict ?? null, resolution: operation, result, createdAt: new Date().toISOString() });
+        }
+        queue.delete(id); conflicts.delete(id);
+      }
     }
     queue.delete(operation.id);
     await transactionDone(tx);
@@ -299,9 +308,11 @@ export async function refreshCloudMemoryLibrary(scope: SharedScope): Promise<voi
       .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
       .eq('site_id', scope.siteId).order('id').range(offset, offset + 499);
     if (error) throw error;
-    for (const row of data ?? []) await applyRemoteMemoryEntry(scope,
-      { sequence: cursor, entity: 'memory-entry', entity_id: row.id, operation: row.deleted_at ? 'delete' : 'upsert', revision: row.revision, changed_at: new Date().toISOString() },
-      row as RemoteMemoryEntry);
+    for (const row of data ?? []) {
+      const change: ChangeRow = { sequence: cursor, entity: 'memory-entry', entity_id: row.id, operation: row.deleted_at ? 'delete' : 'upsert', revision: row.revision, changed_at: new Date().toISOString() };
+      await checkRemotePayload(scope, change, row);
+      await applyRemoteMemoryEntry(scope, change, row as RemoteMemoryEntry);
+    }
     if (!data || data.length < 500) break;
   }
 }
@@ -341,26 +352,43 @@ async function applyRemoteWater(scope: SharedScope, change: ChangeRow, remote: R
   } finally { database.close(); }
 }
 
+async function checkRemotePayload(scope: SharedScope, change: ChangeRow, remote: unknown): Promise<void> {
+  try { assertRenderablePayload(remote); }
+  catch (error) {
+    const database = await openDatabase() as IDBDatabase;
+    try { const tx = database.transaction('sync_recovery_backups', 'readwrite'); tx.objectStore('sync_recovery_backups').put({ id: `quarantine:${scope.userId}:${scope.siteId}:${change.sequence}`, ...scope, change, original: remote, reason: String(error), createdAt: new Date().toISOString() }); await transactionDone(tx); }
+    finally { database.close(); }
+    throw error;
+  }
+}
+
 async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; dailyPulled: number; memoryPulled: number; waterPulled: number; conflicts: number }> {
   let cursor = await loadCursor(scope); let pulled = 0; let dailyPulled = 0; let memoryPulled = 0; let waterPulled = 0; let conflicts = 0;
   for (;;) {
     const { data, error } = await getSupabaseClient().rpc('pull_site_changes', { p_site_id: scope.siteId, p_cursor: cursor, p_limit: 100 });
     if (error) throw error;
     const changes = (data ?? []) as ChangeRow[];
-    for (const change of changes) {
+    // Apply only the last event per document, in sequence order. A failed apply
+    // cannot advance beyond an unprocessed document. Page size bounds memory.
+    const latest = new Map<string, ChangeRow>();
+    for (const change of changes) latest.set(`${change.entity}:${change.entity_id}`, change);
+    for (const change of [...latest.values()].sort((a, b) => a.sequence - b.sequence)) {
       if (change.entity === 'daily-draft' && change.operation === 'upsert') {
         const { data: remote, error: remoteError } = await getSupabaseClient().from('daily_drafts').select('id,report_date,payload,revision').eq('id', change.entity_id).single();
         if (remoteError) throw remoteError;
+        await checkRemotePayload(scope, change, remote);
         const outcome = await applyRemoteDraft(scope, change, remote as unknown as RemoteDraftRow);
         if (outcome === 'pulled') { pulled += 1; dailyPulled += 1; } else if (outcome === 'conflict') conflicts += 1;
       } else if (change.entity === 'memory-entry') {
         const { data: remote, error: remoteError } = await getSupabaseClient().from('memory_entries').select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at').eq('site_id', scope.siteId).eq('id', change.entity_id).single();
         if (remoteError) throw remoteError;
+        await checkRemotePayload(scope, change, remote);
         const outcome = await applyRemoteMemoryEntry(scope, change, remote as unknown as RemoteMemoryEntry);
         if (outcome === 'pulled') { pulled += 1; memoryPulled += 1; } else if (outcome === 'conflict') conflicts += 1;
       } else if (change.entity === 'water-snapshot' && change.operation === 'upsert') {
         const { data: remote, error: remoteError } = await getSupabaseClient().from('water_snapshots').select('site_id,payload,revision').eq('site_id', scope.siteId).single();
         if (remoteError) throw remoteError;
+        await checkRemotePayload(scope, change, remote);
         const outcome = await applyRemoteWater(scope, change, remote as unknown as RemoteWaterRow);
         if (outcome === 'pulled') { pulled += 1; waterPulled += 1; } else conflicts += 1;
       } else {
@@ -413,8 +441,10 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
     const operation = await markOperationSending(pending);
     try {
       const result = await pushOperation(operation);
-      if (result.status === 'conflict') { await preserveConflict(operation, result); summary.conflicts += 1; }
+      if (!result || typeof result.entity_id !== 'string' || !Number.isSafeInteger(result.revision) || result.revision < 0) throw new Error('同步回應格式異常；保留本機操作。');
+      if (result.status === 'conflict' || result.duplicate_of_status === 'conflict' || (result.status === 'duplicate' && Object.prototype.hasOwnProperty.call(result, 'remote_payload') && !(operation.entity === 'memory-entry' && result.entity_id !== operation.entityId))) { await preserveConflict(operation, result); summary.conflicts += 1; }
       else {
+        if (result.status !== 'applied' && result.status !== 'duplicate') throw new Error('未知同步結果；保留本機操作。');
         await acceptMutation(operation, result); recordApplied(summary, operation);
         const identityChanged = operation.entity === 'memory-entry' && result.entity_id !== operation.entityId;
         // Keep the old parent ID unresolved for this pass when the server

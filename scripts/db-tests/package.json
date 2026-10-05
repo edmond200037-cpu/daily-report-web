@@ -1,0 +1,6 @@
+{
+  "name": "daily-report-database-tests",
+  "private": true,
+  "type": "module",
+  "dependencies": { "pg": "8.23.1" }
+}

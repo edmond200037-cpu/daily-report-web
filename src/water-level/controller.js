@@ -1,10 +1,9 @@
 import { formatWaterLog, formatWaterLogs } from './formatter.js';
 import { parseWaterText } from './parser.js';
-import { loadLogs, loadPoints, newLog, saveLog, deleteLog, savePoint, deletePoint } from './repository.js';
+import { loadLogs, loadPoints, newLog, saveLog, importLog, deleteLog, savePoint, deletePoint } from './repository.js';
 import { validateLog } from './calculator.js';
 import { formatMeasurementTime } from '../shared/date.js';
-
-const escapeHtml = (value = '') => String(value).replace(/[&<>\"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+import { escapeHtml } from '../shared/html';
 
 export const waterLogSummary = (log) => {
   const measuredCount = log.readings.filter((reading) => reading.value !== '').length;
@@ -36,7 +35,14 @@ export class WaterLevelController {
     const field = active?.dataset?.waterField ?? active?.dataset?.waterReading;
     const selectionStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
     const selectionEnd = typeof active?.selectionEnd === 'number' ? active.selectionEnd : null;
-    this.points = await loadPoints(); this.logs = await loadLogs(); if (!this.editing || !this.editing.id) this.editing = newLog(this.points); this.render();
+    this.points = await loadPoints(); this.logs = await loadLogs();
+    if (!this.editing) this.editing = newLog(this.points);
+    else if (!this.editing.id) {
+      // Newly configured wells join a new editor without replacing typed values.
+      const known = new Set(this.editing.readings.map((reading) => reading.pointId));
+      this.editing.readings.push(...newLog(this.points).readings.filter((reading) => !known.has(reading.pointId)));
+    }
+    this.render();
     if (field !== undefined) {
       const selector = active?.dataset?.waterField ? `[data-water-field="${CSS.escape(active.dataset.waterField)}"]` : `[data-water-reading="${CSS.escape(active.dataset.waterReading)}"]`;
       const next = this.root.querySelector(selector);
@@ -64,7 +70,7 @@ export class WaterLevelController {
     const cards = [...this.logs].reverse().map((log) => {
       const summary = waterLogSummary(log);
       const expanded = this.expandedHistoryId === log.id;
-      return `<article class="compact-entry water-history-card ${expanded ? 'compact-entry--expanded' : ''}" data-water-history="${log.id}"><button type="button" class="compact-entry__summary water-history-card__summary" data-water-action="toggle-history" data-id="${log.id}" aria-expanded="${expanded}"><span class="water-history-card__lead">水位</span><span class="water-history-card__copy"><strong>${escapeHtml(summary.title)}</strong><span>${escapeHtml(summary.detail)}</span></span><span class="water-history-card__status ${summary.status === '完整' ? 'water-history-card__status--complete' : ''}">${summary.status}</span></button>${expanded ? `<section class="water-history-card__content"><pre>${escapeHtml(formatWaterLog(log))}</pre><div class="water-history-card__actions"><button type="button" data-water-action="edit-log" data-id="${log.id}">編輯</button><button type="button" class="danger-text" data-water-action="delete-log" data-id="${log.id}">刪除</button></div></section>` : ''}</article>`;
+      return `<article class="compact-entry water-history-card ${expanded ? 'compact-entry--expanded' : ''}" data-water-history="${escapeHtml(log.id)}"><button type="button" class="compact-entry__summary water-history-card__summary" data-water-action="toggle-history" data-id="${escapeHtml(log.id)}" aria-expanded="${expanded}"><span class="water-history-card__lead">水位</span><span class="water-history-card__copy"><strong>${escapeHtml(summary.title)}</strong><span>${escapeHtml(summary.detail)}</span></span><span class="water-history-card__status ${summary.status === '完整' ? 'water-history-card__status--complete' : ''}">${summary.status}</span></button>${expanded ? `<section class="water-history-card__content"><pre>${escapeHtml(formatWaterLog(log))}</pre><div class="water-history-card__actions"><button type="button" data-water-action="edit-log" data-id="${escapeHtml(log.id)}">編輯</button><button type="button" class="danger-text" data-water-action="delete-log" data-id="${escapeHtml(log.id)}">刪除</button></div></section>` : ''}</article>`;
     }).join('');
     return `<section class="workflow-section water-history"><header class="workflow-section__header"><div><h2>最近三天量測</h2><p>點選摘要可查看完整歷史紀錄。</p></div></header><div class="workflow-section__list water-history__list">${cards || '<p class="workflow-section__empty">尚無最近三天的水位紀錄。</p>'}</div></section>`;
   }
@@ -80,10 +86,14 @@ export class WaterLevelController {
   }
 
   pointsView() {
-    return `<form id="point-form" class="water-point-form"><label>井位名稱<input name="name" required placeholder="例如 A井"></label><div class="form-actions form-actions--single"><button type="submit" class="primary">新增井位</button></div></form><div class="point-list">${this.points.map((point) => `<article class="water-point-row"><strong>${escapeHtml(point.name)}</strong><div><button type="button" data-water-action="rename-point" data-id="${point.id}">改名</button><button type="button" class="danger-text" data-water-action="delete-point" data-id="${point.id}">刪除</button></div></article>`).join('') || '<p class="empty">尚未建立井位。</p>'}</div>`;
+    return `<form id="point-form" class="water-point-form"><label>井位名稱<input name="name" required placeholder="例如 A井"></label><div class="form-actions form-actions--single"><button type="submit" class="primary">新增井位</button></div></form><div class="point-list">${this.points.map((point) => `<article class="water-point-row"><strong>${escapeHtml(point.name)}</strong><div><button type="button" data-water-action="rename-point" data-id="${escapeHtml(point.id)}">改名</button><button type="button" class="danger-text" data-water-action="delete-point" data-id="${escapeHtml(point.id)}">刪除</button></div></article>`).join('') || '<p class="empty">尚未建立井位。</p>'}</div>`;
   }
 
-  async handleInput(target) { if (target.dataset.waterField) this.editing[target.dataset.waterField] = target.value; if (target.dataset.waterReading) this.editing.readings[Number(target.dataset.waterReading)].value = target.value; }
+  async handleInput(target) {
+    if (['measuredAt', 'battery'].includes(target.dataset.waterField)) this.editing[target.dataset.waterField] = target.value;
+    const index = Number(target.dataset.waterReading);
+    if (target.dataset.waterReading !== undefined && Number.isInteger(index) && this.editing.readings[index]) this.editing.readings[index].value = target.value;
+  }
 
   async handleAction(action, id) {
     if (action === 'toggle-output') { this.outputOpen = !this.outputOpen; this.render(); return; }
@@ -105,18 +115,14 @@ export class WaterLevelController {
     const messages = [];
     for (const segment of parsed) {
       if (!segment.ok) { messages.push(`略過：${segment.error}`); continue; }
-      const pointMap = new Map(this.points.map((point) => [point.name, point]));
-      for (const reading of segment.readings) {
-        if (!pointMap.has(reading.pointNameSnapshot)) {
-          const point = await savePoint(reading.pointNameSnapshot);
-          this.points.push(point);
-          pointMap.set(point.name, point);
-        }
-        reading.pointId = pointMap.get(reading.pointNameSnapshot).id;
-      }
+      const errors = validateLog(segment, true);
+      if (errors.length) { messages.push(`略過：${errors.join('；')}`); continue; }
       const existing = this.logs.find((log) => log.measuredAt === segment.measuredAt);
       if (existing && !confirm(`${segment.measuredAt} 已有量測紀錄，是否覆蓋？`)) { messages.push(`${segment.measuredAt}：略過重複紀錄`); continue; }
-      await saveLog({ id: existing?.id || '', measuredAt: segment.measuredAt, battery: segment.battery, readings: segment.readings });
+      try { await importLog(segment, existing?.id); }
+      catch (error) { messages.push(`${segment.measuredAt}：匯入失敗（${error.message}）`); continue; }
+      this.points = await loadPoints();
+      this.logs = await loadLogs();
       this.onLocalSaved();
       messages.push(`${segment.measuredAt}：已匯入`);
     }

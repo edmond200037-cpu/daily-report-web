@@ -1,0 +1,14 @@
+
+ RUN  v4.1.11 D:/app/APP_TEST/daily-report-web/artifacts/audit-fixes/clean-install
+
+
+ Test Files  43 passed (43)
+      Tests  217 passed (217)
+   Start at  21:13:52
+   Duration  1.62s (transform 2.33s, setup 0ms, import 7.15s, tests 502ms, environment 4ms)
+
+npm notice
+npm notice New minor version of npm available! 11.19.0 -> 11.21.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.21.0
+npm notice To update run: npm install -g npm@11.21.0
+npm notice
