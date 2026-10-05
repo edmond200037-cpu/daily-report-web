@@ -25,7 +25,8 @@
 .daily-page .daily-output__toggle span span { white-space:normal; }
 .daily-page input, .daily-page textarea, .daily-page button { scroll-margin-block:100px; }
 .daily-page .work-token--composer { display:grid; grid-template-columns:minmax(0,1fr) auto; }
-.daily-page .work-token--composer .work-token__results:not([hidden]) { position:absolute; top:calc(100% + 4px); left:0; width:100%; max-height:min(320px,40dvh); overflow-y:auto; overscroll-behavior:contain; box-shadow:0 8px 24px #29201530; }
+/* Suggestions occupy space so completion actions cannot cover the choices. */
+.daily-page .work-token .work-token__results:not([hidden]) { position:static; grid-column:1/-1; grid-row:2; width:100%; max-height:min(320px,40dvh); overflow-y:auto; overscroll-behavior:contain; margin-top:4px; box-shadow:none; }
 [data-entry-save-error] { position:sticky; top:0; z-index:150; padding:12px; background:#fff0d6; color:#80372a; }
 .missing-entry { display:block; width:100%; text-align:left; min-height:44px; color:#80372a; margin:6px 0; }
 .continuous-work input:focus-visible, .continuous-work button:focus-visible { outline:2px solid #9a510c; outline-offset:2px; }

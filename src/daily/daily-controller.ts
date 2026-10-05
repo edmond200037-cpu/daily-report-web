@@ -4,6 +4,7 @@ import { saveDailyDraft } from '../data/daily-repository';
 import { mergeEditorIntent, refreshCompleteness } from './input-workflow';
 import { validateTrade } from './daily-validator';
 import { duplicateVendorTradeIds } from './daily-output-model';
+import { normalizeName } from '../format/normalization';
 
 export type DailySaveState = 'saving' | 'saved' | 'error';
 export interface TradeDeleteUndo { trade: TradeSection; originalIndex: number; connectedMaterialIds: string[]; }
@@ -42,6 +43,15 @@ export class DailyController {
   switchTab(tab: DailyReportV3['activeTab']): void { if (this.report.activeTab === tab) return; this.update(() => { if (this.report.activeTab === 'engineering') this.expandedId = null; this.report.activeTab = tab; }); }
   trade(id: string): TradeSection | undefined { return this.report.tradeSections.find((item) => item.id === id); }
   addBlankTrade(): TradeSection { const section = createTrade('', '', this.report.tradeSections.length); this.update(() => this.report.tradeSections.push(section)); this.expandedId = section.id; return section; }
+  /** A repeated trade opens another entry so its vendor can be entered independently. */
+  addTradeEntry(name: string, tradeTypeId: string | null, vendor?: { id: string; name: string }): TradeSection {
+    const repeatedTrade = this.report.tradeSections.some((row) =>
+      (tradeTypeId && row.tradeTypeId === tradeTypeId) || normalizeName(row.tradeNameSnapshot) === normalizeName(name));
+    const section = createTrade(name, repeatedTrade ? '' : vendor?.name ?? '', this.report.tradeSections.length, tradeTypeId, repeatedTrade ? null : vendor?.id ?? null);
+    this.update(() => this.report.tradeSections.push(section));
+    this.expandedId = section.id;
+    return section;
+  }
   findDuplicate(tradeTypeId: string | null, tradeName: string, vendorId: string | null, vendorName: string, exceptId?: string): TradeSection | undefined { const normalizedTrade = tradeName.trim().toLocaleLowerCase(); const normalizedVendor = vendorName.trim().toLocaleLowerCase(); return this.report.tradeSections.find((item) => { const sameTrade = tradeTypeId && item.tradeTypeId ? item.tradeTypeId === tradeTypeId : !tradeTypeId && !item.tradeTypeId ? item.tradeNameSnapshot.trim().toLocaleLowerCase() === normalizedTrade : false; const sameVendor = vendorId && item.vendorId ? item.vendorId === vendorId : !vendorId && !item.vendorId ? item.vendorNameSnapshot.trim().toLocaleLowerCase() === normalizedVendor : false; return item.id !== exceptId && sameTrade && sameVendor; }); }
   addTrade(name: string, vendorName = '', tradeTypeId: string | null = null, vendorId: string | null = null): TradeSection | undefined { if (!name.trim()) return undefined; const existing = this.findDuplicate(tradeTypeId, name, vendorId, vendorName); if (existing) { this.expandedId = existing.id; return existing; } const section = createTrade(name, vendorName, this.report.tradeSections.length, tradeTypeId, vendorId); this.update(() => this.report.tradeSections.push(section)); this.expandedId = section.id; return section; }
   changeVendor(id: string, vendorName: string, vendorId: string | null = null): TradeSection | undefined { const trade = this.trade(id); if (!trade || !vendorName.trim()) return undefined; const existing = this.findDuplicate(trade.tradeTypeId, trade.tradeNameSnapshot, vendorId, vendorName, id); if (existing) { this.expandedId = existing.id; return existing; } this.updateTradeOutputData(id, (current) => { current.vendorId = vendorId; current.vendorNameSnapshot = vendorName.trim(); }); return undefined; }

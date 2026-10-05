@@ -12,6 +12,7 @@ import './daily/input-workflow.css';
 import { registerSW } from 'virtual:pwa-register';
 import { consumePwaUpdateSuccess, PWA_UPDATE_SUCCESS_MARKER, transitionPwaUpdateState, type PwaUpdateState } from './pwa/update-state';
 import { DailyController, type DailyDeleteUndo, type DailySaveState } from './daily/daily-controller';
+import { tradePickerChoices, recentTradeVendor } from './daily/trade-picker';
 import { formatDailyReport } from './daily/daily-formatter';
 import { clearDebugLogs, confirmMemory, confirmMemoryCandidates, createMaterialType, databaseSummary, deleteMemory, deleteMaterialType, exportMemories, finalizeDailyReport, listMaterialMemory, listMaterialTypes, listMemories, listMemoryCandidates, listRecentFinalizedReports, listTemplates, loadDailyDraft, loadDailyDraftForDate, mergeMemoryBackup, pruneExpiredReports, rejectMaterialMemoryItem, renameMaterialType, reorderMaterialTypes, saveContactEntry, saveMaterialEntry, saveMemory, saveTemplate, type DailySettingsSection, type MaterialMemoryItem, type MaterialType, type MemoryCandidate, type MemoryCandidateKey, type NamedMemory, type SpecialTemplate } from './data/daily-repository';
 import { selectSiteMemory } from './data/daily-repository';
@@ -385,7 +386,7 @@ function basicsView(): string {
   return `<section class="basics daily-basics basics--expanded"><div class="daily-context-row">${workspaceSiteView()}<div class="basics__fields" id="daily-basics-fields">${field('日報日期', 'date', daily.report.date, 'date')}</div></div>${accountAuth.user ? '' : sitePickerField()}</section>`;
 }
 function tradePickerResults(): string {
-  const keyword = normalizeSearch(tradePickerSearch); const picks = dailyTrades.filter((item) => !keyword || item.normalizedName.includes(keyword)).slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName)); const recentVendor = (tradeId: string): NamedMemory | undefined => dailyVendors.filter((item) => item.tradeTypeId === tradeId && item.status === 'confirmed').slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName))[0]; const pickerContent = picks.length ? `<div class="settings-list">${picks.map((trade) => { const vendor = recentVendor(trade.id); return `<button type="button" class="settings-item" data-daily-action="select-trade" data-trade-id="${escapeHtml(trade.id)}"><strong>${escapeHtml(trade.name)}</strong><span class="hint">${vendor ? `最近使用：${escapeHtml(vendor.name)}` : ''}</span></button>`; }).join('')}</div>` : keyword ? '' : '<p class="empty">尚無可用工種。</p>'; const pickerActions = keyword && !picks.some((row) => row.normalizedName === keyword) ? `<div class="form-actions form-actions--submit"><button type="button" class="primary" data-daily-action="create-trade-from-search">立即新增工種「${escapeHtml(tradePickerSearch)}」</button><button type="button" data-daily-action="close-trade-picker">取消</button></div>` : `<div class="dialog-actions"><button type="button" data-daily-action="close-trade-picker">取消</button></div>`;
+  const keyword = normalizeSearch(tradePickerSearch); const picks = tradePickerChoices(dailyTrades, tradePickerSearch); const recentVendor = (tradeId: string) => recentTradeVendor(dailyVendors, tradeId); const pickerContent = picks.length ? `<div class="settings-list">${picks.map((trade) => { const vendor = recentVendor(trade.id); return `<button type="button" class="settings-item" data-daily-action="select-trade" data-trade-id="${escapeHtml(trade.id)}"><strong>${escapeHtml(trade.name)}</strong><span class="hint">${vendor ? `最近使用：${escapeHtml(vendor.name)}` : ''}</span></button>`; }).join('')}</div>` : keyword ? '' : '<p class="empty">尚無可用工種。</p>'; const pickerActions = keyword && !picks.some((row) => normalizeName(row.name) === keyword) ? `<div class="form-actions form-actions--submit"><button type="button" class="primary" data-daily-action="create-trade-from-search">立即新增工種「${escapeHtml(tradePickerSearch)}」</button><button type="button" data-daily-action="close-trade-picker">取消</button></div>` : `<div class="dialog-actions"><button type="button" data-daily-action="close-trade-picker">取消</button></div>`;
   return pickerContent + pickerActions;
 }
 
@@ -1206,8 +1207,31 @@ app.addEventListener('click', async (event) => {
   if (action === 'add-trade') { entryKind = 'engineering'; tradePickerOpen = true; tradePickerSearch = ''; await renderApp(); return; }
   if (action === 'close-trade-picker') { tradePickerOpen = false; await renderApp(); return; }
   if (action === 'clear-trade-search') { const search = app.querySelector<HTMLInputElement>('[data-trade-picker-search]'); if (search) { search.value = ''; refreshTradePickerSearch(search); search.focus(); } return; }
-  if (action === 'select-trade') { dailyPreviewOpen = false; const trade = dailyTrades.find((item) => item.id === button.dataset.tradeId); if (!trade) return; const vendor = dailyVendors.filter((item) => item.tradeTypeId === trade.id && item.status === 'confirmed').slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName))[0]; const existing = daily.findDuplicate(trade.id, trade.name, vendor?.id ?? null, vendor?.name ?? ''); if (entryKind === 'contacts') { startContactEntry(trade.name, vendor?.name ?? '', trade.id, vendor?.id ?? null); tradePickerOpen = false; await renderApp(); app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return; } const created = daily.addTrade(trade.name, vendor?.name ?? '', trade.id, vendor?.id ?? null); tradePickerOpen = false; if (existing) alert('此工種與最近使用廠商已存在。'); await daily.flush(); await renderApp(); if (created) app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return; }
-  if (action === 'create-trade-from-search') { dailyPreviewOpen = false; const name = tradePickerSearch.trim(); if (!name) return; if (entryKind === 'contacts') { startContactEntry(name); tradePickerOpen = false; await renderApp(); app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return; } const created = daily.addTrade(name, '', null, null); tradePickerOpen = false; await daily.flush(); await renderApp(); if (created) app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return; }
+  if (action === 'select-trade') {
+    dailyPreviewOpen = false;
+    const trade = dailyTrades.find((item) => item.id === button.dataset.tradeId);
+    if (!trade) return;
+    const vendor = recentTradeVendor(dailyVendors, trade.id);
+    if (entryKind === 'contacts') {
+      startContactEntry(trade.name, vendor?.name ?? '', trade.id, vendor?.id ?? null);
+      tradePickerOpen = false; await renderApp();
+      app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
+    }
+    const created = daily.addTradeEntry(trade.name, trade.id, vendor);
+    tradePickerOpen = false; await daily.flush(); await renderApp();
+    app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return;
+  }
+  if (action === 'create-trade-from-search') {
+    dailyPreviewOpen = false;
+    const name = tradePickerSearch.trim(); if (!name) return;
+    if (entryKind === 'contacts') {
+      startContactEntry(name); tradePickerOpen = false; await renderApp();
+      app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
+    }
+    const created = daily.addTradeEntry(name, null);
+    tradePickerOpen = false; await daily.flush(); await renderApp();
+    app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="vendorNameSnapshot"]`)?.focus(); return;
+  }
   if (action === 'add-work') {
     const tradeId = button.dataset.tradeId!;
     daily.addWorkItem(tradeId);
