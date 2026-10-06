@@ -59,7 +59,7 @@ const row=await page.locator('[data-contact-task-content]').first().boundingBox(
 await page.mouse.move(row.x+row.width-10,row.y+20);await page.mouse.down();await page.mouse.move(row.x+row.width-100,row.y+20,{steps:6});await page.mouse.up();
 if(await page.locator('[data-contact-task-content]').count()!==2) throw Error('Swipe deletion failed');
 await page.locator('.work-gesture-undo button').click();
-await page.locator('[data-contact-task-content]').first().fill('預定10/07(三)巡檢修正');
+await page.locator('[data-contact-task-content]').first().fill('巡檢修正');
 await page.locator('[data-daily-action="keep-contact"]').click();
 await page.locator('[data-daily-action="toggle-contact"]').click();
 if(!(await text())[0].includes('巡檢修正')) throw Error('Draft lost');

@@ -5,11 +5,39 @@ export interface ContactEditorDraft {
   id: string; originalId: string | null; value: ContactItem; errors: string[];
   tradeQuery: string; vendorQuery: string; taskQuery: string;
   plannedDate?: string;
+  plannedDateChanged?: boolean;
   taskDetails?: string;
 }
 export interface EntryDraft { contact: ContactEditorDraft | null; work: Array<[string, string]>; }
 
 const contactDatePrefix = /^(?:預定\s*)?(?:(\d{4})[-/])?(\d{1,2})[-/](\d{1,2})(?:[（(][日一ㄧ二三四五六][）)])?\s*/;
+export function contactTaskParts(content: string, reportDate: string): { date: string; text: string } {
+  const value = content.trim();
+  const match = contactDatePrefix.exec(value);
+  return {
+    date: match ? `${match[1] ?? reportDate.slice(0, 4)}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : '',
+    text: match ? value.slice(match[0].length) : value,
+  };
+}
+
+export function editContactEntry(value: ContactItem, reportDate: string): ContactEditorDraft {
+  const dates = new Set(value.items.map((item) => contactTaskParts(item.content, reportDate).date));
+  return {
+    id: value.id, originalId: value.id, value: structuredClone(value), errors: [],
+    tradeQuery: value.tradeNameSnapshot, vendorQuery: value.vendorNameSnapshot, taskQuery: '',
+    plannedDate: dates.size === 1 ? [...dates][0] : '',
+  };
+}
+
+/** Keep the stored date prefix out of the editable task text. */
+export function updateContactTaskText(editor: ContactEditorDraft, id: string, text: string, reportDate: string): void {
+  const item = editor.value.items.find((row) => row.id === id);
+  if (!item) return;
+  const date = contactTaskParts(item.content, reportDate).date;
+  item.content = text.trim() ? (date ? plannedContactPrefix(date) : '') + text : '';
+  item.updatedAt = new Date().toISOString();
+  editor.errors = [];
+}
 export function plannedContactPrefix(date: string): string {
   const day = new Date(`${date}T00:00:00Z`).getUTCDay();
   return `預定${date.slice(5).replace('-', '/')}(${'日一二三四五六'[day]})`;
@@ -55,13 +83,16 @@ export function appendContactTask(editor: ContactEditorDraft, text = editor.task
   return true;
 }
 
-/** Apply a newly chosen date to existing undated tasks as well as pending input. */
+/** Explicit date edits replace old prefixes; untouched entries retain individual dates. */
 export function applyContactPlannedDate(editor: ContactEditorDraft): void {
-  if (!editor.plannedDate) return;
-  const prefix = plannedContactPrefix(editor.plannedDate);
+  if (!editor.plannedDate && !editor.plannedDateChanged) return;
+  const prefix = editor.plannedDate ? plannedContactPrefix(editor.plannedDate) : '';
   for (const item of editor.value.items) {
-    if (!contactDatePrefix.test(item.content.trim())) {
-      item.content = prefix + item.content.trim();
+    const text = item.content.trim();
+    if (!text) continue;
+    const existing = contactDatePrefix.exec(text);
+    if (editor.plannedDateChanged || !existing) {
+      item.content = prefix + (existing ? text.slice(existing[0].length) : text);
       item.updatedAt = new Date().toISOString();
     }
   }
