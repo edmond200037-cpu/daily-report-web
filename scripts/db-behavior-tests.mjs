@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { checkMigrationHistory } from './sync-migration-preflight.mjs';
 
 const root = new URL('../', import.meta.url);
 const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -10,7 +11,7 @@ const site = uuid(100), otherSite = uuid(101);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** This runner only accepts a fresh, explicitly named local audit database. */
-export async function runDatabaseTests({ Client, connectionString, initialize = true, repairFile = new URL('supabase/repairs/audit_hardening.sql', root) }) {
+export async function runDatabaseTests({ Client, connectionString, initialize = true, repairFile = null }) {
   const url = new URL(connectionString);
   assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) && url.pathname.startsWith('/audit_'), 'Refusing a non-local or non-audit database');
   const admin = new Client({ connectionString }); await admin.connect();
@@ -74,6 +75,22 @@ export async function runDatabaseTests({ Client, connectionString, initialize = 
     const sessions = {};
     for (const [name, user] of Object.entries(users)) sessions[name] = await login(user);
     sessions.anon = await login(null, 'anon');
+
+    await check('deployment preflight refuses unregistered installed schemas', async () => {
+      // Isolated PostgreSQL fixtures deliberately do not create Supabase history.
+      await assert.rejects(() => checkMigrationHistory(admin), /migration 未登記/);
+    });
+
+    await check('sync capabilities are read-only and restricted to site members', async () => {
+      for (const name of ['owner', 'editor', 'viewer']) {
+        const result = await rpc(sessions[name], 'get_sync_capabilities', [site]);
+        assert.equal(result.contract_version, 1);
+        assert.ok(result.capabilities.includes('apply_memory_application'));
+        assert.ok(result.capabilities.includes('apply_memory_entry_mutation'));
+      }
+      await denied(() => rpc(sessions.outsider, 'get_sync_capabilities', [site]));
+      await denied(() => rpc(sessions.anon, 'get_sync_capabilities', [site]));
+    });
 
     for (const name of ['owner', 'owner2', 'editor', 'viewer', 'outsider', 'removed', 'anon']) {
       const member = ['owner', 'owner2', 'editor', 'viewer'].includes(name);
@@ -164,6 +181,37 @@ export async function runDatabaseTests({ Client, connectionString, initialize = 
       const args = [site, randomUUID(), 0, JSON.stringify(entry)];
       const first = await rpc(sessions.editor, 'apply_memory_entry_mutation', args), replay = await rpc(sessions.editor, 'apply_memory_entry_mutation', args);
       assert.equal(first.status, 'conflict'); assert.deepEqual(replay, { ...first, replayed: true });
+    });
+    await check('memory application event is counted once across request identities', async () => {
+      const id = randomUUID();
+      const entry = { id, kind: 'trade', parent_id: null, normalized_name: '事件去重測試', payload: { id, name: '事件去重測試', normalizedName: '事件去重測試', status: 'candidate' }, status: 'candidate', usage_count: 1, finalized_usage_count: 0, learning_key: 'apply:event-1', learning_delta: { usage: 1, finalized: 0 } };
+      const args = [site, randomUUID(), 0, JSON.stringify(entry)];
+      assert.equal((await rpc(sessions.editor, 'apply_memory_application', args)).status, 'applied');
+      await rpc(sessions.editor, 'apply_memory_application', args);
+      const otherId = randomUUID();
+      await rpc(sessions.owner, 'apply_memory_application', [site, randomUUID(), 0, JSON.stringify({ ...entry, id: otherId, payload: { ...entry.payload, id: otherId } })]);
+      const { rows } = await admin.query('select id,usage_count,status from public.memory_entries where site_id=$1 and normalized_name=$2', [site, entry.normalized_name]);
+      assert.equal(rows.length, 1); assert.equal(rows[0].id, id); assert.equal(rows[0].usage_count, 1);
+      const calls = [sessions.owner, sessions.editor].map((client, index) => ({ client, run: () => rpc(client, 'apply_memory_application', [site, randomUUID(), 0, JSON.stringify({ ...entry, learning_key: `apply:event-${index + 2}` })]) }));
+      const results = await concurrent(calls);
+      assert.ok(results.every(result => result.status === 'fulfilled' && result.value.status === 'applied'));
+      await rpc(sessions.editor, 'apply_memory_application', [site, randomUUID(), 0, JSON.stringify({ ...entry, learning_key: 'apply:event-4' })]);
+      const final = await admin.query('select usage_count,status from public.memory_entries where id=$1', [id]);
+      assert.equal(final.rows[0].usage_count, 4); assert.equal(final.rows[0].status, 'confirmed');
+      await admin.query('update public.memory_entries set deleted_at=now() where id=$1', [id]);
+      const deleted = await rpc(sessions.editor, 'apply_memory_application', [site, randomUUID(), 0, JSON.stringify({ ...entry, learning_key: 'apply:event-5' })]);
+      assert.equal(deleted.status, 'conflict');
+      assert.equal((await admin.query('select usage_count from public.memory_entries where id=$1', [id])).rows[0].usage_count, 4);
+    });
+    await check('sync maintenance migration preserves existing memory and operation rows', async () => {
+      const snapshot = async () => (await admin.query('select id,payload,usage_count,status,revision,deleted_at from public.memory_entries order by id')).rows;
+      const before = await snapshot();
+      const operations = (await admin.query('select count(*)::int as count from public.sync_operations')).rows[0].count;
+      const file = (await readdir(new URL('supabase/migrations/', root))).find(name => name.endsWith('_sync_maintenance.sql'));
+      assert.ok(file, 'Official maintenance migration must exist');
+      await admin.query(await readFile(new URL(`supabase/migrations/${file}`, root), 'utf8'));
+      assert.deepEqual(await snapshot(), before);
+      assert.equal((await admin.query('select count(*)::int as count from public.sync_operations')).rows[0].count, operations);
     });
     await check('approved or rejected requests cannot overwrite existing members', async () => {
       const approved = randomUUID(), rejected = randomUUID(), pending = randomUUID();

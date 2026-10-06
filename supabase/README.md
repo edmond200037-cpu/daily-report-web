@@ -29,9 +29,17 @@ npx supabase test db
 
 ## 稽核修復與隔離檢查
 
-`supabase/repairs/audit_hardening.sql` 是待轉正式 migration 的修復來源，尚未部署。於可執行 Supabase CLI 的環境執行 `node scripts/prepare-audit-migration.mjs`，由 CLI 產生檔名後填入修復 SQL；不會自動推送雲端。
+`supabase/repairs/audit_hardening.sql` 與同步能力檢查已收回 CLI 產生的 `20261006143609_sync_maintenance.sql`，尚未套用正式環境。CI 現在只載入正式 migrations，不再額外套用 repair。repair 檔保留作事件來源佐證，不需要再用舊 prepare 腳本產生重複 migration。
 
 隔離 PostgreSQL 行為檢查：先 `npm ci --prefix scripts/db-tests`，設定 `AUDIT_DATABASE_URL` 為 localhost 上空白且名稱以 `audit_` 開頭的測試資料庫，再執行 `node scripts/db-behavior-tests.mjs`。腳本拒絕遠端與非測試名稱；CI 建立 PostgreSQL 17 service 執行同一檢查。Auth 使用測試 shim，不能代表真實 OAuth 或 Realtime 驗收。
+
+## 同步維護發布（0.1.3）
+
+Pages 發布前會執行資料庫 history 預檢、migration dry-run／套用及真實 Data API 契約檢查。缺少設定或檢查失敗會停止前端發布。正式站已手動建立部分後續資料表，但 history 尚未登記；先逐一比對正式函式、資料表與遷移內容，再整理 history，禁止只憑資料表存在就自動標記遷移完成。
+
+在 GitHub 的 `production-database` Environment 或 repository secrets 設定 `SUPABASE_DB_URL`（密碼須 URL 編碼）、`SUPABASE_SYNC_CHECK_EMAIL`、`SUPABASE_SYNC_CHECK_PASSWORD`、`SUPABASE_SYNC_CHECK_SITE_ID`，並沿用現有 `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY`。API 檢查帳號須為指定驗收工地既有 editor／owner；不使用真實工作資料做寫入測試，也不自動建立帳號或授權。檢查送出的刻意無效請求必須回傳 22023，才表示真正的 API 簽名與驗證可用；變更讀取結果不寫入 log。
+
+CLI 固定 2.119.0，僅停用 CLI telemetry／更新通知以利受限環境執行。正式服務需另確認 migration history、PostgREST cache、登入角色與手機舊 PWA 相容性；本機 DB 測試不能取代線上驗收。完整修復紀錄見 `docs/sync-maintenance-implementation-2026-10-06.md`。
 # 工地記憶逐筆化（202609230002）
 
 部署 `202609230002_memory_entries_sync.sql` 前先備份資料庫。遷移會在同一交易內，把每個 `memory_snapshots` 的工地、工種、廠商、工項、位置、材料與特殊事項模板複製到 `memory_entries`，驗證筆數及 JSON 內容後記錄於 `memory_snapshot_migrations`。遇到重複 ID、父層遺失或內容不符會讓整個交易失敗，原快照仍在。其他 `app_settings` 偏好不會上傳。

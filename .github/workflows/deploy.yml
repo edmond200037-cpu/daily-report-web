@@ -41,11 +41,36 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+  database-deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production-database
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+      - run: npm ci
+      - run: npm ci --prefix scripts/db-tests
+      - run: node scripts/deploy-database.mjs
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - run: node scripts/check-sync-api.mjs
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SYNC_CHECK_EMAIL: ${{ secrets.SUPABASE_SYNC_CHECK_EMAIL }}
+          SUPABASE_SYNC_CHECK_PASSWORD: ${{ secrets.SUPABASE_SYNC_CHECK_PASSWORD }}
+          SUPABASE_SYNC_CHECK_SITE_ID: ${{ secrets.SUPABASE_SYNC_CHECK_SITE_ID }}
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
+    needs: [build, database-deploy]
     runs-on: ubuntu-latest
     steps:
       - id: deployment

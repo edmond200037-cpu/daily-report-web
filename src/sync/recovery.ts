@@ -185,8 +185,14 @@ function putMemoryEntry(payload: MemorySnapshotPayload, entry: MemoryEntryPayloa
 export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string, remote: RemoteMemoryEntry, sourceOperation?: SyncOperation): Promise<void> {
   const database = await openDatabase() as IDBDatabase;
   try {
-    const stores = ['memory_partitions', 'memory_entry_versions', 'sync_outbox', 'sync_recovery_backups', ...SHARED_MEMORY_STORES];
+    const stores = ['memory_partitions', 'memory_entry_versions', 'sync_outbox', 'sync_conflicts', 'sync_recovery_backups', ...SHARED_MEMORY_STORES];
     const tx = database.transaction([...new Set(stores)], 'readwrite');
+    if (sourceOperation) {
+      const source = await request(tx.objectStore('sync_outbox').get(sourceOperation.id)) as SyncOperation | undefined;
+      if (!source || source.userId !== scope.userId || source.siteId !== scope.siteId || source.mutationId !== sourceOperation.mutationId || JSON.stringify(source.payload) !== JSON.stringify(sourceOperation.payload)) {
+        tx.abort(); throw new Error('記憶同步來源已變更，保留操作並重新同步。');
+      }
+    }
     const partitionStore = tx.objectStore('memory_partitions');
     const partition = await request(partitionStore.get(`${scope.userId}:${scope.siteId}`)) as MemoryPartition | undefined;
     const payload = structuredClone(partition?.payload ?? emptyMemoryPayload());
@@ -201,6 +207,11 @@ export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string,
     versions.put({ id: `${scope.siteId}:${remote.id}`, revision: remote.revision });
     const queue = tx.objectStore('sync_outbox'); const operations = await request(queue.getAll()) as SyncOperation[];
     for (const operation of operations.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry')) {
+      if (operation.id === sourceOperation?.id) continue;
+      if (sourceOperation && localId === remote.id && operation.entityId === localId && operation.baseRevision === sourceOperation.baseRevision && operation.attempts === 0 && operation.status === 'pending') {
+        queue.put({ ...operation, baseRevision: remote.revision, updatedAt: new Date().toISOString() });
+        continue;
+      }
       const entry = structuredClone(operation.payload) as MemoryEntryPayload;
       if (operation.entityId === localId && localId !== remote.id && entry.learning_key?.startsWith('apply:')) {
         const rebound = { ...entry, id: remote.id, payload: { ...entry.payload, id: remote.id } };
@@ -221,6 +232,16 @@ export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string,
         remotePayload: remote, createdAt: new Date().toISOString(),
       });
       queue.delete(sourceOperation.id);
+      tx.objectStore('sync_conflicts').delete(sourceOperation.id);
+      for (const id of new Set(sourceOperation.resolvesConflictIds ?? [])) {
+        const source = await request(queue.get(id)) as SyncOperation | undefined;
+        const conflict = await request(tx.objectStore('sync_conflicts').get(id)) as { userId: string; siteId: string } | undefined;
+        if ((source && (source.userId !== scope.userId || source.siteId !== scope.siteId)) || (conflict && (conflict.userId !== scope.userId || conflict.siteId !== scope.siteId))) {
+          tx.abort(); throw new Error('衝突來源不屬於目前工地。');
+        }
+        if (source || conflict) tx.objectStore('sync_recovery_backups').put({ id: `accepted-memory-resolution:${sourceOperation.id}:${id}`, ...scope, sourceOperation: source ?? null, conflict: conflict ?? null, resolution: sourceOperation, remotePayload: remote, createdAt: new Date().toISOString() });
+        queue.delete(id); tx.objectStore('sync_conflicts').delete(id);
+      }
     }
     await transactionDone(tx);
   } finally { database.close(); }

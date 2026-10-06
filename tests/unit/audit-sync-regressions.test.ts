@@ -5,7 +5,7 @@ import { createDailyDraft } from '../../src/domain/daily';
 import { buildSyncOperation } from '../../src/sync/outbox';
 import { runSyncOnce } from '../../src/sync/engine';
 
-const state = vi.hoisted(() => ({ result: {} as any, changes: [] as any[], pulls: 0, reads: 0, remote: {} as any }));
+const state = vi.hoisted(() => ({ result: {} as any, changes: [] as any[], pulls: 0, reads: 0, remote: {} as any, readError: null as any }));
 const scope = { userId: 'user', siteId: 'site' };
 vi.mock('../../src/sync/context', () => ({ loadActiveSharedScope: async () => ({ userId: 'user', siteId: 'site' }) }));
 vi.mock('../../src/data/remote/supabase-client', () => ({ getSupabaseClient: () => ({
@@ -13,12 +13,12 @@ vi.mock('../../src/data/remote/supabase-client', () => ({ getSupabaseClient: () 
   from: () => {
     const chain: any = { select: () => chain, eq: () => chain, order: () => chain,
       range: async () => ({ data: [], error: null }),
-      single: async () => { state.reads++; return { data: state.remote, error: null }; },
+      single: async () => { state.reads++; return { data: state.remote, error: state.readError }; },
       then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve) };
     return chain;
   },
 }) }));
-beforeEach(() => { vi.stubGlobal('indexedDB', new IDBFactory()); state.result = {}; state.changes = []; state.pulls = 0; state.reads = 0; state.remote = {}; });
+beforeEach(() => { vi.stubGlobal('indexedDB', new IDBFactory()); state.result = {}; state.changes = []; state.pulls = 0; state.reads = 0; state.remote = {}; state.readError = null; });
 afterEach(() => vi.unstubAllGlobals());
 
 describe('audit synchronization data preservation', () => {
@@ -54,5 +54,20 @@ describe('audit synchronization data preservation', () => {
     state.result = { status: 'applied' };
     expect((await runSyncOnce(scope)).failed).toBe(1);
     expect(await list('sync_outbox')).toEqual([expect.objectContaining({ status: 'blocked' })]);
+  });
+  it('identity adoption read failure retains the original idempotent request', async () => {
+    const operation = buildSyncOperation({ ...scope, entity: 'memory-entry', entityId: 'local-trade', baseRevision: 0,
+      payload: { id: 'local-trade', kind: 'trade', parent_id: null, normalized_name: '泥作', payload: { id: 'local-trade', name: '泥作', status: 'candidate' }, learning_key: 'apply:event' } });
+    await put('sync_outbox', operation);
+    state.result = { status: 'applied', entity_id: 'cloud-trade', revision: 2 };
+    state.readError = { code: '503', message: 'Failed to fetch' };
+    expect((await runSyncOnce(scope)).failed).toBe(1);
+    expect(await list('sync_outbox')).toEqual([expect.objectContaining({ id: operation.id, mutationId: operation.mutationId, payload: operation.payload, status: 'failed' })]);
+    state.readError = null;
+    state.remote = { ...(operation.payload as Record<string, unknown>), id: 'cloud-trade', payload: { id: 'cloud-trade', name: '泥作', normalizedName: '泥作', status: 'candidate' }, status: 'candidate', usage_count: 1, finalized_usage_count: 0, revision: 2, deleted_at: null };
+    expect((await runSyncOnce(scope)).applied).toBe(1);
+    expect(await list('sync_outbox')).toEqual([]);
+    expect(await list('trade_types')).toEqual([state.remote.payload]);
+    expect(await list('sync_recovery_backups')).toEqual([expect.objectContaining({ operation: expect.objectContaining({ mutationId: operation.mutationId }), remotePayload: state.remote })]);
   });
 });

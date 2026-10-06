@@ -42,4 +42,12 @@ describe('共用工地同步修復介面', () => {
     expect(html).toContain('目前帳號不是此工地管理員');
     expect(html).not.toContain('data-account-action="preview-sync-recovery"');
   });
+  it('雲端沒有記憶時整筆採用本機，不能拼接空欄位', () => {
+    const html = renderAccountPage({ ...ownerState, conflicts: [{ id: 'conflict', operationId: 'operation', kind: 'memory', entity: 'memory-entry', createdAt: '', local: { id: 'task', kind: 'task', normalized_name: '粉光', payload: { name: '粉光' }, usage_count: 1, status: 'confirmed' }, cloud: {}, cloudRevision: 0, cloudEntityId: 'task', diffs: [{ path: '/id', kind: '新增', local: 'task', cloud: undefined }] }] });
+    expect(html).toContain('粉光');
+    expect(html).toContain('data-conflict-choice="/"');
+    expect(html).toContain('value="cloud" disabled');
+    expect(html).toContain('value="local" selected');
+    expect(html).not.toContain('data-conflict-choice="/id"');
+  });
 });

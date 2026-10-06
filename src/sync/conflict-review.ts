@@ -4,6 +4,8 @@ import type { SharedScope } from '../domain/shared';
 import { applyFieldMutations, buildFieldMutations, type FieldMutation } from './field-mutations';
 import { buildSyncOperation, listAllOperations } from './outbox';
 import type { SyncConflict, SyncOperation } from './types';
+import { findCloudMemoryEntry, alignMemoryEntryIdentity, assertMemoryResolution } from './memory-identity';
+import type { MemoryEntryPayload } from './memory-entries';
 
 const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
 export type ConflictKind = 'daily' | 'water' | 'memory';
@@ -44,14 +46,11 @@ export function conflictRecordForOperation(operation: SyncOperation, conflicts: 
 
 async function latestCloud(scope: SharedScope, operation: SyncOperation, conflict: SyncConflict): Promise<{ payload: Record<string, unknown>; revision: number; entityId: string; reportDate?: string }> {
   if (operation.entity === 'memory-entry') {
-    const { data, error } = await getSupabaseClient().from('memory_entries')
-      .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
-      .eq('site_id', scope.siteId).eq('id', operation.entityId).maybeSingle();
-    if (error) throw error;
+    const data = await findCloudMemoryEntry(scope, operation.payload as MemoryEntryPayload);
     const payload = data ? { id: data.id, kind: data.kind, parent_id: data.parent_id, normalized_name: data.normalized_name,
       payload: data.payload, status: data.status, usage_count: data.usage_count, finalized_usage_count: data.finalized_usage_count,
       deleted: Boolean(data.deleted_at) } : {};
-    return { payload, revision: Number(data?.revision ?? conflict.remoteRevision), entityId: operation.entityId };
+    return { payload, revision: Number(data?.revision ?? 0), entityId: data?.id ?? operation.entityId };
   }
   if (operation.entity.startsWith('daily')) {
     const reportDate = operation.entity === 'daily-patch' ? (operation.payload as { reportDate?: string }).reportDate : (operation.payload as { date?: string }).date;
@@ -82,7 +81,8 @@ export async function listConflictReviews(scope: SharedScope, knownOperations?: 
     const kind: ConflictKind | undefined = operation.entity.startsWith('daily') ? 'daily' : operation.entity.startsWith('water') ? 'water' : operation.entity.startsWith('memory') ? 'memory' : undefined;
     if (!kind) continue;
     const latest = await latestCloud(scope, operation, conflict);
-    const local = payloadForConflict(operation, conflict, latest.payload);
+    const original = payloadForConflict(operation, conflict, latest.payload);
+    const local = operation.entity === 'memory-entry' ? alignMemoryEntryIdentity(original, latest.payload) : original;
     result.push({ id: conflict.id, operationId: operation.id, kind, entity: operation.entity, reportDate: latest.reportDate, createdAt: operation.createdAt, local, cloud: latest.payload, cloudRevision: latest.revision, cloudEntityId: latest.entityId, diffs: diffConflict(local, latest.payload) });
   }
   return result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -128,6 +128,7 @@ function writePath(target: Record<string, unknown>, source: Record<string, unkno
   }
 }
 function mergeReview(review: ConflictReview, localPaths: Set<string>): Record<string, unknown> {
+  if (localPaths.has('/')) return clone(review.local);
   const merged = clone(review.cloud);
   for (const diff of review.diffs) if (localPaths.has(diff.path)) writePath(merged, review.local, diff.path);
   return merged;
@@ -137,6 +138,7 @@ export async function queueConflictResolution(scope: SharedScope, reviewed: Conf
   const current = (await listConflictReviews(scope, await listAllOperations(scope))).find((item) => item.id === reviewed.id);
   if (!current) throw new Error('此衝突已不存在，請重新載入。');
   if (current.cloudRevision !== reviewed.cloudRevision || current.cloudEntityId !== reviewed.cloudEntityId) throw new Error('雲端版本已更新；差異已重新整理，請重新確認。');
+  if (JSON.stringify(current.local) !== JSON.stringify(reviewed.local) || JSON.stringify(current.cloud) !== JSON.stringify(reviewed.cloud)) throw new Error('衝突內容已更新，請重新讀取後確認。');
   const merged = mergeReview(current, new Set(localPaths));
   const entity = current.kind === 'daily' ? 'daily-patch' : current.kind === 'water' ? 'water-patch' : current.entity === 'memory-entry' ? 'memory-entry' : 'memory';
   const payload = current.kind === 'daily'
@@ -144,7 +146,15 @@ export async function queueConflictResolution(scope: SharedScope, reviewed: Conf
     : current.kind === 'water'
       ? { changes: buildFieldMutations('water', current.cloud, merged) }
       : merged;
-  if (entity === 'memory-entry') { delete payload.learning_key; delete payload.base_revision; }
+  if (entity === 'memory-entry') {
+    assertMemoryResolution(payload, current.cloudEntityId);
+    // A pending application remains an application when the local version is
+    // selected; changing request identity must not silently lose its event key.
+    if (typeof payload.learning_key !== 'string' || !payload.learning_key.startsWith('apply:')) {
+      delete payload.learning_key; delete payload.learning_delta;
+    }
+    delete payload.base_revision;
+  }
   const operation = buildSyncOperation({ ...scope, entity, entityId: current.cloudEntityId, baseRevision: current.cloudRevision, payload });
   operation.resolvesConflictIds = [current.id, current.operationId];
   const database = await openDatabase() as IDBDatabase;

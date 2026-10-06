@@ -67,4 +67,27 @@ describe('日期輸出與共用工項記憶', () => {
     trade.workItems.push(work); report.tradeSections.push(trade);
     expect(collectMemoryApplications(report).map(row => row.name)).toEqual(['土方工程', '廠商', '開挖']);
   });
+  it('直接寫入及編輯的數量規格只留在日報原文', () => {
+    const samples = [
+      ['配管 20 支', '配管'],
+      ['澆置混凝土 2.5 方，350kgf/cm²', '澆置混凝土'],
+      ['安裝風管 60×40 cm 3 組', '安裝風管'],
+      ['配管（規格：4 吋）施作', '配管施作'],
+      ['配管 數量/規格：20 支，4 吋', '配管'],
+      ['反力座植筋 Φ16mm 12 根', '反力座植筋'],
+      ['配管 4 吋 20 支', '配管'],
+      ['2.5 方，350kgf/cm²', ''],
+      ['設備巡檢', '設備巡檢'],
+      ['第2階段設備巡檢', '第2階段設備巡檢'],
+    ];
+    for (const [raw, expected] of samples) expect(contactTaskMemoryText(raw)).toBe(expected);
+    const contact = createContact(0);
+    contact.tradeNameSnapshot = '混凝土工程'; contact.vendorNameSnapshot = '廠商';
+    const editor: ContactEditorDraft = { id: contact.id, originalId: null, value: contact, errors: [], tradeQuery: '', vendorQuery: '', taskQuery: samples[1][0] };
+    appendContactTask(editor);
+    const report = createDailyDraft(); report.contacts.push(contact);
+    expect(collectMemoryApplications(report).filter(row => row.store === 'trade_tasks').map(row => row.name)).toEqual(['澆置混凝土']);
+    expect(contact.items[0].content).toBe(samples[1][0]);
+    expect(formatDailyReport(report)).toContain(samples[1][0]);
+  });
 });

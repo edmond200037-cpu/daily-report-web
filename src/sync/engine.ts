@@ -12,6 +12,7 @@ import type { SyncConflict, SyncCursor, SyncOperation } from './types';
 import { applyFieldMutations, buildFieldMutations, mergeLegacyDailyWorkItems, type FieldMutation } from './field-mutations';
 import { memoryEntryStore, type RemoteMemoryEntry } from './memory-entries';
 import { adoptCloudMemoryEntry, recoverDuplicateMemoryOperation } from './recovery';
+import { operationRpc } from './contract';
 
 interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; duplicate_of_status?: 'applied' | 'conflict'; replayed?: boolean; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
 interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
@@ -48,7 +49,7 @@ async function pushOperation(operation: SyncOperation): Promise<MutationResult> 
           p_base_revision: operation.baseRevision, p_payload: operation.payload,
         })
       : operation.entity === 'memory-entry'
-        ? getSupabaseClient().rpc((operation.payload as { learning_key?: string }).learning_key?.startsWith('apply:') ? 'apply_memory_application' : 'apply_memory_entry_mutation', {
+        ? getSupabaseClient().rpc(operationRpc(operation)!, {
             p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
             p_base_revision: operation.baseRevision, p_entry: operation.payload,
           })
@@ -445,19 +446,22 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
       if (result.status === 'conflict' || result.duplicate_of_status === 'conflict' || (result.status === 'duplicate' && Object.prototype.hasOwnProperty.call(result, 'remote_payload') && !(operation.entity === 'memory-entry' && result.entity_id !== operation.entityId))) { await preserveConflict(operation, result); summary.conflicts += 1; }
       else {
         if (result.status !== 'applied' && result.status !== 'duplicate') throw new Error('未知同步結果；保留本機操作。');
-        await acceptMutation(operation, result); recordApplied(summary, operation);
         const identityChanged = operation.entity === 'memory-entry' && result.entity_id !== operation.entityId;
         // Keep the old parent ID unresolved for this pass when the server
         // adopts a different ID. adoptCloudMemoryEntry rewrites children in
         // IndexedDB; the already captured ready list must wait for next pass.
-        if (operation.entity === 'memory-entry' && !identityChanged) unresolvedMemory.delete(operation.entityId);
         if (operation.entity === 'memory-entry' && (result.status === 'duplicate' || result.entity_id !== operation.entityId)) {
           const { data: remote, error } = await getSupabaseClient().from('memory_entries')
             .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
             .eq('site_id', scope.siteId).eq('id', result.entity_id).single();
           if (error) throw error;
-          await adoptCloudMemoryEntry(scope, operation.entityId, remote as RemoteMemoryEntry);
-        }
+          await checkRemotePayload(scope, { sequence: result.sequence ?? 0, entity: 'memory-entry', entity_id: result.entity_id, operation: 'upsert', revision: result.revision, changed_at: new Date().toISOString() }, remote);
+          await adoptCloudMemoryEntry(scope, operation.entityId, remote as RemoteMemoryEntry, operation);
+        } else await acceptMutation(operation, result);
+        // Do not acknowledge until the server identity has been fetched and
+        // adopted. A failed read preserves the original idempotent request.
+        recordApplied(summary, operation);
+        if (operation.entity === 'memory-entry' && !identityChanged) unresolvedMemory.delete(operation.entityId);
       }
     } catch (error) {
       const duplicate = operation.entity === 'memory-entry' && (error as { code?: unknown })?.code === '23505';

@@ -51,7 +51,16 @@ export function formatContactTask(content: string, reportDate: string): string {
 }
 
 export function contactTaskMemoryText(content: string): string {
-  return content.trim().replace(contactDatePrefix, '').replace(/（數量／規格：[^]*）$/, '').trim();
+  return content.trim().replace(contactDatePrefix, '')
+    // Details can also be typed into the task itself or edited after adding it.
+    .replace(/[（(]\s*(?:數量\s*[／/]\s*規格|數量|規格)\s*[:：][^）)]*[）)]/g, '')
+    .replace(/(?:數量\s*[／/]\s*規格|數量|規格)\s*[:：][^]*/, '')
+    .replace(/\d+(?:\.\d+)?\s*(?:kgf\s*\/\s*cm[²2]|kg\s*\/\s*cm[²2]|MPa)(?![A-Za-z])/gi, '')
+    .replace(/\d+(?:\.\d+)?\s*(?:[x×*]\s*\d+(?:\.\d+)?\s*){1,2}(?:mm|cm|m|公分|公厘|毫米|公尺)?/gi, '')
+    .replace(/[ΦφØ]\s*\d+(?:\.\d+)?\s*(?:mm|cm|m|公分|公厘|毫米|公尺)?/gi, '')
+    .replace(/\d+(?:\.\d+)?\s*(?:立方公尺|平方公尺|公尺|公分|公厘|毫米|英吋|吋|公斤|公噸|噸|方|支|根|個|組|台|臺|片|包|車|趟|米|m[²³23]|mm|cm|kg|m)(?![A-Za-z])/gi, '')
+    .replace(/[（(]\s*[，,、；;／/]*\s*[）)]/g, '')
+    .replace(/\s+/g, ' ').replace(/^[\s，,、；;。]+|[\s，,、；;。]+$/g, '').trim();
 }
 
 /** Editor-only text is partitioned independently from validated report data. */

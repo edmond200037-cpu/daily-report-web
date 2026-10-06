@@ -2,6 +2,8 @@ import { list, put, remove } from '../data/db.js';
 import { sharedScopeKey, type SharedScope } from '../domain/shared';
 import { canRetryAt, retryDelayMs, type SyncEntity, type SyncOperation } from './types';
 import { classifySyncError } from './error-diagnostics';
+import { missingRpcOperation, operationRpc } from './contract';
+import { checkSyncCapabilities } from './health';
 
 interface EnqueueInput extends SharedScope { entity: SyncEntity; entityId: string; baseRevision: number; payload: unknown; }
 
@@ -60,10 +62,14 @@ export async function listSyncDiagnostics(scope: SharedScope): Promise<SyncOpera
 /** Re-queues only operations blocked because PostgREST did not know a newly deployed RPC. */
 export async function retryMissingRpcOperations(scope: SharedScope): Promise<number> {
   const key = sharedScopeKey(scope); const rows = await list('sync_outbox') as SyncOperation[]; const now = new Date().toISOString(); let retried = 0;
+  const candidates = rows.filter((row) => sharedScopeKey(row) === key && missingRpcOperation(row));
+  if (!candidates.length) return 0;
+  const capabilities = await checkSyncCapabilities(scope);
   for (const row of rows) {
-    if (sharedScopeKey(row) !== key || row.status !== 'blocked' || row.lastErrorCode !== 'PGRST202') continue;
+    if (sharedScopeKey(row) !== key || !missingRpcOperation(row) || !capabilities.has(operationRpc(row) ?? '')) continue;
     await put('sync_outbox', { ...row, status: 'pending', retryable: true, lastError: undefined, lastErrorCode: undefined, lastErrorHint: undefined, nextAttemptAt: now, updatedAt: now }); retried += 1;
   }
+  if (!retried) throw new Error('雲端仍缺少這批操作需要的同步函式；原資料與錯誤紀錄已保留。');
   return retried;
 }
 
