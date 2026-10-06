@@ -1,0 +1,5 @@
+Before reorder [ '預定10/07(三)上下設備施作', '預定10/07(三)鷹架巡檢', '預定10/07(三)工作平台調整' ]
+grips { x: 29, y: 305.640625, width: 48, height: 48 } { x: 29, y: 431.640625, width: 48, height: 48 }
+After reorder [ '預定10/07(三)鷹架巡檢', '預定10/07(三)工作平台調整', '預定10/07(三)上下設備施作' ]
+PASS: create, edit, draft collapse, reorder, delete, undo, swipe, save, save-next, 360/390/1280 overflow
+PASS: construction shared gesture regression

@@ -45,10 +45,10 @@
 .daily-page .construction-fields { grid-template-columns:minmax(0,1fr) 76px; gap:8px; }
 .daily-page .construction-fields label { display:grid; gap:4px; margin:0; font-size:.8rem; }
 .daily-page .construction-fields input { min-width:0; padding:8px; font-size:16px; }
-.daily-page .trade-card__content { padding:12px; }
-.daily-page .trade-card__content .vendor-card { padding:0; margin:0; border:0; background:transparent; }
-.daily-page .trade-card__content .subsection-title { margin:12px 0 6px; }
-.daily-page .trade-card__content .action-row { gap:8px; margin-top:10px; }
+.daily-page .trade-card__content, .daily-page .contact-card__content { padding:12px; }
+.daily-page .trade-card__content .vendor-card, .daily-page .contact-card__content .vendor-card { padding:0; margin:0; border:0; background:transparent; }
+.daily-page .trade-card__content .subsection-title, .daily-page .contact-card__content .subsection-title { margin:12px 0 6px; }
+.daily-page .trade-card__content .action-row, .daily-page .contact-card__content .form-actions--submit { gap:8px; margin-top:10px; }
 .daily-page .continuous-work .work-token--item { display:grid; grid-template-columns:44px minmax(0,1fr); width:100%; box-sizing:border-box; border-bottom:1px solid var(--line); padding:4px 0; }
 .work-gesture { touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; min-width:44px; min-height:44px; padding:8px; border:0; background:transparent; cursor:grab; }
 .work-gesture svg { pointer-events:none; }
@@ -129,3 +129,15 @@
 
 /* Lift the entire item stacking context above sticky completion actions. */
 .daily-page .work-token--item:has(.work-token__tools:not([hidden])) { z-index:40; }
+
+/* Contacts share construction rows and editor spacing; dates retain their own width. */
+.daily-page .contact-fields { grid-template-columns:minmax(0,1fr) minmax(140px, .65fr); }
+.daily-page .contact-fields .contact-search-field > label { margin:0 0 4px; }
+.daily-page .contact-trade-change > .contact-search-field { position:absolute; top:100%; right:0; z-index:40; width:min(320px,calc(100vw - 56px)); padding:12px; background:var(--daily-paper); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 24px #29201530; }
+.daily-page .contact-work > .contact-add { display:grid; width:100%; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+.daily-page .contact-work > .contact-add input { width:100%; }
+.daily-page .contact-tasks { position:relative; display:grid; gap:6px; margin:0; }
+.daily-page .contact-work-item > .work-gesture { touch-action:none; }
+.daily-page .contact-row-summary > .drag-handle { font-size:1rem; }
+.daily-page .contact-discard { margin-top:8px; border-top:1px solid var(--line); font-size:.8rem; }
+.daily-page .contact-discard summary, .daily-page .contact-task-details summary { min-height:44px; box-sizing:border-box; padding:12px 4px; cursor:pointer; }

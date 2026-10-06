@@ -6,6 +6,8 @@ export function workSwipeIntent(dx: number, dy: number): 'swipe' | 'scroll' | 'c
   return dx <= -12 && Math.abs(dx) > Math.abs(dy) * 1.5 ? 'swipe' : 'pending';
 }
 interface Actions {
+  /** Alternate row ownership lets contact drafts reuse the same touch workflow. */
+  target?: { row: string; grip: string; owner(row: HTMLElement): string | undefined; item(row: HTMLElement): string | undefined };
   editable(): boolean;
   move(trade: string, work: string, offset: number): void;
   remove(trade: string, work: string): (() => void) | undefined;
@@ -14,13 +16,17 @@ interface Actions {
   error(error: unknown): void;
 }
 export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
+  const rowSelector = actions.target?.row ?? '.work-token--item[data-work]';
+  const gripSelector = actions.target?.grip ?? '[data-work-gesture]';
+  const owner = actions.target?.owner ?? ((row: HTMLElement) => row.closest<HTMLElement>('[data-trade]')?.dataset.trade);
+  const item = actions.target?.item ?? ((row: HTMLElement) => row.dataset.work);
   // Hidden toolbar still needs a keyboard equivalent to the touch gesture.
   root.addEventListener('keydown', async (event) => {
-    const grip = (event.target as Element).closest<HTMLElement>('[data-work-gesture]');
+    const grip = (event.target as Element).closest<HTMLElement>(gripSelector);
     if (!grip || event.key !== 'Delete' || event.isComposing || !actions.editable()) return;
-    const row = grip.closest<HTMLElement>('[data-work]');
-    const trade = row?.closest<HTMLElement>('[data-trade]')?.dataset.trade;
-    const work = row?.dataset.work;
+    const row = grip.closest<HTMLElement>(rowSelector);
+    const trade = row && owner(row);
+    const work = row && item(row);
     if (!trade || !work) return;
     event.preventDefault();
     const undo = actions.remove(trade, work);
@@ -36,7 +42,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   };
   // Cancel native long-press menus only on the gesture grip, not editable text.
   const preventGripMenu = (event: Event) => {
-    if (!(event.target instanceof Element) || !event.target.closest('[data-work-gesture]')) return;
+    if (!(event.target instanceof Element) || !event.target.closest(gripSelector)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   };
@@ -57,8 +63,8 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   const clear = () => { dropLine?.remove(); dropLine = undefined; if (!active) return; window.clearTimeout(active.timer); active.row.style.transform = ''; active.row.classList.remove('work-token--dragging', 'work-token--deleting'); if (active.handle.hasPointerCapture(active.pointer)) active.handle.releasePointerCapture(active.pointer); active = undefined; };
   root.addEventListener('pointerdown', (event) => {
     const target = event.target as HTMLElement;
-    const grip = target.closest<HTMLElement>('[data-work-gesture]');
-    const row = target.closest<HTMLElement>('.work-token--item[data-work]');
+    const grip = target.closest<HTMLElement>(gripSelector);
+    const row = target.closest<HTMLElement>(rowSelector);
     if (!row || active || !actions.editable() || !event.isPrimary || event.button !== 0) return;
     if (!grip && target.closest('.work-token__detail,.work-token__tools,.work-token__results,button,textarea,select')) return;
     const handle = grip ?? row;
@@ -68,7 +74,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     active.timer = window.setTimeout(() => {
       if (!active) return;
       active.drag = true; active.row.classList.add('work-token--dragging');
-      const rows = [...active.row.parentElement!.querySelectorAll<HTMLElement>('.work-token--item')];
+      const rows = [...active.row.parentElement!.querySelectorAll<HTMLElement>(rowSelector)];
       showDropLine(rows.filter((row) => row !== active!.row), rows.indexOf(active.row));
     }, 400);
   });
@@ -89,7 +95,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
       active.row.classList.toggle('work-token--deleting', swipeDeletes(active.dx, active.dy)); return;
     }
     event.preventDefault();
-    const rows = [...active.row.parentElement!.querySelectorAll<HTMLElement>('.work-token--item')];
+    const rows = [...active.row.parentElement!.querySelectorAll<HTMLElement>(rowSelector)];
     const from = rows.indexOf(active.row);
     const others = rows.filter((row) => row !== active!.row);
     const to = others.filter((row) => { const rect = row.getBoundingClientRect(); return event.clientY > rect.top + rect.height / 2; }).length;
@@ -101,7 +107,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   window.addEventListener('blur', clear);
   root.addEventListener('pointerup', async (event) => {
     if (!active || event.pointerId !== active.pointer) return;
-    const state = active; const trade = state.row.closest<HTMLElement>('[data-trade]')?.dataset.trade; const work = state.row.dataset.work;
+    const state = active; const trade = owner(state.row); const work = item(state.row);
     const deleted = state.swipe && !state.drag && swipeDeletes(state.dx, state.dy); clear();
     suppressClick = state.drag || state.swipe; window.setTimeout(() => suppressClick = false, 0);
     if (!trade || !work || !actions.editable()) return;
@@ -114,5 +120,5 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
       showUndo(undo);
     } catch (error) { actions.error(error); }
   });
-  root.addEventListener('click', (event) => { if (suppressClick && (event.target as HTMLElement).closest('.work-token--item')) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  root.addEventListener('click', (event) => { if (suppressClick && (event.target as HTMLElement).closest(rowSelector)) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
 }

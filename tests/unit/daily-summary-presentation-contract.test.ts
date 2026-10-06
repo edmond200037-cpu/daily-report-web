@@ -24,7 +24,7 @@ describe('日報收合摘要高度契約', () => {
     expect(daily).toContain('function dailyEntrySummary');
     expect(daily).toContain("kind: 'engineering'");
     expect(daily).toContain("kind: 'material'");
-    expect(daily).toContain("kind: 'contact'");
+    expect(daily).toContain('trade-row-summary collapsed-summary contact-row-summary');
     expect(daily).toContain("kind: 'special'");
     expect(styles).toContain('min-height: var(--summary-height)');
     expect(dialog).toContain('min-height: var(--summary-height)');
