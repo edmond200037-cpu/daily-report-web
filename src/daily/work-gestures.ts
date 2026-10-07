@@ -20,6 +20,31 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   const gripSelector = actions.target?.grip ?? '[data-work-gesture]';
   const owner = actions.target?.owner ?? ((row: HTMLElement) => row.closest<HTMLElement>('[data-trade]')?.dataset.trade);
   const item = actions.target?.item ?? ((row: HTMLElement) => row.dataset.work);
+  let buttonBusy = false;
+  root.addEventListener('click', async (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-work-move],[data-work-delete]');
+    const row = button?.closest<HTMLElement>(rowSelector);
+    if (!button || !row || button.disabled || buttonBusy || !actions.editable()) return;
+    const trade = owner(row); const work = item(row);
+    if (!trade || !work) return;
+    buttonBusy = true;
+    const rows = [...row.parentElement!.querySelectorAll<HTMLElement>(rowSelector)];
+    const index = rows.indexOf(row);
+    let undo: (() => void) | undefined;
+    try {
+      if (button.hasAttribute('data-work-delete')) undo = actions.remove(trade, work);
+      else actions.move(trade, work, Number(button.dataset.workMove));
+      await actions.save(); await actions.render();
+      const updated = [...root.querySelectorAll<HTMLElement>(rowSelector)];
+      const same = updated.find((candidate) => owner(candidate) === trade && item(candidate) === work);
+      const next = updated.filter((candidate) => owner(candidate) === trade)[Math.max(0, index - 1)];
+      (same ?? next)?.querySelector<HTMLElement>(gripSelector)?.focus();
+      if (!same && !next) root.querySelector<HTMLElement>(`[data-continuous-work="${CSS.escape(trade)}"]`)?.focus();
+      if (undo) showUndo(undo);
+      else { const status = document.createElement('p'); status.setAttribute('role', 'status'); status.className = 'work-move-feedback'; status.textContent = '已更新工項順序'; root.querySelector('.work-move-feedback')?.remove(); root.prepend(status); }
+    } catch (error) { if (undo) undo(); await actions.render(); actions.error(error); }
+    finally { buttonBusy = false; }
+  });
   // Hidden toolbar still needs a keyboard equivalent to the touch gesture.
   root.addEventListener('keydown', async (event) => {
     const grip = (event.target as Element).closest<HTMLElement>(gripSelector);

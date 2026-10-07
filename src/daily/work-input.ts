@@ -19,8 +19,16 @@ export function clearWorkItemDetails(work: WorkItem): void {
 /** Recommendations hide added items; explicit typed duplicates remain available via commit. */
 export function workSuggestions(trade: TradeSection, tasks: NamedMemory[], value: string, editing = false): NamedMemory[] {
   const added = new Set(trade.workItems.map((work) => normalizeName(work.taskTextSnapshot)));
-  return tasks.filter((row) => row.tradeTypeId === trade.tradeTypeId && row.normalizedName.includes(normalizeName(value)) && (editing || !added.has(row.normalizedName)))
-    .slice().sort((a, b) => b.usageCount - a.usageCount).slice(0, 6);
+  const choices = new Map<string, NamedMemory>();
+  const ranked = tasks.slice().sort((a, b) => Number(b.status === 'confirmed') - Number(a.status === 'confirmed')
+    || b.usageCount - a.usageCount || (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || a.id.localeCompare(b.id));
+  for (const row of ranked) {
+    const name = normalizeName(row.name);
+    if (row.tradeTypeId === trade.tradeTypeId && name && name.includes(normalizeName(value))
+      && (editing || !added.has(name)) && !choices.has(name)) choices.set(name, row);
+  }
+  return [...choices.values()].sort((a, b) => b.usageCount - a.usageCount
+    || (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || a.id.localeCompare(b.id)).slice(0, 6);
 }
 
 const esc = (text: string) => text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -30,7 +38,7 @@ export function restoreWorkDrafts(values: Array<[string, string]>): void { draft
 export function consumeWorkDrafts(): Array<[string, string]> { const result = [...drafts]; drafts.clear(); return result; }
 export function workInputView(trade: TradeSection): string {
   return `<div class="continuous-work" aria-label="施工工項，以頓號分隔"><span class="work-token work-token--composer"><input data-continuous-work="${trade.id}" value="${esc(drafts.get(trade.id) ?? '')}" aria-label="搜尋或輸入下一個工項" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="inline-results-${trade.id}" autocomplete="off" placeholder="搜尋或輸入工項"><span class="work-token__results" id="inline-results-${trade.id}" role="listbox" hidden></span><button type="button" class="work-commit" data-work-commit="${trade.id}">加入</button></span><span class="work-duplicate-notice" role="status" aria-live="polite" data-work-duplicate-notice hidden></span>${trade.workItems.map((work, index) => `<span class="work-token work-token--item" data-work="${work.id}" data-sortable-work>
-    <span class="work-token__tools" hidden role="toolbar" aria-label="工項操作"><button type="button" data-work-detail="location"><span>位置／樓層${work.startFloorRaw || work.locationTextSnapshot ? '・已填' : ''}</span></button><button type="button" data-work-detail="note"><span>備註${work.note ? '・已填' : ''}</span></button><button type="button" data-work-clear-details="${work.id}" aria-label="移除位置與備註"><span>移除位置與備註</span></button></span>
+    <span class="work-token__tools" hidden role="group" aria-label="工項操作"><button type="button" data-work-detail="location"><span>位置／樓層${work.startFloorRaw || work.locationTextSnapshot ? '・已填' : ''}</span></button><button type="button" data-work-detail="note"><span>備註${work.note ? '・已填' : ''}</span></button><button type="button" data-work-clear-details="${work.id}" aria-label="移除位置與備註"><span>移除位置與備註</span></button><button type="button" data-work-move="-1" ${index === 0 ? 'disabled' : ''}>上移</button><button type="button" data-work-move="1" ${index === trade.workItems.length - 1 ? 'disabled' : ''}>下移</button><button type="button" data-work-delete>刪除工項</button></span>
     <button type="button" class="work-gesture" data-work-gesture aria-expanded="false" aria-label="工項 ${index + 1}：點一下開選單，長按排序" title="點一下開選單・長按排序"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 5h1m6 0h1M8 12h1m6 0h1M8 19h1m6 0h1" stroke-linecap="round"/></svg></button><input class="work-token__text" data-daily-field="taskTextSnapshot" data-inline-work="${work.id}" data-work-item-input="${work.id}" aria-label="工項 ${index + 1}" aria-autocomplete="list" role="combobox" aria-expanded="false" aria-controls="inline-results-${work.id}" autocomplete="off" placeholder="輸入工項" value="${esc(work.taskTextSnapshot)}">
     <span class="work-token__results" id="inline-results-${work.id}" role="listbox" hidden></span>
     <span class="work-token__detail" data-work-panel="location" hidden><strong>這個工項做在哪裡？</strong><span class="work-floor-fields"><label>起始樓層<input data-daily-field="startFloorRaw" value="${esc(work.startFloorRaw)}" placeholder="例：3F"></label><label>結束樓層<input data-daily-field="endFloorRaw" value="${esc(work.endFloorRaw)}" placeholder="選填"></label></span><label>位置<input data-daily-field="locationTextSnapshot" value="${esc(work.locationTextSnapshot)}" placeholder="例：東側"></label><button type="button" data-work-detail="close">完成，返回工項</button></span>
@@ -98,7 +106,7 @@ export function bindWorkInput(root: HTMLElement, actions: WorkInputActions): voi
         actions.edit(tradeId, workId, parsed.committed.shift()!, selected?.id ?? null);
       }
       for (const text of parsed.committed) {
-        const memory = actions.tasks().find((row) => row.tradeTypeId === actions.trade(tradeId)?.tradeTypeId && row.normalizedName === normalizeName(text));
+      const memory = actions.tasks().find((row) => row.tradeTypeId === actions.trade(tradeId)?.tradeTypeId && normalizeName(row.name) === normalizeName(text));
         actions.add(tradeId, text, memory?.id ?? null);
       }
       drafts.set(tradeId, parsed.remainder);
@@ -110,6 +118,10 @@ export function bindWorkInput(root: HTMLElement, actions: WorkInputActions): voi
           if (!container.querySelector(`[data-work="${row.dataset.work}"]`)) container.append(row);
         }
         container.querySelector('.work-empty')?.remove();
+        const itemRows = [...container.querySelectorAll<HTMLElement>('.work-token--item')];
+        itemRows.forEach((row, index) => row.querySelectorAll<HTMLButtonElement>('[data-work-move]').forEach((button) => {
+          button.disabled = Number(button.dataset.workMove) < 0 ? index === 0 : index === itemRows.length - 1;
+        }));
         if (workId) input.value = trade.workItems.find((work) => work.id === workId)?.taskTextSnapshot ?? input.value;
         const newest = trade.workItems.at(-1);
         container.querySelector('.work-add-feedback')?.remove();
@@ -163,7 +175,10 @@ export function bindWorkInput(root: HTMLElement, actions: WorkInputActions): voi
       const note = selectedToken.querySelector('[data-work-detail="note"] span');
       if (location) location.textContent = '位置／樓層'; if (note) note.textContent = '備註';
       closeDetails(selectedToken); selectedToken.querySelector<HTMLButtonElement>('[data-work-gesture]')?.focus();
-      actions.draft(); void actions.commit().catch(actions.error); return;
+      actions.draft(); void actions.render().then(() => {
+        root.querySelector<HTMLElement>(`[data-work="${CSS.escape(workId)}"] [data-work-gesture]`)?.focus();
+        return actions.commit();
+      }).catch(actions.error); return;
     }
     const remove = (event.target as HTMLElement).closest<HTMLElement>('[data-work-remove],[data-work-undo]');
     if (remove) {

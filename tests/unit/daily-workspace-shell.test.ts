@@ -16,7 +16,9 @@ describe('日報共用工作區骨架', () => {
   it('把主要功能頁籤與日報分類包在明確的工作區語意中', () => {
     expect(main).toContain('class="module-page__tabs"');
     expect(main).toContain('<section class="daily-workspace" aria-label="日報內容">');
-    expect(main).toContain('${dailyTabs()}${activeTabContent()}</section>');
+    expect(main).toContain('role="tabpanel"');
+    expect(main).toContain('aria-labelledby="daily-tab-${daily.report.activeTab}"');
+    expect(main).toContain('aria-controls="daily-panel-${id}"');
   });
 
   it('工地與日期直接顯示，採日報專用欄線區段', () => {

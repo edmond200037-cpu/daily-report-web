@@ -40,12 +40,14 @@ describe('工程資料列呈現契約', () => {
     expect(input).not.toContain('<small>待審核</small>');
     expect(input).toContain('workSuggestions(trade, actions.tasks()');
   });
-  it('點工項即編輯文字，附加操作列只保留位置樓層與備註', () => {
+  it('點工項即編輯文字，附加操作提供欄位、排序與刪除', () => {
     expect(input).toContain('data-inline-work');
     expect(input).toContain('data-work-detail="location"');
     expect(input).toContain('data-work-detail="note"');
     expect(input).not.toContain('data-work-detail="more"');
-    expect(input).not.toContain('data-work-move');
+    expect(input).toContain('data-work-move="-1"');
+    expect(input).toContain('data-work-move="1"');
+    expect(input).toContain('data-work-delete');
     expect(input).not.toContain('data-daily-action="delete-work-item"');
   });
   it('使用與聯絡事項一致的外框卡片；桌面使用四欄，手機改為兩層資料列，淡紅提示僅存在未完成狀態欄', () => {

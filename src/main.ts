@@ -1,6 +1,9 @@
 import { isPositiveDecimal } from './shared/decimal';
 import { applyContactPlannedDate, contactTaskParts, editContactEntry, updateContactTaskText } from './daily/entry-workflow';
 import { bindWorkGestures } from './daily/work-gestures';
+import { bindTradePickerDialog } from './daily/trade-picker-dialog';
+import { bindTabNavigation } from './daily/tab-navigation';
+import { canRestoreDetails, snapshotDetails, workUndoScope, workDetailFields, type WorkDetailUndo } from './daily/work-detail-undo';
 import './styles.css';
 import './presentation.css';
 import './daily/material.css';
@@ -66,6 +69,11 @@ type DailySettingsArea = 'foundation' | 'materials';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 let daily!: DailyController;
+let workDetailUndo: WorkDetailUndo | undefined;
+let detailsRestoreBusy = false;
+let tabSwitching = false;
+const pickerDialog = bindTradePickerDialog(app, async () => { tradePickerOpen = false; await renderApp(); });
+bindTabNavigation(app);
 let water: WaterController | undefined;
 const waterEditors = new Map<string, WaterController>();
 let tradePickerOpen = false;
@@ -245,7 +253,7 @@ function parseRoute(hash: string): AppRoute {
 }
 
 function tabCount(tab: DailyReportV3['activeTab']): number { if (tab === 'engineering') return daily.report.tradeSections.length; if (tab === 'supplies') return daily.report.standaloneMaterialEntries.length + (materialEditor && !materialEditor.originalId ? 1 : 0); if (tab === 'contacts') return daily.report.contacts.length + (contactEditor && !contactEditor.originalId ? 1 : 0); return daily.report.specialItems.length; }
-function dailyTabs(): string { return `<section class="daily-tabs" role="tablist" aria-label="施工日報分類">${tabs.map(([id, label]) => { const count = tabCount(id); return `<button type="button" role="tab" data-daily-tab="${id}" aria-selected="${daily.report.activeTab === id}" class="${daily.report.activeTab === id ? 'active' : ''}">${label}${count ? `<span class="daily-tab__count" aria-label="${count} 個項目">${count}</span>` : ''}</button>`; }).join('')}</section>`; }
+function dailyTabs(): string { return `<section class="daily-tabs" role="tablist" aria-label="施工日報分類">${tabs.map(([id, label]) => { const count = tabCount(id); return `<button type="button" role="tab" data-daily-tab="${id}" id="daily-tab-${id}" aria-controls="daily-panel-${id}" tabindex="${daily.report.activeTab === id ? 0 : -1}" aria-selected="${daily.report.activeTab === id}" class="${daily.report.activeTab === id ? 'active' : ''}">${label}${count ? `<span class="daily-tab__count" aria-label="${count} 個項目">${count}</span>` : ''}</button>`; }).join('')}</section>`; }
 const materialDirty = () => Boolean(materialEditor && (!materialEditor.originalId || JSON.stringify(materialEditor.value) !== JSON.stringify(daily.materialEntry(materialEditor.originalId))));
 const materialChoices = (fieldName: 'materialTypeSnapshot' | 'itemName' | 'specification' | 'unit' | 'supplierNameSnapshot', value: string): string[] => {
   const query = normalizeSearch(value); const typeId = materialEditor?.value.materialTypeId; const memoryField = fieldName === 'materialTypeSnapshot' ? undefined : ({ itemName: 'itemName', specification: 'specification', unit: 'unit', supplierNameSnapshot: 'supplier' } as const)[fieldName];
@@ -402,7 +410,10 @@ function dailyView(): string {
   pruneTradeUndoQueue();
   refreshCompleteness(daily.report);
   const completed = daily.report.tradeSections.filter((trade) => trade.status === 'complete'); const drafts = daily.report.tradeSections.filter((trade) => trade.status === 'draft');
-  const picker = tradePickerOpen ? `<div class="dialog-backdrop"><section class="trade-picker" role="dialog" aria-modal="true" aria-label="新增工種"><h2>新增工種</h2><div class="task-search" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem"><input data-trade-picker-search aria-label="搜尋工種名稱" placeholder="搜尋工種名稱" value="${escapeHtml(tradePickerSearch)}" autofocus><button type="button" data-daily-action="clear-trade-search" ${tradePickerSearch ? '' : 'hidden'}>清除</button></div><div data-trade-picker-results>${tradePickerResults()}</div></section></div>` : '';
+  const pickerTitle = entryKind === 'contacts' ? '選擇聯絡工種' : '選擇施工工種';
+  const picker = tradePickerOpen ? `<dialog class="trade-picker" aria-modal="true" aria-labelledby="trade-picker-title"><h2 id="trade-picker-title" tabindex="-1" autofocus>${pickerTitle}</h2><div class="task-search"><input data-trade-picker-search aria-label="搜尋工種名稱" autocomplete="off" placeholder="搜尋工種名稱…" value="${escapeHtml(tradePickerSearch)}"><button type="button" data-daily-action="clear-trade-search" ${tradePickerSearch ? '' : 'hidden'}>清除</button></div><div data-trade-picker-results>${tradePickerResults()}</div></dialog>` : '';
+  if (workDetailUndo && !canRestoreDetails(workDetailUndo, daily.report)) workDetailUndo = undefined;
+  const detailNotice = workDetailUndo ? '<aside class="work-detail-undo" role="status" aria-live="polite"><span>已移除位置、樓層與備註</span><button type="button" data-daily-action="undo-work-details">復原</button></aside>' : '';
   const saveLabel = dailySyncLabel();
   const previewSummary = contactEditor ? `尚有 ${drafts.length + 1} 筆需補填（含聯絡草稿）` : drafts.length ? `尚有 ${drafts.length} 筆需補填` : completed.length ? `${completed.length} 筆資料齊全，可檢查日報` : '填寫施工紀錄後即可預覽';
   const missingLinks = drafts.map((trade) => `<button type="button" class="missing-entry" data-daily-action="fix-entry" data-id="${escapeHtml(trade.id)}">${escapeHtml(trade.tradeNameSnapshot || '施工紀錄')}：${escapeHtml(validateTrade(trade, daily.linkedMaterialEntries(trade.id))[0]?.message ?? '請整理重複廠商')}</button>`).join('');
@@ -411,7 +422,7 @@ function dailyView(): string {
   const previewBody = dailyPreviewOpen ? `<div class="daily-output__content">${missingLinks}${drafts.length ? `<p class="daily-output__warning">${escapeHtml(previewSummary)}</p>` : ''}${duplicateWarning}${nameWarning}<pre>${escapeHtml(formatDailyReport(daily.report) || '填寫施工紀錄後，這裡會顯示日報預覽。')}</pre><div class="daily-output__actions"><button type="button" data-daily-action="copy" ${drafts.length || contactEditor ? 'disabled' : ''}>僅複製</button><button type="button" class="primary" data-daily-action="finalize" ${drafts.length || contactEditor || !completed.length ? 'disabled' : ''}>定稿並複製</button><a class="daily-output__history-link" href="#daily/history">查看近 7 天</a></div><p class="hint">定稿會保留 7 天，之後自動清除；草稿保留供繼續編輯。</p>${dailyCopyFeedback ? `<p class="daily-output__feedback" role="status">${escapeHtml(dailyCopyFeedback)}</p>` : ''}</div>` : '';
   const undoNotice = tradeUndoQueue.length ? `<aside class="trade-undo-notice" role="status" aria-live="polite"><span>已刪除 ${tradeUndoQueue.length} 個工程條目</span><button type="button" data-daily-action="undo-trade-delete">復原上一筆</button></aside>` : '';
   const connectionNotice = materialConnectionUndo && materialConnectionUndo.expiresAt > Date.now() ? `<aside class="trade-undo-notice material-connection-undo" role="status" aria-live="polite"><span>已解除進料連接</span><button type="button" data-daily-action="undo-material-disconnect">復原</button></aside>` : '';
-  return `<main class="app-shell module-page daily-page">${entrySaveError ? `<p data-entry-save-error role="alert">${escapeHtml(entrySaveError)}</p>` : ''}${dailyHeader(saveLabel)}<div class="module-page__tabs">${moduleTabs('daily')}</div>${syncControl()}${basicsView()}<section class="daily-workspace" aria-label="日報內容">${dailyTabs()}${activeTabContent()}</section><aside class="daily-output ${dailyPreviewOpen ? 'daily-output--open' : ''}"><button type="button" class="daily-output__toggle collapsed-summary" data-daily-action="toggle-preview" aria-expanded="${dailyPreviewOpen}" aria-controls="daily-output-content"><span><strong>${daily.report.tradeSections.length} 筆施工 · ${daily.report.tradeSections.reduce((sum, trade) => sum + (Number(trade.workerCount) || 0), 0)} 人 · ${daily.report.contacts.length} 筆聯絡</strong><span>${escapeHtml(previewSummary)}</span></span><span>${dailyPreviewOpen ? '收合預覽' : '檢查與預覽'}</span></button><div id="daily-output-content">${previewBody}</div></aside>${connectionNotice}${undoNotice}${picker}</main>`;
+  return `<main class="app-shell module-page daily-page">${entrySaveError ? `<p data-entry-save-error role="alert">${escapeHtml(entrySaveError)}</p>` : ''}${dailyHeader(saveLabel)}<div class="module-page__tabs">${moduleTabs('daily')}</div>${syncControl()}${basicsView()}<section class="daily-workspace" aria-label="日報內容">${dailyTabs()}<div role="tabpanel" id="daily-panel-${daily.report.activeTab}" aria-labelledby="daily-tab-${daily.report.activeTab}">${activeTabContent()}</div></section><aside class="daily-output ${dailyPreviewOpen ? 'daily-output--open' : ''}"><button type="button" class="daily-output__toggle collapsed-summary" data-daily-action="toggle-preview" aria-expanded="${dailyPreviewOpen}" aria-controls="daily-output-content"><span><strong>${daily.report.tradeSections.length} 筆施工 · ${daily.report.tradeSections.reduce((sum, trade) => sum + (Number(trade.workerCount) || 0), 0)} 人 · ${daily.report.contacts.length} 筆聯絡</strong><span>${escapeHtml(previewSummary)}</span></span><span>${dailyPreviewOpen ? '收合預覽' : '檢查與預覽'}</span></button><div id="daily-output-content">${previewBody}</div></aside>${connectionNotice}${undoNotice}${detailNotice}${picker}</main>`;
 }
 function dailyHistoryView(): string { return `<main class="app-shell settings-page"><header class="top app-header"><div><p class="eyebrow">FINALIZED REPORTS</p><h1>近 7 天日報</h1></div><a class="settings-button" href="#daily">返回日報</a></header>${moduleTabs('daily')}${workspaceSiteView()}<section class="history-list">${finalizedReports.length ? finalizedReports.map((report) => `<article><div><strong>${escapeHtml(report.siteNameSnapshot)}｜${escapeHtml(report.date)}</strong><span>定稿：${escapeHtml(new Date(report.finalizedAt).toLocaleString('zh-TW'))}</span></div><pre>${escapeHtml(report.outputText)}</pre><button type="button" data-daily-action="copy-finalized" data-finalized-id="${escapeHtml(report.id)}">再次複製</button></article>`).join('') : '<p class="empty">近 7 天尚無已定稿日報。</p>'}</section><p class="hint">日報定稿後保留 7 天，超過期限會自動清除。</p></main>`; }
 const sectionLabels: Array<[DailySettingsSection, string]> = [['sites', '工地管理'], ['trade-tasks', '工種與工項管理'], ['vendors', '廠商管理'], ['locations', '位置管理'], ['materials', '材料類型管理'], ['templates', '特殊事項模板']];
@@ -669,8 +680,10 @@ async function renderApp(): Promise<void> {
     else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports();
     if (token !== renderToken) return;
     restoreEntryScope(); persistEntryDraft();
+    pickerDialog.beforeRender();
     app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`;
     applyDailyReadOnly();
+    pickerDialog.afterRender();
     requestAnimationFrame(syncMaterialConnectionCurves);
     return;
   }
@@ -684,7 +697,7 @@ const readOnlyDailyActions = new Set(['toggle-trade', 'toggle-preview', 'toggle-
 function applyDailyReadOnly(): void {
   if (!isReadOnlySite()) return;
   app.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-daily-field]:not([data-daily-field="date"]),[data-continuous-work],[data-site-search],[data-material-field],[data-contact-field],[data-contact-task-content]').forEach((input) => input.disabled = true);
-  app.querySelectorAll<HTMLButtonElement>('[data-daily-action],[data-work-commit],[data-work-move],[data-work-suggestion]').forEach((button) => { if (!readOnlyDailyActions.has(button.dataset.dailyAction ?? '')) button.disabled = true; });
+  app.querySelectorAll<HTMLButtonElement>('[data-daily-action],[data-work-commit],[data-work-move],[data-work-delete],[data-work-clear-details],[data-work-gesture],[data-work-suggestion]').forEach((button) => { if (!readOnlyDailyActions.has(button.dataset.dailyAction ?? '')) button.disabled = true; });
 }
 function updateDailyInput(target: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): void {
   if (isReadOnlySite()) return;
@@ -829,11 +842,27 @@ bindWorkGestures(app, {
   save: async () => { persistEntryDraft(); }, render: renderApp,
   error: showEntrySaveError,
 });
+app.addEventListener('input', (event) => {
+  const target = event.target as HTMLInputElement;
+  if (!workDetailUndo || !workDetailFields.some((field) => field === target.dataset.dailyField)) return;
+  if (target.closest<HTMLElement>('[data-work]')?.dataset.work === workDetailUndo.workId) {
+    workDetailUndo = undefined; app.querySelector('.work-detail-undo')?.remove();
+  }
+});
 bindWorkInput(app, {
   trade: (id) => daily.trade(id), tasks: () => dailyTasks,
   add: (id, text, taskId) => { daily.addWorkItem(id, text, taskId); },
   edit: (id, workId, text, taskId) => { daily.updateTradeOutputData(id, (trade) => { const work = trade.workItems.find((item) => item.id === workId); if (work) { work.taskTextSnapshot = text; work.taskId = taskId; } }); },
-  clearDetails: (id, workId) => daily.updateTradeOutputData(id, (trade) => { const work = trade.workItems.find((row) => row.id === workId); if (work) clearWorkItemDetails(work); }),
+  clearDetails: (id, workId) => {
+    if (isReadOnlySite() || workspaceSwitching) return;
+    daily.updateTradeOutputData(id, (trade) => {
+      const work = trade.workItems.find((row) => row.id === workId);
+      if (!work) return;
+      const before = snapshotDetails(work);
+      clearWorkItemDetails(work);
+      workDetailUndo = { scope: workUndoScope(daily.report), tradeId: id, workId, before, cleared: snapshotDetails(work) };
+    });
+  },
   draft: persistEntryDraft, remove: (id, workId, undoAddition) => {
     if (!undoAddition) return daily.deleteWorkItem(id, workId);
     const removed = Boolean(daily.removeWorkItemForUndo(id, workId));
@@ -1174,7 +1203,24 @@ app.addEventListener('click', async (event) => {
   const dataSectionButton = target.closest<HTMLButtonElement>('[data-data-system-section]');
   if (route.module === 'settings' && route.page === 'data' && dataSectionButton) { settingsState.activeSection = dataSectionButton.dataset.dataSystemSection as 'backup' | 'debug'; await refreshSettings(); await renderApp(); return; }
   if (route.module === 'daily' && route.page === 'settings') { const areaButton = target.closest<HTMLButtonElement>('[data-settings-area]'); if (areaButton) { const area = areaButton.dataset.settingsArea as DailySettingsArea; if (settingsState.activeArea === area) return; settingsState.activeArea = area; const firstSection = dailySettingsAreas.find((item) => item.id === area)?.sections[0]; if (firstSection) settingsState.activeSection = firstSection; settingsState.editingId = null; settingsState.adding = false; settingsState.dirty = false; settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; await refreshSettings(); await renderApp(); return; } const sectionButton = target.closest<HTMLButtonElement>('[data-settings-section]'); if (sectionButton) { if (settingsState.dirty && !window.confirm('放棄未保存修改？')) return; settingsState.activeSection = sectionButton.dataset.settingsSection as DailySettingsSection; settingsState.editingId = null; settingsState.adding = false; settingsState.dirty = false; settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; await refreshSettings(); await renderApp(); return; } const actionButton = target.closest<HTMLButtonElement>('[data-settings-action]'); if (actionButton) { const action = actionButton.dataset.settingsAction!; const id = actionButton.dataset.id!; const kind = actionButton.dataset.settingsKind as 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations' | undefined; if (action === 'export-memory-backup') { const payload = await exportMemories(); const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = `施工日報-記憶備份-${payload.exportedAt.slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); memoryBackupFeedback = '已下載記憶備份。'; await renderApp(); return; } if (action === 'add-material-type') { const value = window.prompt('材料類型名稱'); if (value !== null) { try { await createMaterialType(value); } catch (error) { alert(error instanceof Error ? error.message : '新增材料類型失敗。'); } } await renderApp(); return; } if (action === 'rename-material-type') { const current = materialTypes.find((row) => row.id === id); const value = window.prompt('材料類型名稱', current?.name ?? ''); if (value !== null) { try { daily.report = await renameMaterialType(daily.report, id, value); } catch (error) { alert(error instanceof Error ? error.message : '重新命名失敗。'); } } await renderApp(); return; } if (action === 'delete-material-type') { const current = materialTypes.find((row) => row.id === id); const entries = daily.report.standaloneMaterialEntries.filter((entry) => entry.materialTypeId === id); const normal = entries.filter((entry) => entry.entryType !== 'independent').length; const independent = entries.length - normal; const linked = entries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId).length; if (!window.confirm(`刪除材料類型「${current?.name ?? ''}」？\n\n普通進料 ${normal} 筆\n獨立進料 ${independent} 筆${linked ? `（已連接 ${linked} 筆）` : ''}\n共計刪除 ${entries.length} 筆進料及相關搜尋記憶。\n\n此操作無法復原。`)) return; try { daily.report = await deleteMaterialType(daily.report, id); } catch (error) { alert(error instanceof Error ? error.message : '刪除材料類型失敗。'); } await renderApp(); return; } if (action === 'toggle-trade-tasks') { settingsState.selectedTradeTypeId = settingsState.selectedTradeTypeId === actionButton.dataset.tradeTypeId ? null : actionButton.dataset.tradeTypeId ?? null; settingsState.editingId = null; settingsState.adding = false; settingsState.taskSearchKeyword = ''; await renderApp(); return; } if (action === 'add-trade') { dailyPreviewOpen = false; settingsState.selectedTradeTypeId = null; settingsState.adding = true; settingsState.editingId = null; } else if (action === 'add-task' || action === 'add-task-from-search') { settingsState.adding = true; settingsState.editingId = null; } else if (action === 'clear-task-search') { settingsState.taskSearchKeyword = ''; await renderApp(); app.querySelector<HTMLInputElement>('[data-settings-search="tasks"]')?.focus(); return; } else if (action === 'edit-trade' || action === 'edit-task' || action === 'edit') { settingsState.editingId = id; settingsState.adding = false; } else if (action === 'cancel') { settingsState.editingId = null; settingsState.adding = false; settingsState.dirty = false; } else if (action === 'confirm' && kind) await confirmMemory(kind as 'vendors' | 'tasks' | 'locations', id); else if (action === 'delete' && kind) { if (!window.confirm(`確定刪除「${actionButton.dataset.name ?? ''}」？\n\n此操作將影響設定記憶與目前草稿中的相關內容；既有日報快照與已複製文字不受影響。`)) return; const savedDraft = await deleteMemory(kind, id); if (savedDraft) daily.mergeRemote(savedDraft); if (kind === 'trades' && settingsState.selectedTradeTypeId === id) { settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; } } else if (action === 'copy-debug') await navigator.clipboard.writeText(JSON.stringify(settingsDebug, null, 2)); else if (action === 'clear-debug') { if (window.confirm('確定清除偵錯紀錄？')) await clearDebugLogs(); } await renderApp(); return; } }
-  const tab = target.closest<HTMLButtonElement>('[data-daily-tab]'); if (tab && route.module === 'daily') { if (!discardMaterialEditor()) return; await savePendingDailyInput(); persistEntryDraft(); activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; daily.switchTab(tab.dataset.dailyTab as DailyReportV3['activeTab']); await daily.flush(); await renderApp(); return; }
+  const tab = target.closest<HTMLButtonElement>('[data-daily-tab]');
+  if (tab && route.module === 'daily') {
+    if (tabSwitching) return;
+    const previous = daily.report.activeTab;
+    const restoreTabFocus = () => {
+      app.querySelectorAll<HTMLButtonElement>('[data-daily-tab]').forEach(button => { button.tabIndex = button.dataset.dailyTab === daily.report.activeTab ? 0 : -1; });
+      app.querySelector<HTMLButtonElement>(`[data-daily-tab="${daily.report.activeTab}"]`)?.focus();
+    };
+    if (!discardMaterialEditor()) { restoreTabFocus(); return; }
+    tabSwitching = true;
+    try {
+      await savePendingDailyInput(); persistEntryDraft(); activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null;
+      daily.switchTab(tab.dataset.dailyTab as DailyReportV3['activeTab']);
+      await daily.flush(); await renderApp(); restoreTabFocus();
+    } catch (error) { daily.report.activeTab = previous; showEntrySaveError(error); await renderApp(); restoreTabFocus(); }
+    finally { tabSwitching = false; }
+    return;
+  }
   const waterButton = target.closest<HTMLButtonElement>('[data-water-action],[data-water-view]');
   if (waterButton && route.module === 'water-level' && water) { if (waterButton.dataset.waterView) { water.mode = waterButton.dataset.waterView; water.render(); return; } if (waterButton.dataset.waterAction) { await water.handleAction(waterButton.dataset.waterAction, waterButton.dataset.id); if (route.page === 'settings') water.renderSettings(); } return; }
   if (route.module === 'daily' && route.page === 'history') { const finalized = target.closest<HTMLElement>('[data-daily-action="copy-finalized"]'); if (finalized) { const report = finalizedReports.find((item) => item.id === finalized.dataset.finalizedId); if (report) await navigator.clipboard.writeText(report.outputText); return; } }
@@ -1245,6 +1291,27 @@ app.addEventListener('click', async (event) => {
   if (action === 'delete-trade') { const id = actionElement.dataset.id!; const trade = daily.trade(id); if (!trade) return; if (!daily.deleteTrade(id)) return; activeWorkAuxEditor = null; workAuxMenuId = null; await daily.flush(); await renderApp(); return; }
   const button = actionElement;
   if (action === 'add-trade') { entryKind = 'engineering'; tradePickerOpen = true; tradePickerSearch = ''; await renderApp(); return; }
+  if (action === 'undo-work-details') {
+    if (detailsRestoreBusy || !workDetailUndo || !canRestoreDetails(workDetailUndo, daily.report)) return;
+    const undo = workDetailUndo;
+    detailsRestoreBusy = true;
+    try {
+      daily.updateTradeOutputData(undo.tradeId, (trade) => {
+        const work = trade.workItems.find((row) => row.id === undo.workId);
+        if (work) Object.assign(work, undo.before);
+      });
+      await daily.flush(); workDetailUndo = undefined; await renderApp();
+      app.querySelector<HTMLElement>(`[data-work="${CSS.escape(undo.workId)}"] [data-work-gesture]`)?.focus();
+    } catch (error) {
+      const work = daily.trade(undo.tradeId)?.workItems.find((row) => row.id === undo.workId);
+      if (work && workUndoScope(daily.report) === undo.scope && JSON.stringify(snapshotDetails(work)) === JSON.stringify(undo.before)) {
+        daily.updateTradeOutputData(undo.tradeId, () => Object.assign(work, undo.cleared));
+        workDetailUndo = undo;
+      }
+      showEntrySaveError(error); await renderApp();
+    } finally { detailsRestoreBusy = false; }
+    return;
+  }
   if (action === 'close-trade-picker') { tradePickerOpen = false; await renderApp(); return; }
   if (action === 'clear-trade-search') { const search = app.querySelector<HTMLInputElement>('[data-trade-picker-search]'); if (search) { search.value = ''; refreshTradePickerSearch(search); search.focus(); } return; }
   if (action === 'select-trade') {
