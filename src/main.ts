@@ -641,8 +641,7 @@ async function refreshAccount(onProgress?: () => void): Promise<void> {
 }
 function accountModuleMarkup(content: string): string {
   const isDebug = parseRoute(location.hash).page === 'debug';
-  const sync = accountActiveSiteId ? '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' : '';
-  return `<main class="app-shell settings-page account-page-shell">${settingsHeader(isDebug ? 'DEBUG & SYNC' : 'SHARED SITE', isDebug ? '偵錯與同步' : '共用工地')}${settingsContextTabs(isDebug ? 'debug' : 'account')}${sync ? `<div class="account-page-actions">${sync}</div>` : ''}${content}${isDebug ? debugPanel() : ''}</main>${pwaUpdateNotice()}`;
+  return `<main class="app-shell settings-page account-page-shell">${settingsHeader(isDebug ? 'DEBUG & SYNC' : 'SHARED SITE', isDebug ? '偵錯與同步' : '共用工地')}${settingsContextTabs(isDebug ? 'debug' : 'account')}${content}${isDebug ? debugPanel() : ''}</main>${pwaUpdateNotice()}`;
 }
 function renderAccountLoading(): void {
   const content = accountError
@@ -652,7 +651,7 @@ function renderAccountLoading(): void {
 }
 function renderAccountLoaded(): void {
   const progress = accountLoadExtrasPending ? '<p class="hint" role="status">工地已可使用，成員與同步診斷仍在載入…</p>' : '';
-  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ view: parseRoute(location.hash).page === 'debug' ? 'debug' : 'account', auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews, importPreview: memoryImportSiteId === accountActiveSiteId ? memoryImportPreview : null, recoveryPreview: syncRecoverySiteId === accountActiveSiteId ? syncRecoveryPreview : null }));
+  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ view: parseRoute(location.hash).page === 'debug' ? 'debug' : 'account', syncing: syncInFlight, auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews, importPreview: memoryImportSiteId === accountActiveSiteId ? memoryImportPreview : null, recoveryPreview: syncRecoverySiteId === accountActiveSiteId ? syncRecoveryPreview : null }));
 }
 async function renderApp(): Promise<void> {
   if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }

@@ -15,7 +15,7 @@ describe('共用工地帳號頁', () => {
     expect(oauthRedirectUrl('https://example.github.io/daily-report-web/#account')).toBe('https://example.github.io/daily-report-web/?auth_callback=1');
   });
   it('未設定後端時清楚維持本機模式', () => {
-    const html = renderAccountPage({ view: 'debug', auth: { enabled: false, session: null, user: null }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
+    const html = renderAccountPage({ view: 'account', auth: { enabled: false, session: null, user: null }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
     expect(html).toContain('目前使用本機模式');
     expect(html).not.toContain('data-account-action="sign-in"');
     expect(html).not.toContain('<main');
@@ -23,25 +23,26 @@ describe('共用工地帳號頁', () => {
   });
 
   it('未登入時保留登入操作，但頁面骨架交給路由層', () => {
-    const html = renderAccountPage({ view: 'debug', auth: { enabled: true, session: null, user: null }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
+    const html = renderAccountPage({ view: 'account', auth: { enabled: true, session: null, user: null }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
     expect(html).toContain('data-account-action="sign-in"');
     expect(html).not.toContain('<header');
   });
 
   it('登入後沒有工地時保留建立與加入入口', () => {
-    const html = renderAccountPage({ view: 'debug', auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
+    const html = renderAccountPage({ view: 'account', auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
     expect(html).toContain('目前還沒有可使用的工地。');
     expect(html).toContain('data-account-form="create-site"');
     expect(html).toContain('data-account-form="request-join"');
   });
 
-  it('已登入時提供工地切換、手動同步與加入流程', () => {
-    const html = renderAccountPage({ view: 'debug',
+  it('共用工地保留切換與加入流程，同步操作集中到偵錯頁', () => {
+    const html = renderAccountPage({ view: 'account',
       auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never },
       sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role: 'editor', createdAt: '2026-09-21T00:00:00Z' }],
       activeSiteId: 'site-1', pendingCount: 2, requests: [], members: [], feedback: '', error: '',
     });
-    expect(html).toContain('待同步 2 筆');
+    expect(html).toContain('href="#settings/debug"');
+    expect(html).not.toContain('data-account-action="sync-now"');
     expect(html).toContain('data-account-form="request-join"');
     expect(html).toContain('account-site active');
     expect(html).toContain('<div class="account-join-code"><span>加入碼</span><code>a1b2c3d4e5f6</code>');
@@ -64,7 +65,7 @@ describe('共用工地帳號頁', () => {
   });
 
   it.each(['owner', 'editor', 'viewer'] as const)('%s 都能查看與複製自己已加入工地的加入碼', (role) => {
-    const html = renderAccountPage({ view: 'debug',
+    const html = renderAccountPage({ view: 'account',
       auth: { enabled: true, session: null, user: { id: 'user-1', email: 'member@example.com' } as never },
       sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role, createdAt: '2026-09-21T00:00:00Z' }],
       activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '',
@@ -74,7 +75,7 @@ describe('共用工地帳號頁', () => {
   });
 
   it('管理員保留申請審核與成員角色操作標記', () => {
-    const html = renderAccountPage({ view: 'debug',
+    const html = renderAccountPage({ view: 'account',
       auth: { enabled: true, session: null, user: { id: 'owner-1', email: 'owner@example.com' } as never },
       sites: [{ id: 'site-1', name: '測試工地', joinCode: 'a1b2c3d4e5f6', role: 'owner', createdAt: '2026-09-21T00:00:00Z' }], activeSiteId: 'site-1', pendingCount: 0,
       requests: [{ id: 'request-1', siteId: 'site-1', siteName: '測試工地', userId: 'member-1', requestedAt: '2026-09-21T00:00:00Z' }],
@@ -89,7 +90,6 @@ describe('共用工地帳號頁', () => {
   });
 
   it('共用工地使用設定頁首與第五個設定入口', () => {
-    expect(main).toContain('data-account-action="sync-now"');
     expect(main).toContain('class="app-shell settings-page account-page-shell"');
     expect(main).toContain("settingsContextTabs(isDebug ? 'debug' : 'account')");
     expect(main).toContain("['account', '#settings/account', '共用工地']");
@@ -159,7 +159,7 @@ describe('共用工地帳號頁', () => {
   });
 
   it('管理員依工地分組申請與成員，群組內不重複工地名稱', () => {
-    const html = renderAccountPage({ view: 'debug',
+    const html = renderAccountPage({ view: 'account',
       auth: { enabled: true, session: null, user: { id: 'owner-1', email: 'owner@example.com' } as never },
       sites: [
         { id: 'site-1', name: '甲工地', joinCode: 'a1b2c3d4e5f6', role: 'owner', createdAt: '' },

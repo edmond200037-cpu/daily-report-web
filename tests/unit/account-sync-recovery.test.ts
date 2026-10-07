@@ -59,16 +59,45 @@ describe('共用工地同步修復介面', () => {
     expect(html).not.toContain('data-account-action="preview-sync-recovery"');
   });
 
-  it('偵錯頁集中診斷與管理入口，渲染不修改原始待送操作', () => {
+  it('偵錯頁集中診斷，渲染不修改原始待送操作且不帶入工地管理', () => {
     const rows = [operation('23505')];
     const original = JSON.stringify(rows);
     const html = renderAccountPage({ ...ownerState, view: 'debug', operations: rows, diagnostics: rows, pendingCount: 1 });
     expect(html).toContain('<h2>待同步項目</h2>');
     expect(html).toContain('<h2>同步診斷</h2>');
-    expect(html).toContain('<summary>工地與成員管理</summary>');
-    expect(html).toContain('data-account-form="request-join"');
+    expect(html).not.toContain('<summary>工地與成員管理</summary>');
+    expect(html).not.toContain('data-account-action="sign-out"');
+    expect(html).not.toContain('data-account-action="copy-join-code"');
+    expect(html).not.toContain('data-account-action="select-site"');
+    expect(html).not.toContain('data-account-action="role-owner"');
+    expect(html).toContain('data-account-action="sync-now"');
+    expect(html).toContain('href="#settings/account"');
+    expect(html).not.toContain('data-account-form="request-join"');
+    expect(html).not.toContain('data-account-form="create-site"');
     expect(html).toContain('data-account-action="preview-sync-recovery"');
     expect(JSON.stringify(rows)).toBe(original);
+  });
+
+  it('尚未登入或未選工地時只引導回共用工地，不重複建立與登入表單', () => {
+    const signedOut = renderAccountPage({ ...ownerState, view: 'debug', auth: { enabled: true, session: null, user: null } });
+    expect(signedOut).toContain('前往共用工地登入');
+    expect(signedOut).not.toContain('data-account-action="sign-in"');
+    const noSite = renderAccountPage({ ...ownerState, view: 'debug', activeSiteId: null });
+    expect(noSite).toContain('請先選擇要診斷的工地');
+    expect(noSite).not.toContain('<h2>待同步項目</h2>');
+    expect(noSite).not.toContain('data-account-form="create-site"');
+  });
+
+  it('診斷僅顯示目前工地，不洩露其他工地加入碼或成員，同步中禁止重複操作', () => {
+    const html = renderAccountPage({ ...ownerState, view: 'debug', syncing: true,
+      sites: [...ownerState.sites, { id: 'other', name: '其他工地', joinCode: 'other-secret', role: 'owner', createdAt: '' }],
+      members: [{ siteId: 'site-1', userId: 'private-member', role: 'editor', createdAt: '' }],
+    });
+    expect(html).toContain('<h2>測試工地</h2>');
+    expect(html).not.toContain('其他工地');
+    expect(html).not.toContain('other-secret');
+    expect(html).not.toContain('private-member');
+    expect(html).toContain('data-account-action="sync-now" disabled');
   });
 
 });
