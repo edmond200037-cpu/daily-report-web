@@ -15,17 +15,18 @@ describe('設定端直達導覽契約', () => {
     expect(main).not.toContain('function settingsHubView()');
   });
 
-  it('設定頁保留來源返回操作與五區導覽', () => {
+  it('設定頁保留來源返回操作與六區導覽', () => {
     expect(main).toContain('let settingsReturnModule: SettingsReturnModule = \'daily\';');
     expect(main).toContain('function settingsReturnLink(): string');
     expect(main).toContain('class="settings-context-tabs"');
     expect(css).toContain('.settings-context-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));');
     expect(css).toContain('.settings-context-tabs a.active { border-color: var(--accent); background: var(--surface-raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }');
-    expect(css).toContain('.settings-context-tabs a:last-child { grid-column: 1 / -1; }');
+    expect(css).not.toContain('.settings-context-tabs a:last-child { grid-column: 1 / -1; }');
+    expect(main).toContain("['debug', '#settings/debug', '偵錯與同步']");
     expect(main).toContain("['account', '#settings/account', '共用工地']");
   });
 
-  it('五個設定領域共用紙質淡黃色工作台，不影響填報模組容器', () => {
+  it('六個設定領域共用紙質淡黃色工作台，不影響填報模組容器', () => {
     expect(css).toContain('.settings-page { background: var(--daily-paper); color: var(--daily-ink); }');
     expect(css).toContain('.settings-page .settings-context-tabs a { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }');
     expect(css).toContain('.settings-page .settings-work-area { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); }');
@@ -40,10 +41,12 @@ describe('設定端直達導覽契約', () => {
     expect(main).not.toContain('class="settings-section-grid"');
   });
 
-  it('備份與偵錯只由資料與系統頁承接', () => {
+  it('備份留在資料頁，偵錯以獨立路由集中處理同步問題', () => {
     expect(main).toContain('function dataSystemView(): string');
     expect(main).toContain('data-data-system-section="backup"');
-    expect(main).toContain('data-data-system-section="debug"');
+    expect(main).not.toContain('data-data-system-section="debug"');
+    expect(main).toContain("if (normalized === '#settings/debug') return { module: 'account', page: 'debug' };");
+    expect(main).not.toContain('data-settings-action="toggle-debug"');
     expect(main).not.toContain("['backup', '備份與還原']");
     expect(main).not.toContain("['debug', '偵錯資訊']");
   });

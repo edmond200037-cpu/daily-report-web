@@ -16,7 +16,7 @@ describe('共用工地同步修復介面', () => {
   };
 
   it('管理員選定工地後固定顯示修復入口，不依賴診斷載入結果', () => {
-    const html = renderAccountPage({ ...ownerState, operations: [], diagnostics: [], operationsStatus: 'loading' });
+    const html = renderAccountPage({ view: 'debug', ...ownerState, operations: [], diagnostics: [], operationsStatus: 'loading' });
     expect(html).toContain('修復舊同步項目');
     expect(html).toContain('此工具固定顯示');
     expect(html).toContain('data-account-action="preview-sync-recovery"');
@@ -24,7 +24,7 @@ describe('共用工地同步修復介面', () => {
 
   it('顯示可理解的錯誤與預覽、備份入口', () => {
     const rows = [operation('23505'), operation('23503')];
-    const html = renderAccountPage({
+    const html = renderAccountPage({ view: 'debug',
       ...ownerState, pendingCount: 2, operations: rows, diagnostics: rows,
     });
     expect(html).toContain('雲端已有同名記憶');
@@ -34,7 +34,7 @@ describe('共用工地同步修復介面', () => {
   });
 
   it('非管理員仍看得到修復區與權限原因', () => {
-    const html = renderAccountPage({
+    const html = renderAccountPage({ view: 'debug',
       ...ownerState,
       sites: [{ id: 'site-1', name: '測試工地', joinCode: 'join', role: 'editor', createdAt: '' }],
     });
@@ -43,11 +43,32 @@ describe('共用工地同步修復介面', () => {
     expect(html).not.toContain('data-account-action="preview-sync-recovery"');
   });
   it('雲端沒有記憶時整筆採用本機，不能拼接空欄位', () => {
-    const html = renderAccountPage({ ...ownerState, conflicts: [{ id: 'conflict', operationId: 'operation', kind: 'memory', entity: 'memory-entry', createdAt: '', local: { id: 'task', kind: 'task', normalized_name: '粉光', payload: { name: '粉光' }, usage_count: 1, status: 'confirmed' }, cloud: {}, cloudRevision: 0, cloudEntityId: 'task', diffs: [{ path: '/id', kind: '新增', local: 'task', cloud: undefined }] }] });
+    const html = renderAccountPage({ view: 'debug', ...ownerState, conflicts: [{ id: 'conflict', operationId: 'operation', kind: 'memory', entity: 'memory-entry', createdAt: '', local: { id: 'task', kind: 'task', normalized_name: '粉光', payload: { name: '粉光' }, usage_count: 1, status: 'confirmed' }, cloud: {}, cloudRevision: 0, cloudEntityId: 'task', diffs: [{ path: '/id', kind: '新增', local: 'task', cloud: undefined }] }] });
     expect(html).toContain('粉光');
     expect(html).toContain('data-conflict-choice="/"');
     expect(html).toContain('value="cloud" disabled');
     expect(html).toContain('value="local" selected');
     expect(html).not.toContain('data-conflict-choice="/id"');
   });
+  it('共用工地頁保留管理操作，診斷改由獨立頁簽承接', () => {
+    const rows = [operation('23505')];
+    const html = renderAccountPage({ ...ownerState, view: 'account', operations: rows, diagnostics: rows, pendingCount: 1 });
+    expect(html).toContain('href="#settings/debug"');
+    expect(html).toContain('data-account-form="create-site"');
+    expect(html).not.toContain('<h2>待同步項目</h2>');
+    expect(html).not.toContain('data-account-action="preview-sync-recovery"');
+  });
+
+  it('偵錯頁集中診斷與管理入口，渲染不修改原始待送操作', () => {
+    const rows = [operation('23505')];
+    const original = JSON.stringify(rows);
+    const html = renderAccountPage({ ...ownerState, view: 'debug', operations: rows, diagnostics: rows, pendingCount: 1 });
+    expect(html).toContain('<h2>待同步項目</h2>');
+    expect(html).toContain('<h2>同步診斷</h2>');
+    expect(html).toContain('<summary>工地與成員管理</summary>');
+    expect(html).toContain('data-account-form="request-join"');
+    expect(html).toContain('data-account-action="preview-sync-recovery"');
+    expect(JSON.stringify(rows)).toBe(original);
+  });
+
 });

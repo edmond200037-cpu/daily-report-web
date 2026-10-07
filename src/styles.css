@@ -182,7 +182,6 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .settings-context-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-4) 0; }
 .settings-context-tabs a { display: grid; place-items: center; min-height: 44px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); padding: var(--space-2); font-size: .8125rem; font-weight: 720; text-align: center; text-decoration: none; }
 .settings-context-tabs a.active { border-color: var(--accent); background: var(--surface-raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }
-.settings-context-tabs a:last-child { grid-column: 1 / -1; }
 .settings-header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 .settings-debug-panel { display: grid; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-4); border: 1px solid var(--daily-line-strong); border-radius: var(--radius-sm); background: var(--daily-paper-raised); }
 .settings-debug-panel[hidden] { display: none; }
