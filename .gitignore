@@ -10,3 +10,13 @@ artifacts/audit-fixes/pg-data-*/
 scripts/db-tests/node_modules/
 artifacts/supabase-cli-cache/
 artifacts/contact-memory-2026-10-06/
+
+# Build output, caches and local tooling state (this repository is public)
+dist/
+.verification-dist/
+.verification-mobile/
+supabase/.temp/
+artifacts/
+*.zip
+.mobile-test-results.json
+.test-results.json

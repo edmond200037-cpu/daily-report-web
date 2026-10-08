@@ -61,6 +61,8 @@ export async function runDatabaseTests({ Client, connectionString, initialize = 
         grant usage on schema auth,public to authenticated,anon;
         grant execute on function auth.uid() to authenticated,anon;
         alter default privileges in schema public grant select,insert,update,delete on tables to authenticated,anon;
+        -- Supabase grants EXECUTE on every new function directly to anon and authenticated.
+        alter default privileges in schema public grant execute on functions to authenticated,anon;
         create publication supabase_realtime;
       `);
       for (const file of (await readdir(new URL('supabase/migrations/', root))).filter(file => file.endsWith('.sql')).sort()) {
@@ -81,15 +83,53 @@ export async function runDatabaseTests({ Client, connectionString, initialize = 
       await assert.rejects(() => checkMigrationHistory(admin), /migration 未登記/);
     });
 
-    await check('sync capabilities are read-only and restricted to site members', async () => {
-      for (const name of ['owner', 'editor', 'viewer']) {
+    await check('sync capabilities are read-only, site-scoped and role-aware', async () => {
+      for (const name of ['owner', 'editor']) {
         const result = await rpc(sessions[name], 'get_sync_capabilities', [site]);
         assert.equal(result.contract_version, 1);
         assert.ok(result.capabilities.includes('apply_memory_application'));
         assert.ok(result.capabilities.includes('apply_memory_entry_mutation'));
       }
+      const viewer = await rpc(sessions.viewer, 'get_sync_capabilities', [site]);
+      assert.equal(viewer.contract_version, 1);
+      assert.deepEqual(viewer.capabilities, [], 'viewers must not be told write RPCs are usable');
       await denied(() => rpc(sessions.outsider, 'get_sync_capabilities', [site]));
       await denied(() => rpc(sessions.anon, 'get_sync_capabilities', [site]));
+    });
+
+    await check('anonymous role has no EXECUTE on any public function', async () => {
+      const { rows } = await admin.query("select p.oid::regprocedure::text as name from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f' and not exists(select 1 from pg_depend d where d.objid=p.oid and d.deptype='e') and has_function_privilege('anon',p.oid,'EXECUTE') order by 1");
+      assert.deepEqual(rows.map(row => row.name), []);
+      await denied(() => sessions.anon.query('select * from public.pull_site_changes($1,0,1)', [site]));
+      await denied(() => rpc(sessions.anon, 'apply_memory_application', [site, randomUUID(), 0, '{}']));
+      // Functions added later must not become anonymously callable by default.
+      await admin.query('create function public.audit_future_probe() returns int language sql as $$ select 1 $$');
+      try { assert.equal((await admin.query("select has_function_privilege('anon','public.audit_future_probe()','EXECUTE') as granted")).rows[0].granted, false); }
+      finally { await admin.query('drop function public.audit_future_probe()'); }
+    });
+
+    await check('unauthorized callers are rejected before the site lock and payload parsing', async () => {
+      const holder = new Client({ connectionString }); await holder.connect(); clients.push(holder);
+      await holder.query('begin');
+      await holder.query("select pg_advisory_xact_lock(hashtextextended('audit-site:' || $1::text, 0))", [site]);
+      try {
+        for (const name of ['outsider', 'viewer']) {
+          await sessions[name].query("set lock_timeout = '1s'");
+          try {
+            const started = Date.now();
+            // Valid and invalid payloads alike: authorization must be decided first.
+            await denied(() => daily(sessions[name], '2026-10-11', []));
+            await denied(() => rpc(sessions[name], 'apply_memory_application', [site, randomUUID(), 0, JSON.stringify({ not: 'an entry' })]));
+            await denied(() => rpc(sessions[name], 'apply_daily_draft_mutation', [site, randomUUID(), randomUUID(), 0, JSON.stringify({ date: '2026-10-11', depth: 'x'.repeat(1048577) })]));
+            await denied(() => rpc(sessions[name], 'update_site_member_role', [site, users.editor, 'viewer']));
+            assert.ok(Date.now() - started < 900, `${name} waited for the site lock`);
+          } finally { await sessions[name].query('reset lock_timeout'); }
+        }
+        // Signed-in members who may not edit also cannot reach the lock; a stranger cannot approve requests.
+        await sessions.outsider.query("set lock_timeout = '1s'");
+        try { await denied(() => rpc(sessions.outsider, 'approve_site_member', [randomUUID(), 'editor'])); }
+        finally { await sessions.outsider.query('reset lock_timeout'); }
+      } finally { await holder.query('rollback'); }
     });
 
     for (const name of ['owner', 'owner2', 'editor', 'viewer', 'outsider', 'removed', 'anon']) {

@@ -102,13 +102,17 @@ begin
     end loop;
   end loop;
 end $$;
-revoke all on function public.audit_assert_json(jsonb,integer), public.audit_assert_changes(text,jsonb) from public;
+revoke all on function public.audit_assert_json(jsonb,integer), public.audit_assert_changes(text,jsonb) from public, anon;
 
 
 create or replace function public.apply_daily_field_mutation(p_site_id uuid, p_mutation_id uuid, p_entity_id uuid, p_report_date date, p_changes jsonb)
 returns jsonb language plpgsql security definer set search_path = public, extensions, pg_temp as $$
 declare v_user uuid := auth.uid(); v_hash text; v_prior public.sync_operations; v_row public.daily_drafts; v_change jsonb; v_payload jsonb; v_sequence bigint; v_result jsonb; v_deleted boolean;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   if v_user is null then raise exception 'authentication required' using errcode = '28000'; end if;
   if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
@@ -138,6 +142,10 @@ create or replace function public.apply_water_field_mutation(p_site_id uuid, p_m
 returns jsonb language plpgsql security definer set search_path = public, extensions, pg_temp as $$
 declare v_user uuid := auth.uid(); v_hash text; v_prior public.sync_operations; v_row public.water_snapshots; v_change jsonb; v_payload jsonb := jsonb_build_object('schemaVersion',1,'points','[]'::jsonb,'logs','[]'::jsonb); v_sequence bigint; v_result jsonb; v_deleted boolean;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   if v_user is null then raise exception 'authentication required' using errcode='28000'; end if; if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode='42501'; end if;
   if jsonb_typeof(p_changes) <> 'array' then raise exception 'invalid changes' using errcode='22023'; end if;
@@ -175,6 +183,10 @@ declare
   v_result jsonb;
   v_report_date date;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   perform public.audit_assert_json(p_payload);
   if v_user_id is null then raise exception 'authentication required' using errcode = '28000'; end if;
@@ -232,6 +244,10 @@ create or replace function public.apply_water_snapshot_mutation(
 as $$
 declare v_user_id uuid := auth.uid(); v_hash text; v_prior public.sync_operations; v_current public.water_snapshots; v_sequence bigint; v_result jsonb;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   perform public.audit_assert_json(p_payload);
   if v_user_id is null then raise exception 'authentication required' using errcode = '28000'; end if;
@@ -272,6 +288,10 @@ create or replace function public.apply_memory_snapshot_mutation(
 as $$
 declare v_user_id uuid := auth.uid(); v_hash text; v_prior public.sync_operations; v_current public.memory_snapshots; v_sequence bigint; v_result jsonb;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   perform public.audit_assert_json(p_payload);
   if v_user_id is null then raise exception 'authentication required' using errcode = '28000'; end if;
@@ -316,6 +336,10 @@ declare v_user uuid := auth.uid(); v_id uuid; v_parent uuid; v_kind text; v_name
   v_deleted boolean; v_usage integer; v_finalized integer;
   v_learning_key text; v_delta_usage integer; v_delta_finalized integer;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   perform public.audit_assert_json(p_entry);
   if v_user is null then raise exception 'authentication required' using errcode='28000'; end if;
@@ -435,6 +459,10 @@ declare v_user uuid := auth.uid(); v_id uuid; v_parent uuid; v_kind text; v_name
   v_deleted boolean; v_usage integer; v_finalized integer;
   v_learning_key text; v_delta_usage integer; v_delta_finalized integer;
 begin
+  -- Authenticate and authorize BEFORE taking the site lock or parsing the payload,
+  -- so callers without edit access can neither stall the site nor spend CPU on JSON.
+  if auth.uid() is null then raise exception 'authentication required' using errcode = '28000'; end if;
+  if not public.can_edit_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   perform public.audit_assert_json(p_entry);
   if v_user is null then raise exception 'authentication required' using errcode='28000'; end if;
@@ -546,6 +574,7 @@ begin
   if p_role not in ('editor', 'viewer') then raise exception 'invalid member role' using errcode = '22023'; end if;
   select * into v_request from public.join_requests where id = p_request_id;
   if v_request.id is null then raise exception 'forbidden' using errcode='42501'; end if;
+  if auth.uid() is null or not public.can_manage_site(v_request.site_id) then raise exception 'forbidden' using errcode='42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || v_request.site_id::text, 0));
   select * into v_request from public.join_requests where id = p_request_id for update;
   if v_request.id is null or not public.can_manage_site(v_request.site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
@@ -563,6 +592,7 @@ declare v_request public.join_requests;
 begin
   select * into v_request from public.join_requests where id = p_request_id;
   if v_request.id is null then raise exception 'forbidden' using errcode='42501'; end if;
+  if auth.uid() is null or not public.can_manage_site(v_request.site_id) then raise exception 'forbidden' using errcode='42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || v_request.site_id::text, 0));
   select * into v_request from public.join_requests where id = p_request_id for update;
   if v_request.id is null or not public.can_manage_site(v_request.site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
@@ -576,6 +606,7 @@ returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_current text; v_owner_count integer;
 begin
+  if auth.uid() is null or not public.can_manage_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   if not public.can_manage_site(p_site_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   if p_role not in ('owner', 'editor', 'viewer') then raise exception 'invalid member role' using errcode = '22023'; end if;
@@ -593,6 +624,7 @@ returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_role text; v_owner_count integer;
 begin
+  if auth.uid() is null or (not public.can_manage_site(p_site_id) and auth.uid() <> p_user_id) then raise exception 'forbidden' using errcode = '42501'; end if;
   perform pg_advisory_xact_lock(hashtextextended('audit-site:' || p_site_id::text, 0));
   if not public.can_manage_site(p_site_id) and auth.uid() <> p_user_id then raise exception 'forbidden' using errcode = '42501'; end if;
   select role into v_role from public.site_members where site_id = p_site_id and user_id = p_user_id for update;
@@ -611,11 +643,12 @@ create or replace function public.get_sync_capabilities(p_site_id uuid)
 returns jsonb language plpgsql stable security invoker
 set search_path = public, pg_temp
 as $$
-declare v_capabilities jsonb;
+declare v_capabilities jsonb; v_can_edit boolean;
 begin
   if auth.uid() is null or not public.is_site_member(p_site_id) then
     raise exception 'forbidden' using errcode = '42501';
   end if;
+  v_can_edit := public.can_edit_site(p_site_id);
   select coalesce(jsonb_agg(name order by name), '[]'::jsonb) into v_capabilities
   from (values
     ('apply_memory_application', 'public.apply_memory_application(uuid,uuid,bigint,jsonb)', array['p_site_id','p_mutation_id','p_base_revision','p_entry']),
@@ -626,7 +659,7 @@ begin
     ('apply_water_snapshot_mutation', 'public.apply_water_snapshot_mutation(uuid,uuid,bigint,jsonb)', array['p_site_id','p_mutation_id','p_base_revision','p_payload'])
   ) as required(name, signature, arguments)
   join pg_proc p on p.oid = to_regprocedure(signature)
-  where p.proargnames = arguments::text[] and has_function_privilege(current_user, p.oid, 'EXECUTE');
+  where v_can_edit and p.proargnames = arguments::text[] and has_function_privilege(current_user, p.oid, 'EXECUTE');
   return jsonb_build_object('contract_version', 1, 'capabilities', v_capabilities);
 end;
 $$;

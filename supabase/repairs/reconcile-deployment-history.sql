@@ -1,4 +1,4 @@
--- Reviewed baseline repair for construction-daily-report (mhvzvranpywpnawuxina).
+-- Reviewed baseline repair.
 -- Execute the ENTIRE file. Guard failure rolls back every change.
 -- Does not replay old migrations, overwrite functions, or update application records.
 begin;

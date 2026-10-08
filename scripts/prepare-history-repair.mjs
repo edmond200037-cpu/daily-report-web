@@ -37,7 +37,7 @@ assert.equal(report.legacy_snapshot_authenticated_execute, false);
 // Only these baseline versions are repaired. Later files must still run through CI.
 assert.deepEqual(report.migration_history.map(v => v.version), Array.from({ length: 6 }, (_, i) => `20260921000${i + 1}`));
 const expected = quote(JSON.stringify({ columns, constraints, indexes, policies }));
-const sql = `-- Reviewed baseline repair for construction-daily-report (mhvzvranpywpnawuxina).
+const sql = `-- Reviewed baseline repair.
 -- Execute the ENTIRE file. Guard failure rolls back every change.
 -- Does not replay old migrations, overwrite functions, or update application records.
 begin;

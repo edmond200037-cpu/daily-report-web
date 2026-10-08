@@ -1,24 +1,32 @@
--- Run the entire file in construction-daily-report SQL Editor.
+-- Run the entire file in the project's SQL Editor.
 -- Creates/reuses one isolated deployment-check site. No existing site access is granted.
--- Administrator: existing application account com2990518@gmail.com.
--- Checker: newly created application account chitienlagan@gmail.com (editor only).
+-- Before running, replace the two placeholders below with the real account emails.
+-- DO NOT commit the filled-in values: this repository is public.
+--   administrator: existing application account (becomes owner)
+--   checker:       dedicated application account (editor only)
 begin;
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';
 select pg_advisory_xact_lock(hashtextextended('daily-report:deployment-check-site',0));
 do $setup$
 declare
-  administrator uuid := '7aebdb1c-ddfc-4258-a8b2-fb5a5ff90df7';
-  checker uuid := '8f8f33e9-ef79-4c73-bea7-2e178e2169dc';
+  administrator_email constant text := '<ADMINISTRATOR_EMAIL>';
+  checker_email constant text := '<CHECKER_EMAIL>';
+  administrator uuid;
+  checker uuid;
   target_site uuid;
 begin
-  if not exists(select 1 from auth.users where id=administrator and email='com2990518@gmail.com') then
-    raise exception 'Administrator identity differs; no setup performed';
+  if administrator_email like '<%' or checker_email like '<%' then
+    raise exception 'Replace the email placeholders first; no setup performed';
   end if;
-  if not exists(select 1 from auth.users where id=checker and email='chitienlagan@gmail.com'
-    and email_confirmed_at is not null and coalesce(encrypted_password,'')<>'') then
+  select id into administrator from auth.users where email=administrator_email;
+  if administrator is null then raise exception 'Administrator identity not found; no setup performed'; end if;
+  select id into checker from auth.users where email=checker_email
+    and email_confirmed_at is not null and coalesce(encrypted_password,'')<>'';
+  if checker is null then
     raise exception 'Checker identity, confirmed email, or password missing; no setup performed';
   end if;
+  if checker=administrator then raise exception 'Checker must be a different account; no setup performed'; end if;
   if (select count(*) from public.sites where created_by=administrator and name='部署驗證專用工地')>1 then
     raise exception 'Multiple check sites found; requires review';
   end if;
@@ -47,5 +55,4 @@ commit;
 select 'deployment_check_site_ready' as status,
   s.id as "SUPABASE_SYNC_CHECK_SITE_ID",u.email as "SUPABASE_SYNC_CHECK_EMAIL",m.role
 from public.sites s join public.site_members m on m.site_id=s.id join auth.users u on u.id=m.user_id
-where s.created_by='7aebdb1c-ddfc-4258-a8b2-fb5a5ff90df7' and s.name='部署驗證專用工地'
-  and m.user_id='8f8f33e9-ef79-4c73-bea7-2e178e2169dc';
+where s.name='部署驗證專用工地' and u.email='<CHECKER_EMAIL>' and m.role='editor';

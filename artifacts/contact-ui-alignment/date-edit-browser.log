@@ -1,1 +1,0 @@
-PASS: save/reopen restores date and separates task text; changing date replaces prefix; text-only edit retains date; clearing date removes prefix

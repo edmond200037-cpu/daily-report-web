@@ -55,3 +55,7 @@ from public.memory_snapshot_migrations m;
 舊 `memory_snapshots` 保留做回復來源；舊版整份記憶寫入 RPC 已停止對登入者開放。若需回復，先停用新版客戶端並匯出目前 `memory_entries`、`sync_operations`、`site_changes` 與本機衝突備份，再以原快照重建測試環境核對，不直接覆寫正式站的逐筆修改。
 
 實際驗收需在部署後用兩個編輯者、一個檢視者與兩台手機進行。檢查不同記憶同時修改、同筆衝突、確認／駁回傳遞、離線佇列重送、模板同步及本機匯入預覽。自動測試不能取代這項驗收。
+
+## 函式存取權限（匿名角色）
+
+Supabase 會把新函式的 EXECUTE 直接授權給 `anon` 與 `authenticated`，所以舊 migration 的 `revoke … from public` 擋不住匿名呼叫。`20261008150000_revoke_anon_function_access.sql` 會撤銷 `public` schema 內所有非擴充套件函式對 `anon`／`PUBLIC` 的執行權，並保留原本 `authenticated` 的授權；之後新增的函式也預設不再對匿名開放，新函式需明確 `grant execute … to authenticated`。套用前後都請執行 `supabase/diagnostics/function-exposure.sql`，確認每一列的 `anon_execute` 為 false。寫入 RPC 也一律先驗證登入與編輯權限，才取得工地鎖與解析 payload。
