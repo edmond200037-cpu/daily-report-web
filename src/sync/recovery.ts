@@ -182,7 +182,7 @@ function putMemoryEntry(payload: MemorySnapshotPayload, entry: MemoryEntryPayloa
 }
 
 /** Replace a local import identity with the server-confirmed row and rebind queued children. */
-export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string, remote: RemoteMemoryEntry, sourceOperation?: SyncOperation): Promise<void> {
+export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string, remote: RemoteMemoryEntry, sourceOperation?: SyncOperation, appliedRevision?: number): Promise<void> {
   const database = await openDatabase() as IDBDatabase;
   try {
     const stores = ['memory_partitions', 'memory_entry_versions', 'sync_outbox', 'sync_conflicts', 'sync_recovery_backups', ...SHARED_MEMORY_STORES];
@@ -208,7 +208,9 @@ export async function adoptCloudMemoryEntry(scope: SharedScope, localId: string,
     const queue = tx.objectStore('sync_outbox'); const operations = await request(queue.getAll()) as SyncOperation[];
     for (const operation of operations.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId && row.entity === 'memory-entry')) {
       if (operation.id === sourceOperation?.id) continue;
-      if (sourceOperation && localId === remote.id && operation.entityId === localId && operation.baseRevision === sourceOperation.baseRevision && operation.attempts === 0 && operation.status === 'pending') {
+      if (sourceOperation && localId === remote.id && operation.entityId === localId && operation.baseRevision === sourceOperation.baseRevision && operation.attempts === 0 && operation.status === 'pending'
+        // Only rebase when nobody else changed the row after our own write; otherwise keep the old base so the server reports a conflict.
+        && appliedRevision !== undefined && remote.revision === appliedRevision) {
         queue.put({ ...operation, baseRevision: remote.revision, updatedAt: new Date().toISOString() });
         continue;
       }

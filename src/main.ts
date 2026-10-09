@@ -804,7 +804,7 @@ async function commitInputMemories(capture = true): Promise<void> {
 }
 bindWorkGestures(app, {
   editable: () => !isReadOnlySite() && !workspaceSwitching,
-  move: (id, workId, offset) => { const index = daily.trade(id)?.workItems.findIndex((row) => row.id === workId) ?? -1; daily.reorderWorkItems(id, index, index + offset); },
+  move: (id, workId, offset) => { const index = daily.trade(id)?.workItems.findIndex((row) => row.id === workId) ?? -1; return daily.reorderWorkItems(id, index, index + offset) ? () => { daily.reorderWorkItems(id, index + offset, index); } : undefined; },
   remove: (id, workId) => daily.removeWorkItemForUndo(id, workId),
   save: () => daily.flush(), render: renderApp,
   error: (error) => { dailyCopyFeedback = error instanceof Error ? error.message : '儲存失敗，請重試。'; updateDailySaveStatus(); },
@@ -824,6 +824,14 @@ bindWorkGestures(app, {
     if (from < 0 || from === to) return;
     const [task] = items.splice(from, 1); items.splice(to, 0, task);
     items.forEach((task, index) => task.sortOrder = index);
+    return () => {
+      if (contactEditor?.id !== id) return;
+      const current = contactEditor.value.items;
+      const at = current.findIndex((row) => row.id === taskId);
+      if (at < 0) return;
+      const [moved] = current.splice(at, 1); current.splice(Math.min(from, current.length), 0, moved);
+      current.forEach((row, order) => row.sortOrder = order);
+    };
   },
   remove: (id, taskId) => {
     if (contactEditor?.id !== id) return;
@@ -1102,7 +1110,7 @@ app.addEventListener('click', async (event) => {
     }
     if (button.dataset.accountAction === 'retry-missing-rpc' && accountAuth.user && accountActiveSiteId) {
       const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
-      const retried = await retryMissingRpcOperations(scope);
+      const retried = await retryMissingRpcOperations(scope, { readOnly: isReadOnlySite() });
       const result = retried ? await runSyncOnce(scope) : null;
       accountFeedback = result?.failed ? `已重新送出 ${retried} 筆，但仍有 ${result.failed} 筆失敗；請查看新的錯誤摘要。` : `已重新送出 ${retried} 筆，請確認待同步數量。`;
     }
@@ -1211,7 +1219,7 @@ app.addEventListener('click', async (event) => {
       await savePendingDailyInput(); persistEntryDraft(); activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null;
       daily.switchTab(tab.dataset.dailyTab as DailyReportV3['activeTab']);
       await daily.flush(); await renderApp(); restoreTabFocus();
-    } catch (error) { daily.report.activeTab = previous; showEntrySaveError(error); await renderApp(); restoreTabFocus(); }
+    } catch (error) { daily.update(() => { daily.report.activeTab = previous; }); showEntrySaveError(error); await renderApp(); restoreTabFocus(); }
     finally { tabSwitching = false; }
     return;
   }

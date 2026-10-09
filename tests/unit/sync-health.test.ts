@@ -29,3 +29,11 @@ describe('缺 RPC 的操作僅在雲端能力恢復後重排', () => {
     expect(await retryMissingRpcOperations(scope)).toBe(1);
   });
 });
+describe('檢視者重送', () => {
+  it('檢視者直接得到提示，不呼叫能力檢查也不修改操作', async () => {
+    state.rows = [operation()];
+    await expect(retryMissingRpcOperations(scope, { readOnly: true })).rejects.toThrow('檢視者無法重送');
+    expect(state.rpc).not.toHaveBeenCalled();
+    expect(state.put).not.toHaveBeenCalled();
+  });
+});

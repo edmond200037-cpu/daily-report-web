@@ -9,7 +9,8 @@ interface Actions {
   /** Alternate row ownership lets contact drafts reuse the same touch workflow. */
   target?: { row: string; grip: string; owner(row: HTMLElement): string | undefined; item(row: HTMLElement): string | undefined };
   editable(): boolean;
-  move(trade: string, work: string, offset: number): void;
+  /** Returns an undo function when the order changed, so a failed save can restore it. */
+  move(trade: string, work: string, offset: number): (() => void) | undefined;
   remove(trade: string, work: string): (() => void) | undefined;
   save(): Promise<void>;
   render(): Promise<void>;
@@ -33,14 +34,14 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     let undo: (() => void) | undefined;
     try {
       if (button.hasAttribute('data-work-delete')) undo = actions.remove(trade, work);
-      else actions.move(trade, work, Number(button.dataset.workMove));
+      else undo = actions.move(trade, work, Number(button.dataset.workMove));
       await actions.save(); await actions.render();
       const updated = [...root.querySelectorAll<HTMLElement>(rowSelector)];
       const same = updated.find((candidate) => owner(candidate) === trade && item(candidate) === work);
       const next = updated.filter((candidate) => owner(candidate) === trade)[Math.max(0, index - 1)];
       (same ?? next)?.querySelector<HTMLElement>(gripSelector)?.focus();
       if (!same && !next) root.querySelector<HTMLElement>(`[data-continuous-work="${CSS.escape(trade)}"]`)?.focus();
-      if (undo) showUndo(undo);
+      if (button.hasAttribute('data-work-delete')) showUndo(undo);
       else { const status = document.createElement('p'); status.setAttribute('role', 'status'); status.className = 'work-move-feedback'; status.textContent = '已更新工項順序'; root.querySelector('.work-move-feedback')?.remove(); root.prepend(status); }
     } catch (error) { if (undo) undo(); await actions.render(); actions.error(error); }
     finally { buttonBusy = false; }
@@ -56,7 +57,7 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     event.preventDefault();
     const undo = actions.remove(trade, work);
     try { await actions.save(); await actions.render(); showUndo(undo); }
-    catch (error) { actions.error(error); }
+    catch (error) { undo?.(); await actions.render(); actions.error(error); }
   });
   const showUndo = (undo: (() => void) | undefined) => {
     if (!undo) return;
@@ -138,12 +139,12 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
     if (!trade || !work || !actions.editable()) return;
     let undo: (() => void) | undefined;
     if (deleted) undo = actions.remove(trade, work);
-    else if (state.drag && state.offset) actions.move(trade, work, state.offset);
+    else if (state.drag && state.offset) undo = actions.move(trade, work, state.offset);
     else return;
     try {
       await actions.save(); await actions.render();
-      showUndo(undo);
-    } catch (error) { actions.error(error); }
+      if (deleted) showUndo(undo);
+    } catch (error) { undo?.(); await actions.render(); actions.error(error); }
   });
   root.addEventListener('click', (event) => { if (suppressClick && (event.target as HTMLElement).closest(rowSelector)) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
 }

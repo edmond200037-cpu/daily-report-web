@@ -60,7 +60,9 @@ export async function listSyncDiagnostics(scope: SharedScope): Promise<SyncOpera
 }
 
 /** Re-queues only operations blocked because PostgREST did not know a newly deployed RPC. */
-export async function retryMissingRpcOperations(scope: SharedScope): Promise<number> {
+export async function retryMissingRpcOperations(scope: SharedScope, options: { readOnly?: boolean } = {}): Promise<number> {
+  // Viewers receive no write capabilities, so skip the capability RPC and explain instead of reporting a missing function.
+  if (options.readOnly) throw new Error('檢視者無法重送同步操作；請由編輯者或管理員處理。');
   const key = sharedScopeKey(scope); const rows = await list('sync_outbox') as SyncOperation[]; const now = new Date().toISOString(); let retried = 0;
   const candidates = rows.filter((row) => sharedScopeKey(row) === key && missingRpcOperation(row));
   if (!candidates.length) return 0;

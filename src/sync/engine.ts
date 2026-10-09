@@ -456,7 +456,7 @@ async function runSyncOnceUnlocked(scope: SharedScope, manual: boolean): Promise
             .eq('site_id', scope.siteId).eq('id', result.entity_id).single();
           if (error) throw error;
           await checkRemotePayload(scope, { sequence: result.sequence ?? 0, entity: 'memory-entry', entity_id: result.entity_id, operation: 'upsert', revision: result.revision, changed_at: new Date().toISOString() }, remote);
-          await adoptCloudMemoryEntry(scope, operation.entityId, remote as RemoteMemoryEntry, operation);
+          await adoptCloudMemoryEntry(scope, operation.entityId, remote as RemoteMemoryEntry, operation, result.revision);
         } else await acceptMutation(operation, result);
         // Do not acknowledge until the server identity has been fetched and
         // adopted. A failed read preserves the original idempotent request.

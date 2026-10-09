@@ -11,11 +11,19 @@ export interface ContactEditorDraft {
 export interface EntryDraft { contact: ContactEditorDraft | null; work: Array<[string, string]>; }
 
 const contactDatePrefix = /^(?:預定\s*)?(?:(\d{4})[-/])?(\d{1,2})[-/](\d{1,2})(?:[（(][日一ㄧ二三四五六][）)])?\s*/;
+/** A date without a year that falls in an earlier month than the report belongs to next year (12/30 report, 01/05 task). */
+function contactMatchDate(match: RegExpExecArray, reportDate: string): string {
+  const reportYear = Number(reportDate.slice(0, 4));
+  const reportMonth = Number(reportDate.slice(5, 7));
+  const month = Number(match[2]);
+  const year = match[1] ? Number(match[1]) : month < reportMonth ? reportYear + 1 : reportYear;
+  return `${year}-${String(month).padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+}
 export function contactTaskParts(content: string, reportDate: string): { date: string; text: string } {
   const value = content.trim();
   const match = contactDatePrefix.exec(value);
   return {
-    date: match ? `${match[1] ?? reportDate.slice(0, 4)}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : '',
+    date: match ? contactMatchDate(match, reportDate) : '',
     text: match ? value.slice(match[0].length) : value,
   };
 }
@@ -45,7 +53,7 @@ export function plannedContactPrefix(date: string): string {
 export function formatContactTask(content: string, reportDate: string): string {
   const text = content.trim();
   const match = contactDatePrefix.exec(text);
-  const prefix = match ? plannedContactPrefix(`${match[1] ?? reportDate.slice(0, 4)}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`) : '';
+  const prefix = match ? plannedContactPrefix(contactMatchDate(match, reportDate)) : '';
   const body = (match ? text.slice(match[0].length) : text).replace(/（數量／規格：([^]*)）$/, '$1').replace(/[。.]$/, '');
   return prefix + body;
 }

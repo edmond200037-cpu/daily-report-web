@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendContactTask, applyContactPlannedDate, contactTaskMemoryText, contactTaskParts, editContactEntry, updateContactTaskText, type ContactEditorDraft } from '../../src/daily/entry-workflow';
+import { formatContactTask as formatDailyReportContactTask, appendContactTask, applyContactPlannedDate, contactTaskMemoryText, contactTaskParts, editContactEntry, updateContactTaskText, type ContactEditorDraft } from '../../src/daily/entry-workflow';
 import { createContact, createDailyDraft, createTrade, createWorkItem } from '../../src/domain/daily';
 import { collectMemoryApplications } from '../../src/settings/memory-applications';
 import { formatDailyReport } from '../../src/daily/daily-formatter';
@@ -89,5 +89,11 @@ describe('日期輸出與共用工項記憶', () => {
     expect(collectMemoryApplications(report).filter(row => row.store === 'trade_tasks').map(row => row.name)).toEqual(['澆置混凝土']);
     expect(contact.items[0].content).toBe(samples[1][0]);
     expect(formatDailyReport(report)).toContain(samples[1][0]);
+  });
+  it('沒有年份的日期早於日報月份時算入下一年', () => {
+    expect(contactTaskParts('預定01/05澆置', '2026-12-30').date).toBe('2027-01-05');
+    expect(contactTaskParts('預定12/31澆置', '2026-12-30').date).toBe('2026-12-31');
+    expect(contactTaskParts('預定2026/01/05澆置', '2026-12-30').date).toBe('2026-01-05');
+    expect(formatDailyReportContactTask('預定01/05澆置', '2026-12-30')).toBe('預定01/05(二)澆置');
   });
 });
