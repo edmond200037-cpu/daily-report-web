@@ -59,3 +59,21 @@ from public.memory_snapshot_migrations m;
 ## 函式存取權限（匿名角色）
 
 Supabase 會把新函式的 EXECUTE 直接授權給 `anon` 與 `authenticated`，所以舊 migration 的 `revoke … from public` 擋不住匿名呼叫。`20261008150000_revoke_anon_function_access.sql` 會撤銷 `public` schema 內所有非擴充套件函式對 `anon`／`PUBLIC` 的執行權，並保留原本 `authenticated` 的授權；之後新增的函式也預設不再對匿名開放，新函式需明確 `grant execute … to authenticated`。套用前後都請執行 `supabase/diagnostics/function-exposure.sql`，確認每一列的 `anon_execute` 為 false。寫入 RPC 也一律先驗證登入與編輯權限，才取得工地鎖與解析 payload。
+
+## 正式資料庫發布需人工核准
+
+`deploy.yml` 的順序：`database-tests` → `build` → `migration-review` → **`database-deploy`（需核准）** → Pages `deploy`。
+
+- `migration-review` 不含任何 secret，只在該次執行的「Summary」頁列出這次推送動到哪些 `supabase/migrations/` 檔案。核准前先看這份清單與檔案內容。
+- `database-deploy` 只會在 `main` 執行；從其他分支手動觸發時，資料庫與 Pages 發布都會被略過。
+- 前端要等 `database-deploy` 成功才會發布，所以未核准或被拒絕時，網站不會更新。
+
+**一次性的 GitHub 設定**（無法由 repo 檔案設定，需在 Settings → Environments → `production-database`）：
+
+1. 勾選 **Required reviewers**，加入你自己。
+2. 取消勾選 **Allow administrators to bypass configured protection rules**。
+3. **Deployment branches and tags** 改為 *Selected branches*，只允許 `main`。
+4. 單人維護時不要勾 *Prevent self-review*，否則自己推送的版本無法自己核准。
+5. 未設定 Required reviewers 時，這個 job 仍會自動執行，等於沒有閘門；設定完成後請用一次無害的推送確認它會停在「Waiting」。
+
+資料庫連線字串仍以 `--db-url` 傳給 Supabase CLI。`db push` 沒有文件記載的環境變數或檔案可替代，改用 `--linked` 則需新增 `SUPABASE_ACCESS_TOKEN` 並重做連結。GitHub 託管的執行環境為單次使用，且 `scripts/deploy-database.mjs` 會遮蔽輸出中的連線字串，故目前接受此風險；若日後改用自架 runner，須重新評估。

@@ -18,7 +18,7 @@
 | 雲端同步 | `src/sync/*`、`src/data/remote/*`：固定 mutation ID、CAS revision、outbox 重試、增量游標、日報草稿、記憶與水位快照同步 |
 | 免費後端 | `supabase/migrations/*`：Auth、Postgres、RLS、成員管理與寫入 RPC；可部署在 Supabase Free Plan |
 | 離線殼層 | `src/service-worker.ts`：Workbox 預快取；導航先走網路，失敗回退快取 index.html |
-| 部署 | `.github/workflows/deploy.yml`：main push / 手動觸發 → npm ci → npm test → npm run build → dist → GitHub Pages |
+| 部署 | `.github/workflows/deploy.yml`：main push / 手動觸發 → npm ci → npm test → npm run build → 人工核准資料庫發布（見 supabase/README.md）→ GitHub Pages |
 
 ## 關鍵 Workflow
 

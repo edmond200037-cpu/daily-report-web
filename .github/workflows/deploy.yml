@@ -41,9 +41,47 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-  database-deploy:
+  # 不含任何 secret：只把這次推送會動到的 migration 列在執行摘要，讓核准者在按下核准前看得到。
+  migration-review:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+      - name: 列出待核准的資料庫變更
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          range="$BEFORE..$GITHUB_SHA"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$GITHUB_SHA~1..$GITHUB_SHA"
+          fi
+          files=$(git diff --name-only "$range" -- supabase/migrations 2>/dev/null || true)
+          {
+            echo '## 待核准的資料庫變更'
+            echo
+            if [ -z "$files" ]; then
+              echo '這次推送沒有新的 migration；核准後只會執行 history 預檢、dry-run 與 Data API 契約檢查。'
+            else
+              echo '核准後會套用到**正式資料庫**，請先檢視這些檔案的內容：'
+              echo
+              echo "$files" | sed 's/^/- `/; s/$/`/'
+            fi
+            echo
+            echo "比對範圍：\`$range\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+  # 正式資料庫只由 main 發布，且 production-database environment 必須設定 Required reviewers
+  # （核准前不會取得任何資料庫 secret）。從其他分支手動觸發時整個後半段會被略過。
+  database-deploy:
+    needs: [build, migration-review]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     environment: production-database
     steps:
       - uses: actions/checkout@v4
