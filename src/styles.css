@@ -265,8 +265,8 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .trade-management__list { gap: 0; margin-top: var(--space-3); }
 .trade-management__list .settings-trade-swipe { border-radius: 0; border-bottom: 1px solid var(--line); }
 .trade-management__list .settings-trade-swipe:last-child { border-bottom: 0; }
-.trade-management__list .settings-trade-swipe__surface { min-height: 0; padding: 0 var(--space-3); border-bottom: 0; }
-.trade-toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2); width: 100%; min-height: 48px; border: 0; background: transparent; color: var(--ink); padding: 0; text-align: left; font-weight: 760; }
+.trade-management__list .settings-trade-swipe__surface { min-height: 0; padding: 0 var(--space-4); border-bottom: 0; }
+.trade-toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2); width: 100%; min-height: 44px; border: 0; background: transparent; color: var(--ink); padding: 0; text-align: left; font-weight: 760; }
 .trade-toggle__name { overflow-wrap: anywhere; }
 .trade-toggle__meta { color: var(--ink-faint); font-size: .8125rem; font-weight: 500; white-space: nowrap; }
 .trade-toggle__chevron { width: 1.25rem; text-align: center; }
