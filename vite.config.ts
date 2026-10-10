@@ -17,8 +17,8 @@ export default defineConfig({
         short_name: '工地管理',
         start_url: './#daily',
         display: 'standalone',
-        theme_color: '#173f3a',
-        background_color: '#f7f4ed',
+        theme_color: '#b84e16',
+        background_color: '#f6f3ec',
         icons: [
           { src: './icons/icon.svg', sizes: 'any', type: 'image/svg+xml' },
           { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png' },

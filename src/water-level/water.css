@@ -2,7 +2,7 @@
 .water-page { display: grid; gap: var(--space-3); padding-bottom: 7rem; }
 .water-page .subtabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 var(--space-1); overflow: visible; }
 .water-page .subtabs button { display: flex; align-items: center; justify-content: center; gap: .35rem; min-width: 0; white-space: normal; }
-.water-tab__count { display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); font-size: .6875rem; font-weight: 760; }
+.water-tab__count { display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; border-radius: 2px; background: var(--accent-soft); color: var(--accent-strong); font-size: .6875rem; font-weight: 760; }
 .water-page .subtabs button.active .water-tab__count { background: #e8f2ed; color: var(--success); }
 
 .water-entry__meta { display: grid; gap: var(--space-3); }
@@ -16,7 +16,7 @@
 .water-history-card__copy strong, .water-history-card__copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .water-history-card__copy strong { color: var(--ink); font-size: .9375rem; }
 .water-history-card__copy span { color: var(--ink-soft); font-size: .8125rem; font-weight: 600; }
-.water-history-card__status { flex: none; border: 1px solid #e6bd82; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); padding: .25rem .45rem; font-size: .6875rem; font-weight: 760; }
+.water-history-card__status { flex: none; border: 1px solid #e6bd82; border-radius: 2px; background: var(--accent-soft); color: var(--accent-strong); padding: .25rem .45rem; font-size: .6875rem; font-weight: 760; }
 .water-history-card__status--complete { border-color: #a8c9b7; background: var(--success-soft); color: var(--success); }
 .water-history-card__content { border-top: 1px solid var(--line); padding: var(--space-3); }
 .water-history-card__content pre { max-height: min(38vh, 18rem); overflow: auto; margin: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-muted); color: var(--ink); padding: var(--space-3); font: inherit; font-size: .875rem; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }

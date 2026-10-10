@@ -7,7 +7,7 @@
 .daily-tabs button { position: relative; min-width: 0; font-size: .8125rem; text-align: center; }
 .daily-tabs button:hover, .subtabs button:hover { background: var(--surface-muted); color: var(--ink); }
 .daily-tabs button[aria-selected="true"], .daily-tabs button.active, .subtabs button.active { border-bottom-color: var(--accent); background: transparent; color: var(--ink); }
-.daily-tab__count { display: inline-grid; place-items: center; min-width: 1.1rem; height: 1.1rem; margin-left: .18rem; border-radius: 999px; background: var(--surface-muted); color: var(--ink-soft); font-size: .625rem; font-variant-numeric: tabular-nums; vertical-align: text-top; }
+.daily-tab__count { display: inline-grid; place-items: center; min-width: 1.1rem; height: 1.1rem; margin-left: .18rem; border-radius: 2px; background: var(--surface-muted); color: var(--ink-soft); font-size: .6875rem; font-variant-numeric: tabular-nums; vertical-align: text-top; }
 .daily-tabs button.active .daily-tab__count { background: var(--accent-soft); color: var(--accent-strong); }
 
 
