@@ -61,3 +61,4 @@
   .account-page-shell .account-join-code button { flex: none; min-height: 44px; }
 }
 @media (max-width: 520px) { .account-identity, .account-site, .account-member { align-items: stretch; flex-direction: column; } .account-identity > button, .account-site > button { width: 100%; } .account-member > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; } .account-member > div:last-child button { width: 100%; min-width: 0; padding-inline: var(--space-2); } }
+.account-page-shell button.account-role-button.active { border-color: var(--daily-orange); background: var(--daily-orange-soft); color: var(--daily-orange-strong); font-weight: 800; box-shadow: inset 0 -3px 0 var(--daily-orange); }

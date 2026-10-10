@@ -1,7 +1,7 @@
 .subsection-title { margin: 1.25rem 0 .5rem; color: var(--ink); font-size: .9375rem; font-weight: 760; }
 .material-source { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--line); }
 .material-entry { width: 100%; overflow: visible; margin: 0; }
-.material-dirty { border: 1px solid #dfb0a5; border-radius: 2px; background: var(--danger-soft); color: var(--danger); font-size: .6875rem; font-weight: 760; line-height: 1.2; padding: .2rem .42rem; text-align: center; white-space: nowrap; }
+.material-dirty { border: 1px solid #dfb0a5; border-radius: 2px; background: var(--danger-soft); color: var(--danger); font-size: .75rem; font-weight: 760; line-height: 1.2; padding: .2rem .42rem; text-align: center; white-space: nowrap; }
 .material-entry__divider { height: 1px; margin: 0 1rem; background: var(--line); }
 .material-entry__content { padding: .85rem 1rem 1rem; }
 .material-form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3) var(--space-2); }
@@ -16,7 +16,7 @@
 .warning-button { border-color: #d7ab50; background: var(--accent-soft); color: var(--accent-strong); }
 .field-error { color: var(--danger); font-size: .75rem; }
 .material-entry--editing .material-entry__summary { cursor: default; }
-.material-connection-panel { --connection-node-height: 68px; --connection-node-gap: var(--space-2); margin: var(--space-4) 0; border: 1px solid var(--line-strong); border-left: 4px solid var(--accent); border-radius: var(--radius-md); background: var(--surface-muted); padding: var(--space-3); }
+.material-connection-panel { --connection-node-height: 68px; --connection-node-gap: var(--space-2); margin: var(--space-4) 0; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-raised); padding: var(--space-3); }
 .material-connection-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .material-connection-panel h3, .material-connection-panel h4 { margin: 0; color: var(--ink); }
 .material-connection-panel h3 { font-size: 1rem; }
@@ -46,7 +46,7 @@
 .connection-node--material .connection-port { right: -.35rem; }
 .connection-node--trade .connection-port { left: -.35rem; }
 .connection-node.is-selected .connection-port { background: var(--accent); }
-.connection-count { position: absolute; top: 50%; left: -1.8rem; display: grid; place-items: center; min-width: 1.15rem; height: 1.15rem; border-radius: 2px; background: var(--accent); color: #fff; font-size: .6875rem; line-height: 1; transform: translateY(-50%); }
+.connection-count { position: absolute; top: 50%; left: -1.8rem; display: grid; place-items: center; min-width: 1.15rem; height: 1.15rem; border-radius: 2px; background: var(--accent); color: #fff; font-size: .75rem; line-height: 1; transform: translateY(-50%); }
 .linked-material-summary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .linked-material-summary span { border: 1px solid #8cb69d; border-radius: 2px; background: #e9f3ec; color: #245c3b; padding: .3rem .55rem; font-size: .75rem; font-weight: 720; }
 @media (max-width: 760px) { .material-connection-panel__board { grid-template-columns: 1fr; gap: 0; } .connection-node-section { width: auto; justify-self: stretch; order: 1; } .connection-node-section .connection-node-list { grid-template-columns: repeat(var(--connection-mobile-count), minmax(0, 1fr)); gap: 0; } .connection-node-section--trades { display: contents; } .connection-node-section--trades > header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-2); order: 0; min-height: 2rem; } .connection-node-section--trades > .connection-node-list { order: 3; } .material-connection-canvas { position: static; inset: auto; order: 2; height: 80px; margin: 0; overflow: visible; } .material-connection-canvas__desktop { display: none !important; } .material-connection-canvas__mobile { display: block !important; } .connection-node--material .connection-port { top: auto; right: auto; bottom: -.42rem; left: 50%; transform: translateX(-50%); } .connection-node--trade .connection-port { top: -.42rem; right: auto; bottom: auto; left: 50%; transform: translateX(-50%); } .connection-count { top: -1.75rem; left: 50%; transform: translateX(-50%); } }
