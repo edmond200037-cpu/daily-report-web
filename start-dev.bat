@@ -14,7 +14,11 @@ if not exist "node_modules\.bin\vite.cmd" (
     exit /b 1
 )
 
-start "Daily Report - Vite Dev Server" /D "%~dp0" cmd /k "call npm.cmd run dev -- --host %DEV_HOST% --port %DEV_PORT%"
+rem Stop an older Vite dev server still holding the port (only processes whose command line contains vite).
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort %DEV_PORT% -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $_.OwningProcess); if ($p -and $p.CommandLine -like '*vite*') { Stop-Process -Id $p.ProcessId -Force } }"
+timeout /t 1 /nobreak >nul
+
+start "Daily Report - Vite Dev Server" /D "%~dp0" cmd /k "call npm.cmd run dev -- --host %DEV_HOST% --port %DEV_PORT% --strictPort"
 
 rem Wait until Vite is ready instead of relying on a fixed delay.
 set /a WAIT_RETRIES=30

@@ -363,3 +363,20 @@ p, .hint, .empty, small { text-wrap: pretty; }
 .settings-page .form-card > [data-settings-action="add"] { justify-content: flex-start; width: 100%; min-height: 48px; border: 0; border-bottom: 1px solid var(--daily-line); border-radius: 0; background: transparent; color: var(--accent-strong); padding-inline: 0; text-align: left; }
 .settings-page .form-card > [data-settings-action="add"]:active { background: var(--daily-paper-muted); }
 .settings-page .empty { padding-block: var(--space-3); }
+/* 工地記憶：分類（主）與項目（次）分層，兩個分類永遠同時可見 */
+.settings-area-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--space-4); border: 1px solid var(--ink); }
+.settings-area-switch__item { min-height: 48px; border: 0; border-radius: 0; background: transparent; color: var(--ink); padding: var(--space-2) var(--space-3); font-size: 1rem; font-weight: 800; }
+.settings-area-switch__item + .settings-area-switch__item { border-left: 1px solid var(--ink); }
+.settings-area-switch__item.active { background: var(--ink); color: var(--surface-raised); }
+.settings-area-description { margin: var(--space-2) 0 0; }
+.settings-page .settings-area-switch__item:hover:not(.active) { background: var(--daily-paper-muted); }
+.settings-page .settings-area-switch__item.active { background: var(--daily-ink); color: var(--daily-paper-raised); }
+.settings-work-area .settings-work-area__content { border-top: 0; padding-bottom: 0; }
+.settings-work-area .settings-management-list { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-top: var(--space-2); border-bottom: 1px solid var(--line); }
+.settings-work-area .settings-management-list__item { display: grid; gap: 0; width: auto; min-height: 44px; border-bottom: 0; padding: var(--space-2) 0; font-size: .9375rem; }
+.settings-work-area .settings-management-list__item strong { font-weight: 600; color: var(--ink-soft); }
+.settings-work-area .settings-management-list__item small { display: none; }
+.settings-page .settings-work-area .settings-management-list__item.active { box-shadow: inset 0 -3px 0 var(--daily-orange); }
+.settings-work-area .settings-management-list__item.active strong { color: var(--ink); font-weight: 800; }
+.settings-work-area .settings-management-panel { margin-top: 0; }
+.settings-area-switch { position: sticky; top: 0; z-index: 5; background: var(--daily-paper, var(--surface)); box-shadow: 0 0 0 var(--space-2) var(--daily-paper, var(--surface)); }
