@@ -134,12 +134,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .settings-page .settings-context-tabs a { border-color: var(--daily-line); background: transparent; color: var(--daily-ink-soft); }
 .settings-page .settings-context-tabs a.active { border-color: var(--daily-orange); background: transparent; color: var(--daily-ink); box-shadow: inset 0 -3px 0 var(--daily-orange); }
 .settings-page .settings-work-area { border-color: var(--daily-line-strong); background: transparent; }
-.settings-page .settings-work-area.expanded { border-top-color: var(--daily-ink); box-shadow: inset 3px 0 0 var(--daily-orange); }
+.settings-page .settings-work-area.expanded { border-top-color: var(--daily-ink); }
 .settings-page .settings-work-area__toggle:hover, .settings-page .settings-management-list__item:hover { background: var(--daily-paper-muted); }
 .settings-page .settings-work-area__toggle small, .settings-page .settings-management-list__item small { color: var(--daily-ink-faint); }
 .settings-page .settings-work-area__toggle > span:last-child, .settings-page .settings-management-list__item > span:last-child { color: var(--daily-orange-strong); }
 .settings-page .settings-work-area__content, .settings-page .settings-edit-form { border-color: var(--daily-line); }
-.settings-page .settings-management-list__item.active { background: var(--daily-orange-soft); color: var(--daily-ink); box-shadow: inset 3px 0 0 var(--daily-orange); }
+.settings-page .settings-management-list__item.active { background: transparent; color: var(--daily-ink); box-shadow: inset 2px 0 0 var(--daily-orange); }
 .settings-page .form-card, .settings-page .manage, .settings-page .backup { border-color: var(--daily-line); background: var(--daily-paper-raised); }
 .settings-page input, .settings-page textarea, .settings-page select { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }
 .settings-page label, .settings-page .settings-item { color: var(--daily-ink-soft); border-color: var(--daily-line); }
@@ -202,19 +202,21 @@ textarea { min-height: 4.5rem; resize: vertical; }
 .settings-work-areas { display: grid; gap: 0; margin-top: var(--space-4); }
 .settings-work-area { border: 0; border-top: 1px solid var(--line-strong); border-radius: 0; background: transparent; }
 .settings-work-area:last-child { border-bottom: 1px solid var(--line-strong); }
-.settings-work-area.expanded { border-top-color: var(--ink); box-shadow: inset 3px 0 0 var(--accent); }
+.settings-work-area.expanded { border-top-color: var(--ink); }
 .settings-work-area__toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: 68px; border: 0; border-radius: 0; background: transparent; padding: var(--space-3) var(--space-3); text-align: left; }
 .settings-work-area__toggle:hover { background: var(--surface-muted); border-color: transparent; }
 .settings-work-area__toggle span:first-child { display: grid; gap: var(--space-1); }
 .settings-work-area__toggle strong { font-size: 1rem; }
 .settings-work-area__toggle small, .settings-management-list__item small { color: var(--ink-faint); font-size: .8125rem; font-weight: 500; line-height: 1.45; }
-.settings-work-area__toggle > span:last-child { color: var(--accent-strong); font-size: .8125rem; font-weight: 760; white-space: nowrap; }
+.settings-work-area__toggle > span:last-child { color: var(--accent-strong); font-size: 1.5rem; font-weight: 400; line-height: 1; white-space: nowrap; transition: transform 180ms ease; }
+.settings-work-area.expanded > .settings-work-area__toggle > span:last-child { transform: rotate(90deg); }
 .settings-work-area__content { border-top: 1px solid var(--line); padding: 0 0 var(--space-3); }
 .settings-management-list { display: grid; gap: 0; }
 .settings-management-list__item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: 64px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: var(--space-3); text-align: left; }
 .settings-management-list__item:last-child { border-bottom: 0; }
 .settings-management-list__item:hover { background: var(--surface-muted); }
-.settings-management-list__item.active { background: var(--accent-soft); color: var(--ink); box-shadow: inset 3px 0 0 var(--accent); }
+.settings-management-list__item.active { background: transparent; color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+.settings-management-list__item.active strong { font-weight: 800; }
 .settings-management-list__item > span:first-child { display: grid; gap: .125rem; min-width: 0; }
 .settings-management-list__item > span:last-child { color: var(--accent-strong); font-size: 1.5rem; font-weight: 400; line-height: 1; }
 .settings-management-panel { margin-top: var(--space-3); }
@@ -347,3 +349,17 @@ p, .hint, .empty, small { text-wrap: pretty; }
 .button-like:hover { background: var(--surface-muted); border-color: var(--ink-faint); }
 .button-like:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .settings-page .action-row > .button-like { flex: 1 1 auto; }
+
+/* 手機平台修正（iOS / Android）：16px 輸入字級、原生 select 外觀統一、安全區、觸控回饋、送出列不被鍵盤遮住。 */
+.app-shell { padding-inline: max(var(--space-4), env(safe-area-inset-left), env(safe-area-inset-right)); }
+.settings-page { -webkit-tap-highlight-color: transparent; }
+.settings-page :is(a, button, label, select, summary, [role="button"]) { touch-action: manipulation; }
+.settings-page :is(input, textarea, select) { font-size: 1rem; scroll-margin-block: 5rem 9rem; }
+.settings-page select { appearance: none; -webkit-appearance: none; min-height: 44px; padding-right: 2.25rem; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%236f685d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .875rem center; background-size: .75rem .5rem; }
+.settings-page :is(.settings-work-area__toggle, .settings-management-list__item, .settings-context-tabs a):active { background: var(--daily-paper-muted); }
+.settings-page .settings-edit-form .form-actions--submit { position: sticky; bottom: 0; z-index: 5; margin-inline: calc(var(--space-3) * -1); padding: var(--space-3) var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom)); border-top: 1px solid var(--daily-line); background: var(--daily-paper); }
+
+/* 設定頁：新增改成清單頂端整列；空狀態附說明。 */
+.settings-page .form-card > [data-settings-action="add"] { justify-content: flex-start; width: 100%; min-height: 48px; border: 0; border-bottom: 1px solid var(--daily-line); border-radius: 0; background: transparent; color: var(--accent-strong); padding-inline: 0; text-align: left; }
+.settings-page .form-card > [data-settings-action="add"]:active { background: var(--daily-paper-muted); }
+.settings-page .empty { padding-block: var(--space-3); }
