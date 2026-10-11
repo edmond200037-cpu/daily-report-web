@@ -19,8 +19,8 @@ describe('設定端直達導覽契約', () => {
     expect(main).toContain('let settingsReturnModule: SettingsReturnModule = \'daily\';');
     expect(main).toContain('function settingsReturnLink(): string');
     expect(main).toContain('class="settings-context-tabs"');
-    expect(css).toContain('.settings-context-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));');
-    expect(css).toContain('.settings-context-tabs a.active { border-color: var(--accent); background: var(--surface-raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent); }');
+    expect(css).toContain('.settings-context-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));');
+    expect(css).toContain('.settings-context-tabs a.active { border-color: var(--accent); background: transparent; color: var(--ink); font-weight: 800; box-shadow: inset 0 -3px 0 var(--accent); }');
     expect(css).not.toContain('.settings-context-tabs a:last-child { grid-column: 1 / -1; }');
     expect(main).toContain("['debug', '#settings/debug', '偵錯與同步']");
     expect(main).toContain("['account', '#settings/account', '共用工地']");
@@ -28,8 +28,8 @@ describe('設定端直達導覽契約', () => {
 
   it('六個設定領域共用紙質淡黃色工作台，不影響填報模組容器', () => {
     expect(css).toContain('.settings-page { background: var(--daily-paper); color: var(--daily-ink); }');
-    expect(css).toContain('.settings-page .settings-context-tabs a { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); color: var(--daily-ink); }');
-    expect(css).toContain('.settings-page .settings-work-area { border-color: var(--daily-line-strong); background: var(--daily-paper-raised); }');
+    expect(css).toContain('.settings-page .settings-context-tabs a { border-color: var(--daily-line); background: transparent; color: var(--daily-ink-soft); }');
+    expect(css).toContain('.settings-page .settings-work-area { border-color: var(--daily-line-strong); background: transparent; }');
   });
 
   it('日報主檔以兩個暫態工作面與直列管理清單呈現既有內容', () => {
