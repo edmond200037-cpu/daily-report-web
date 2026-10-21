@@ -1,14 +1,16 @@
 import type { DailyReportV3 } from '../domain/daily';
 import type { SharedScope } from '../domain/shared';
-import { getSupabaseClient } from '../data/remote/supabase-client';
+import { gasCall } from '../data/remote/gas-client';
 import { openDatabase, transactionDone } from '../data/db.js';
 import { SHARED_MEMORY_STORES, memoryPayloadHash, type MemoryPartition, type MemorySnapshotPayload } from '../data/memory-partition';
 import { waterPayloadHash, type WaterPartition, type WaterSnapshotPayload } from '../data/water-partition';
 import { listReadyOperations, markOperationFailed, markOperationSending } from './outbox';
 import type { SyncConflict, SyncCursor, SyncOperation } from './types';
 
-interface MutationResult { status: 'applied' | 'duplicate' | 'conflict'; entity_id: string; revision: number; sequence?: number; remote_payload?: unknown; }
-interface ChangeRow { sequence: number; entity: string; entity_id: string; operation: 'upsert' | 'delete'; revision: number; changed_at: string; }
+interface MutationResult { status: 'applied' | 'duplicate' | 'conflict' | 'rejected'; revision: number; remote_payload?: unknown; reason?: string; }
+interface ChangeRow { sequence: number; }
+interface RemoteRow { entity: string; entity_id: string; report_date: string; revision: number; sequence: number; payload: unknown; }
+const SYNCED_ENTITIES = ['daily-draft', 'memory', 'water-snapshot'];
 interface RemoteDraftRow { id: string; report_date: string; payload: DailyReportV3; revision: number; }
 interface RemoteMemoryRow { site_id: string; payload: MemorySnapshotPayload; revision: number; }
 interface RemoteWaterRow { site_id: string; payload: WaterSnapshotPayload; revision: number; }
@@ -17,26 +19,15 @@ export interface SyncRunResult { applied: number; pulled: number; memoryPulled: 
 const request = <T>(value: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => { value.onsuccess = () => resolve(value.result); value.onerror = () => reject(value.error); });
 
 async function pushOperation(operation: SyncOperation): Promise<MutationResult> {
-  const request = operation.entity === 'daily-draft'
-    ? getSupabaseClient().rpc('apply_daily_draft_mutation', {
-        p_site_id: operation.siteId, p_mutation_id: operation.mutationId, p_entity_id: operation.entityId,
-        p_base_revision: operation.baseRevision, p_payload: operation.payload,
-      })
-    : operation.entity === 'memory'
-      ? getSupabaseClient().rpc('apply_memory_snapshot_mutation', {
-          p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
-          p_base_revision: operation.baseRevision, p_payload: operation.payload,
-        })
-      : operation.entity === 'water-snapshot'
-        ? getSupabaseClient().rpc('apply_water_snapshot_mutation', {
-            p_site_id: operation.siteId, p_mutation_id: operation.mutationId,
-            p_base_revision: operation.baseRevision, p_payload: operation.payload,
-          })
-        : null;
-  if (!request) throw new Error(`尚未支援同步實體：${operation.entity}`);
-  const { data, error } = await request;
-  if (error) throw error;
-  return data as MutationResult;
+  if (!SYNCED_ENTITIES.includes(operation.entity)) throw new Error(`尚未支援同步實體：${operation.entity}`);
+  // cursor 給最大值：只要送出結果，不需要順便拉取（拉取由 pullRemoteChanges 負責）。
+  const { results } = await gasCall<{ results: MutationResult[] }>({
+    action: 'push', cursor: Number.MAX_SAFE_INTEGER,
+    mutations: [{ mutation_id: operation.mutationId, entity: operation.entity, entity_id: operation.entityId, base_revision: operation.baseRevision, payload: operation.payload }],
+  });
+  const result = results[0];
+  if (!result || result.status === 'rejected') throw new Error(`後端拒絕這筆同步：${result?.reason ?? '無回應'}`);
+  return result;
 }
 
 async function acceptMutation(operation: SyncOperation, result: MutationResult): Promise<void> {
@@ -190,37 +181,42 @@ async function applyRemoteWater(scope: SharedScope, change: ChangeRow, remote: R
 }
 
 async function pullRemoteChanges(scope: SharedScope): Promise<{ pulled: number; memoryPulled: number; waterPulled: number; conflicts: number }> {
-  let cursor = await loadCursor(scope); let pulled = 0; let memoryPulled = 0; let waterPulled = 0; let conflicts = 0;
-  for (;;) {
-    const { data, error } = await getSupabaseClient().rpc('pull_site_changes', { p_site_id: scope.siteId, p_cursor: cursor, p_limit: 100 });
-    if (error) throw error;
-    const changes = (data ?? []) as ChangeRow[];
-    for (const change of changes) {
-      if (change.entity === 'daily-draft' && change.operation === 'upsert') {
-        const { data: remote, error: remoteError } = await getSupabaseClient().from('daily_drafts').select('id,report_date,payload,revision').eq('id', change.entity_id).single();
-        if (remoteError) throw remoteError;
-        const outcome = await applyRemoteDraft(scope, change, remote as unknown as RemoteDraftRow);
-        if (outcome === 'pulled') pulled += 1; else if (outcome === 'conflict') conflicts += 1;
-      } else if (change.entity === 'memory' && change.operation === 'upsert') {
-        const { data: remote, error: remoteError } = await getSupabaseClient().from('memory_snapshots').select('site_id,payload,revision').eq('site_id', scope.siteId).single();
-        if (remoteError) throw remoteError;
-        const outcome = await applyRemoteMemory(scope, change, remote as unknown as RemoteMemoryRow);
-        if (outcome === 'pulled') { pulled += 1; memoryPulled += 1; } else conflicts += 1;
-      } else if (change.entity === 'water-snapshot' && change.operation === 'upsert') {
-        const { data: remote, error: remoteError } = await getSupabaseClient().from('water_snapshots').select('site_id,payload,revision').eq('site_id', scope.siteId).single();
-        if (remoteError) throw remoteError;
-        const outcome = await applyRemoteWater(scope, change, remote as unknown as RemoteWaterRow);
-        if (outcome === 'pulled') { pulled += 1; waterPulled += 1; } else conflicts += 1;
-      } else {
-        const database = await openDatabase() as IDBDatabase;
-        try { const tx = database.transaction('sync_cursors', 'readwrite'); tx.objectStore('sync_cursors').put({ id: cursorId(scope), ...scope, cursor: change.sequence, updatedAt: new Date().toISOString() } satisfies SyncCursor); await transactionDone(tx); }
-        finally { database.close(); }
-      }
-      cursor = change.sequence;
+  let pulled = 0; let memoryPulled = 0; let waterPulled = 0; let conflicts = 0;
+  const { rows } = await gasCall<{ rows: RemoteRow[] }>({ action: 'pull', cursor: await loadCursor(scope) });
+  for (const row of rows) {
+    const change: ChangeRow = { sequence: row.sequence };
+    if (row.entity === 'daily-draft') {
+      const outcome = await applyRemoteDraft(scope, change, { id: row.entity_id, report_date: row.report_date, payload: row.payload as DailyReportV3, revision: row.revision });
+      if (outcome === 'pulled') pulled += 1; else if (outcome === 'conflict') conflicts += 1;
+    } else if (row.entity === 'memory') {
+      const outcome = await applyRemoteMemory(scope, change, { site_id: scope.siteId, payload: row.payload as MemorySnapshotPayload, revision: row.revision });
+      if (outcome === 'pulled') { pulled += 1; memoryPulled += 1; } else conflicts += 1;
+    } else if (row.entity === 'water-snapshot') {
+      const outcome = await applyRemoteWater(scope, change, { site_id: scope.siteId, payload: row.payload as WaterSnapshotPayload, revision: row.revision });
+      if (outcome === 'pulled') { pulled += 1; waterPulled += 1; } else conflicts += 1;
     }
-    if (changes.length < 100) break;
   }
   return { pulled, memoryPulled, waterPulled, conflicts };
+}
+
+/** 衝突處理：mine = 以雲端版本為基底重送本機內容；theirs = 丟棄本機操作並重新拉取雲端內容。 */
+export async function resolveConflict(conflictId: string, choice: 'mine' | 'theirs'): Promise<void> {
+  const database = await openDatabase() as IDBDatabase;
+  try {
+    const tx = database.transaction(['sync_outbox', 'sync_conflicts', 'sync_cursors'], 'readwrite');
+    const conflict = await request(tx.objectStore('sync_conflicts').get(conflictId)) as SyncConflict | undefined;
+    if (!conflict) return;
+    const outbox = tx.objectStore('sync_outbox');
+    const operation = await request(outbox.get(conflict.operationId)) as SyncOperation | undefined;
+    const now = new Date().toISOString();
+    if (choice === 'mine' && operation) outbox.put({ ...operation, status: 'pending', baseRevision: conflict.remoteRevision, attempts: 0, nextAttemptAt: now, updatedAt: now });
+    else {
+      if (operation) outbox.delete(operation.id);
+      tx.objectStore('sync_cursors').delete(cursorId(conflict)); // 游標歸零，下次同步重新套用雲端內容
+    }
+    tx.objectStore('sync_conflicts').delete(conflictId);
+    await transactionDone(tx);
+  } finally { database.close(); }
 }
 
 async function runSyncOnceUnlocked(scope: SharedScope): Promise<SyncRunResult> {

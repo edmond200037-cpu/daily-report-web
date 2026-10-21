@@ -18,14 +18,13 @@ import { duplicateVendorTradeIds, groupOutputTrades } from './daily/daily-output
 import { contentStatusTone, itemCountStatusTone, materialStatusTone, tradeStatusTone } from './daily/entry-presentation';
 import { searchTradeManagement, settingsTradeSwipeRelease } from './settings/trade-management';
 import { confirmationSelection, groupMemoryCandidates, memoryCandidateImpact, rejectionSelection } from './settings/memory-review';
-import { completeOAuthRedirect, loadAuthSnapshot, signInWithGoogle, signOut, type AuthSnapshot } from './auth/auth-service';
-import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJoinRequests, listSiteMembers, rejectSiteMember, removeSiteMember, requestSiteAccess, updateSiteMemberRole, type JoinRequestSummary, type SiteMemberSummary } from './data/remote/site-repository';
-import { loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
-import { renderAccountPage } from './account/account-view';
-import type { SiteSummary } from './domain/shared';
+import { clearGasConfig, loadGasConfig, saveGasConfig } from './data/remote/gas-client';
+import { list } from './data/db.js';
+import { renderAccountPage, type ConflictSummary } from './account/account-view';
+import type { SyncConflict, SyncOperation } from './sync/types';
 import { countOperations } from './sync/outbox';
-import { runSyncOnce } from './sync/engine';
-import { loadActiveSharedScope } from './sync/context';
+import { resolveConflict, runSyncOnce } from './sync/engine';
+import { loadActiveSharedScope, SHARED_SCOPE } from './sync/context';
 import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
 import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
 
@@ -111,12 +110,10 @@ const memoryReviewState: { openKind: MemoryCandidate['kind'] | null | undefined;
 const memoryCandidateLabels: Record<MemoryCandidate['kind'], string> = { sites: '工地', trades: '工種', vendors: '廠商', tasks: '工項', locations: '位置', 'material-types': '材料類型', 'material-items': '材料欄位' };
 let settingsReturnModule: SettingsReturnModule = 'daily';
 let renderedRoute: AppRoute | null = null;
-let accountAuth: AuthSnapshot = { enabled: false, session: null, user: null };
-let accountSites: SiteSummary[] = [];
-let accountActiveSiteId: string | null = null;
+let accountConfigured = false;
+let accountUrl = '';
 let accountPendingCount = 0;
-let accountRequests: JoinRequestSummary[] = [];
-let accountMembers: SiteMemberSummary[] = [];
+let accountConflicts: ConflictSummary[] = [];
 let accountFeedback = '';
 let accountError = '';
 let syncInFlight = false;
@@ -459,16 +456,19 @@ async function switchActiveDataPartition(changeContext: () => Promise<void>): Pr
 }
 async function refreshAccount(): Promise<void> {
   try {
-    accountAuth = await loadAuthSnapshot();
-    if (!accountAuth.user) { accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountPendingCount = 0; return; }
-    const [sites, context] = await Promise.all([listAccessibleSites(), loadSharedContext(accountAuth.user.id)]);
-    accountSites = sites;
-    [accountRequests, accountMembers] = await Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)]);
-    accountActiveSiteId = sites.some((site) => site.id === context.activeSiteId) ? context.activeSiteId : null;
-    if (context.activeSiteId && !accountActiveSiteId) await selectActiveSharedSite(accountAuth.user.id, null);
-    accountPendingCount = accountActiveSiteId ? await countOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId }) : 0;
+    const config = loadGasConfig();
+    accountConfigured = Boolean(config); accountUrl = config?.url ?? '';
+    if (!config) { accountPendingCount = 0; accountConflicts = []; return; }
+    accountPendingCount = await countOperations(SHARED_SCOPE);
+    const [conflicts, queue] = await Promise.all([list('sync_conflicts') as Promise<SyncConflict[]>, list('sync_outbox') as Promise<SyncOperation[]>]);
+    const entityLabel: Record<string, string> = { memory: '記憶主檔', 'water-snapshot': '水位資料', 'daily-draft': '施工日報' };
+    accountConflicts = conflicts.filter((row) => row.userId === SHARED_SCOPE.userId && row.siteId === SHARED_SCOPE.siteId).map((row) => {
+      const operation = queue.find((item) => item.id === row.operationId);
+      const date = operation?.entity === 'daily-draft' ? ` ${(operation.payload as DailyReportV3).date}` : '';
+      return { id: row.id, resolvable: Boolean(operation), label: `${operation ? entityLabel[operation.entity] ?? operation.entity : '雲端日報'}${date}` };
+    });
   } catch (error) {
-    accountError = error instanceof Error ? error.message : '無法讀取共用工地。';
+    accountError = error instanceof Error ? error.message : '無法讀取同步狀態。';
   }
 }
 async function renderApp(): Promise<void> {
@@ -477,7 +477,7 @@ async function renderApp(): Promise<void> {
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
   const token = ++renderToken; const route = parseRoute(location.hash); const previousRoute = renderedRoute; renderedRoute = route; water = undefined;
   if ((route.module === 'daily' && route.page === 'settings' && previousRoute?.module === 'daily' && previousRoute.page === 'main') || (route.module === 'water-level' && route.page === 'settings' && previousRoute?.module === 'water-level' && previousRoute.page === 'main')) settingsReturnModule = previousRoute.module;
-  if (route.module === 'account') { await refreshAccount(); if (token !== renderToken) return; const control = accountActiveSiteId ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined; app.innerHTML = `<main class="app-shell module-page account-page-shell">${moduleHeader('共用工地', '多人協作與跨裝置同步', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError })}</main>${pwaUpdateNotice()}`; return; }
+  if (route.module === 'account') { await refreshAccount(); if (token !== renderToken) return; const control = accountConfigured ? { kind: 'action' as const, html: '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' } : undefined; app.innerHTML = `<main class="app-shell module-page account-page-shell">${moduleHeader('共用同步', '跨裝置共用同一份資料', control)}<div class="module-page__tabs">${moduleTabs('account')}</div>${renderAccountPage({ configured: accountConfigured, url: accountUrl, pendingCount: accountPendingCount, conflicts: accountConflicts, feedback: accountFeedback, error: accountError })}</main>${pwaUpdateNotice()}`; return; }
   if (route.module === 'settings') { if (route.page === 'memory') { memoryCandidates = await listMemoryCandidates(); const keys = new Set(memoryCandidates.map((row) => row.key)); memoryReviewState.explicitKeys = new Set([...memoryReviewState.explicitKeys].filter((key) => keys.has(key))); memoryReviewState.expandedKeys = new Set([...memoryReviewState.expandedKeys].filter((key) => keys.has(key))); const groups = groupMemoryCandidates(memoryCandidates); if (memoryReviewState.openKind === undefined) memoryReviewState.openKind = groups[0]?.kind ?? null; else if (memoryReviewState.openKind !== null && !groups.some((group) => group.kind === memoryReviewState.openKind)) memoryReviewState.openKind = groups.find((group) => group.kind === memoryReviewState.nextKind)?.kind ?? groups[0]?.kind ?? null; memoryReviewState.nextKind = null; } else { if (settingsState.activeSection !== 'backup' && settingsState.activeSection !== 'debug') settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? dataSystemView() : memoryReviewView()}${pwaUpdateNotice()}`; return; }
   if (route.module === 'daily') { if (route.page === 'settings') { if (settingsState.activeSection === 'backup' || settingsState.activeSection === 'debug') settingsState.activeSection = 'sites'; await refreshSettings(); } else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports(); if (token !== renderToken) return; app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`; requestAnimationFrame(syncMaterialConnectionCurves); return; }
   try { await mountWater(route, token); } catch (error) { if (token !== renderToken) return; const summary = error instanceof Error ? error.message : '無法讀取本機水位資料。'; app.innerHTML = `<main class="app-shell"><section class="form-card"><h1>水位功能暫時無法開啟</h1><p>錯誤摘要：${escapeHtml(summary)}</p><p><a href="#water-level">重新載入</a>　<a href="#daily">返回施工日報</a></p></section></main>${pwaUpdateNotice()}`; }
@@ -513,39 +513,32 @@ app.addEventListener('focusout', (event) => { const target = event.target as HTM
 app.addEventListener('pointerdown', (event) => { if ((event.target as HTMLElement).closest('[data-contact-suggestions] [data-daily-action="contact-pick-memory"]')) event.preventDefault(); });
 app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement; const route = parseRoute(location.hash); if (route.module === 'daily' && route.page === 'settings' && target.dataset.tradeSearch !== undefined && !tradeSearchComposing && !(event as InputEvent).isComposing) refreshTradeSearch(target); });
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; if (!target.closest('[data-settings-action="clear-trade-search"]')) return; tradeSearchKeyword = ''; void renderApp().then(() => app.querySelector<HTMLInputElement>('[data-trade-search]')?.focus()); });
+async function runManualSync(): Promise<string> {
+  await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
+  const result = await runSyncOnce(SHARED_SCOPE);
+  if (result.memoryPulled) await refreshActiveMemoryCache();
+  if (result.waterPulled && water) await water.refresh();
+  if (result.pulled) await reloadActiveDraftPartition();
+  return `同步完成：送出 ${result.applied} 筆、接收 ${result.pulled} 筆、衝突 ${result.conflicts} 筆、失敗 ${result.failed} 筆。`;
+}
 app.addEventListener('click', async (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-account-action]');
   if (!button) return;
   event.stopImmediatePropagation();
   accountFeedback = ''; accountError = '';
+  const action = button.dataset.accountAction;
   try {
-    if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }
-    if (button.dataset.accountAction === 'sign-out') { await switchActiveDataPartition(signOut); accountSites = []; accountActiveSiteId = null; accountFeedback = '已登出並切回本機草稿與記憶資料；共用工地快取仍保留在此裝置。'; }
-    if (button.dataset.accountAction === 'select-site' && accountAuth.user && button.dataset.siteId) {
-      await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, button.dataset.siteId!); });
-      accountActiveSiteId = button.dataset.siteId;
-      accountFeedback = '已切換目前共用工地、獨立草稿與記憶快取。';
+    if (action === 'sync-now') accountFeedback = await runManualSync();
+    if (action === 'disconnect') {
+      if (!window.confirm('停用後這台裝置回到本機模式；雲端資料與待同步的內容都會保留。確定停用？')) return;
+      await switchActiveDataPartition(async () => clearGasConfig());
+      accountFeedback = '已停用共用同步，已切回本機草稿與記憶資料。';
     }
-    if (button.dataset.accountAction === 'sync-now' && accountAuth.user && accountActiveSiteId) {
-      await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
-      const result = await runSyncOnce({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
-      if (result.memoryPulled) await refreshActiveMemoryCache();
-      if (result.waterPulled && water) await water.refresh();
-      if (result.pulled) await reloadActiveDraftPartition();
-      accountFeedback = `同步完成：送出 ${result.applied} 筆、接收 ${result.pulled} 筆、衝突 ${result.conflicts} 筆、失敗 ${result.failed} 筆。`;
+    if ((action === 'resolve-mine' || action === 'resolve-theirs') && button.dataset.conflictId) {
+      await resolveConflict(button.dataset.conflictId, action === 'resolve-mine' ? 'mine' : 'theirs');
+      accountFeedback = await runManualSync();
     }
-    const requestId = button.dataset.requestId;
-    if (requestId && button.dataset.accountAction === 'approve-editor') { await approveSiteMember(requestId, 'editor'); accountFeedback = '已核准為編輯者。'; }
-    if (requestId && button.dataset.accountAction === 'approve-viewer') { await approveSiteMember(requestId, 'viewer'); accountFeedback = '已核准為檢視者。'; }
-    if (requestId && button.dataset.accountAction === 'reject-request') { await rejectSiteMember(requestId); accountFeedback = '已拒絕加入申請。'; }
-    const memberSiteId = button.dataset.siteId; const memberUserId = button.dataset.userId;
-    const role = button.dataset.accountAction?.replace('role-', '') as 'owner' | 'editor' | 'viewer' | undefined;
-    if (memberSiteId && memberUserId && role && ['owner', 'editor', 'viewer'].includes(role)) { await updateSiteMemberRole(memberSiteId, memberUserId, role); accountFeedback = '成員角色已更新。'; }
-    if (memberSiteId && memberUserId && button.dataset.accountAction === 'remove-member') {
-      if (!window.confirm('確定移除此工地成員？對方下次連線後將無法存取雲端資料。')) return;
-      await removeSiteMember(memberSiteId, memberUserId); accountFeedback = '成員已移除。';
-    }
-  } catch (error) { accountError = error instanceof Error ? error.message : '帳號操作失敗。'; }
+  } catch (error) { accountError = error instanceof Error ? error.message : '同步操作失敗。'; }
   await renderApp();
 });
 app.addEventListener('submit', async (event) => {
@@ -555,15 +548,12 @@ app.addEventListener('submit', async (event) => {
   accountFeedback = ''; accountError = '';
   const values = new FormData(form);
   try {
-    if (form.dataset.accountForm === 'create-site') {
-      const result = await createSharedSite(String(values.get('name') ?? ''));
-      if (accountAuth.user) await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, result.siteId); });
-      accountFeedback = `工地已建立並設為目前工地。加入碼：${result.joinCode}`;
-    } else {
-      await requestSiteAccess(String(values.get('joinCode') ?? ''));
-      accountFeedback = '加入申請已送出，請由工地管理員核准。';
-    }
-  } catch (error) { accountError = error instanceof Error ? error.message : '工地操作失敗。'; }
+    const wasConfigured = Boolean(loadGasConfig());
+    const key = String(values.get('key') ?? '').trim() || loadGasConfig()?.key || '';
+    const save = async () => saveGasConfig(String(values.get('url') ?? ''), key);
+    if (wasConfigured) await save(); else await switchActiveDataPartition(save);
+    accountFeedback = wasConfigured ? '連線設定已更新。' : '已啟用共用同步；這台裝置的草稿與記憶會與雲端合併，若有衝突會列在下方。';
+  } catch (error) { accountError = error instanceof Error ? error.message : '儲存設定失敗。'; }
   await renderApp();
 });
 app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; const route = parseRoute(location.hash); if (route.module === 'water-level' && water && (target.dataset.waterField || target.dataset.waterReading)) { void water.handleInput(target); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.workItemComposerInput !== undefined) { if (!workItemComposerComposing && !(event as InputEvent).isComposing) refreshWorkItemComposer(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.workItemInput !== undefined) { const workId = target.closest<HTMLElement>('[data-work]')?.dataset.work; focusWorkItemId = workId ?? null; updateDailyInput(target); void renderApp().then(() => { const input = workId ? app.querySelector<HTMLInputElement>(`[data-work-item-input="${workId}"]`) : null; input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.contactTaskContent && contactEditor) { const task = contactEditor.value.items.find((item) => item.id === target.dataset.contactTaskContent); if (task) { task.content = target.value; contactEditor.errors = []; } return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.contactField !== undefined && contactEditor) { if (!contactSearchComposing && !(event as InputEvent).isComposing) refreshContactSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.materialConnectionSearch !== undefined) { if (!materialConnectionSearchComposing && !(event as InputEvent).isComposing) refreshMaterialConnectionSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.materialField && materialEditor) { (materialEditor.value as unknown as Record<string, string>)[target.dataset.materialField] = target.value; materialEditor.errors = []; const indicator = app.querySelector<HTMLElement>('[data-material-dirty-indicator]'); if (indicator) indicator.hidden = !materialDirty(); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.tradePickerSearch !== undefined) { if (!tradePickerSearchComposing && !(event as InputEvent).isComposing) refreshTradePickerSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'settings' && target.dataset.materialTypeSearch !== undefined) { settingsState.taskSearchKeyword = target.value; void renderApp(); return; } if (route.module === 'daily' && route.page === 'settings' && target.dataset.settingsSearch === 'tasks') { if (!settingsSearchComposing && !(event as InputEvent).isComposing) refreshTaskSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'settings' && target.closest('[data-settings-form]')) { settingsState.dirty = true; return; } if (route.module === 'daily' && route.page === 'main') updateDailyInput(target); });
@@ -766,8 +756,11 @@ async function syncActiveSiteSilently(): Promise<void> {
   } catch { /* Offline and backend failures leave the durable outbox for the next trigger. */ }
   finally { syncInFlight = false; }
 }
+let syncSoonTimer: number | undefined;
+// 存檔後 2 秒同步（連續存檔只算最後一次），縮短與其他裝置互相覆蓋的空窗。
+function scheduleSyncSoon(): void { clearTimeout(syncSoonTimer); syncSoonTimer = window.setTimeout(() => { void syncActiveSiteSilently(); }, 2_000); }
 document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else void syncActiveSiteSilently(); });
 window.addEventListener('online', () => { void syncActiveSiteSilently(); });
-async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateAvailable = true; void renderApp(); } }); }
+async function bootstrap(): Promise<void> { await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); scheduleSyncSoon(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); if (!location.hash) location.hash = '#daily'; await renderApp(); void syncActiveSiteSilently(); window.setInterval(() => { void syncActiveSiteSilently(); }, 30_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateAvailable = true; void renderApp(); } }); }
 void pruneExpiredReports();
 bootstrap().catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });

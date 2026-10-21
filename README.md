@@ -15,7 +15,7 @@
 
 ## 開發
 
-新增功能規劃：[工地共用後端與跨裝置同步](docs/plans/shared-site-backend.md)（規劃階段，尚未實作）。
+跨裝置共用：Google 試算表 + Apps Script 後端，於 App「共用同步」頁填入網址與金鑰；設計與遷移見 [docs/plans/gas-sheets-backend-migration.md](docs/plans/gas-sheets-backend-migration.md)，後端程式在 `apps-script/`。
 
 執行 `npm run dev`，並透過 Vite 顯示的網址開啟 `/#daily`；不要直接雙擊 `index.html` 或使用舊的靜態伺服器。
 
