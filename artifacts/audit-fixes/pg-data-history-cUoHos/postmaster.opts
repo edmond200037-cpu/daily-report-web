@@ -1,0 +1,1 @@
+D:/app/APP_TEST/daily-report-web/artifacts/audit-fixes/db-tools/node_modules/@embedded-postgres/windows-x64/native/bin/postgres.exe "-D" "D:\app\APP_TEST\daily-report-web\artifacts\audit-fixes\pg-data-history-cUoHos" "-h" "127.0.0.1" "-p" "3635" "-c" "wal_level=logical"

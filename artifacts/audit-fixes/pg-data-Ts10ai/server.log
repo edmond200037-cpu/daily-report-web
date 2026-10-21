@@ -1,0 +1,107 @@
+2026-10-06 22:44:15.410 CST [46336] LOG:  starting PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit
+2026-10-06 22:44:15.411 CST [46336] LOG:  listening on IPv4 address "127.0.0.1", port 2768
+2026-10-06 22:44:15.616 CST [34704] FATAL:  the database system is starting up
+2026-10-06 22:44:15.616 CST [3640] LOG:  database system was shut down at 2026-10-06 22:44:01 CST
+2026-10-06 22:44:15.747 CST [46336] LOG:  database system is ready to accept connections
+2026-10-06 22:44:15.760 CST [42424] FATAL:  the database system is starting up
+2026-10-06 22:44:17.480 CST [41800] ERROR:  forbidden
+2026-10-06 22:44:17.480 CST [41800] CONTEXT:  PL/pgSQL function get_sync_capabilities(uuid) line 5 at RAISE
+2026-10-06 22:44:17.480 CST [41800] STATEMENT:  select public.get_sync_capabilities($1) as result
+2026-10-06 22:44:17.482 CST [27752] ERROR:  permission denied for function get_sync_capabilities
+2026-10-06 22:44:17.482 CST [27752] STATEMENT:  select public.get_sync_capabilities($1) as result
+2026-10-06 22:44:17.629 CST [27180] ERROR:  forbidden
+2026-10-06 22:44:17.629 CST [27180] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-06 22:44:17.629 CST [27180] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.635 CST [41800] ERROR:  forbidden
+2026-10-06 22:44:17.635 CST [41800] CONTEXT:  PL/pgSQL function pull_site_changes(uuid,bigint,integer) line 4 at RAISE
+2026-10-06 22:44:17.635 CST [41800] STATEMENT:  select * from public.pull_site_changes($1,0,100)
+2026-10-06 22:44:17.636 CST [41800] ERROR:  forbidden
+2026-10-06 22:44:17.636 CST [41800] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-06 22:44:17.636 CST [41800] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.653 CST [36100] ERROR:  forbidden
+2026-10-06 22:44:17.653 CST [36100] CONTEXT:  PL/pgSQL function pull_site_changes(uuid,bigint,integer) line 4 at RAISE
+2026-10-06 22:44:17.653 CST [36100] STATEMENT:  select * from public.pull_site_changes($1,0,100)
+2026-10-06 22:44:17.654 CST [36100] ERROR:  forbidden
+2026-10-06 22:44:17.654 CST [36100] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-06 22:44:17.654 CST [36100] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.657 CST [27752] ERROR:  permission denied for function pull_site_changes
+2026-10-06 22:44:17.657 CST [27752] STATEMENT:  select * from public.pull_site_changes($1,0,100)
+2026-10-06 22:44:17.658 CST [27752] ERROR:  permission denied for function apply_daily_field_mutation
+2026-10-06 22:44:17.658 CST [27752] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.658 CST [38564] ERROR:  new row violates row-level security policy for table "daily_drafts"
+2026-10-06 22:44:17.658 CST [38564] STATEMENT:  insert into public.daily_drafts(id,site_id,report_date,payload,updated_by) values($1,$2,$3,$4,$5)
+2026-10-06 22:44:17.659 CST [38564] ERROR:  forbidden
+2026-10-06 22:44:17.659 CST [38564] CONTEXT:  PL/pgSQL function apply_water_field_mutation(uuid,uuid,jsonb) line 5 at RAISE
+2026-10-06 22:44:17.659 CST [38564] STATEMENT:  select public.apply_water_field_mutation($1,$2,$3) as result
+2026-10-06 22:44:17.659 CST [27180] ERROR:  forbidden
+2026-10-06 22:44:17.659 CST [27180] CONTEXT:  PL/pgSQL function update_site_member_role(uuid,uuid,text) line 5 at RAISE
+2026-10-06 22:44:17.659 CST [27180] STATEMENT:  select public.update_site_member_role($1,$2,$3) as result
+2026-10-06 22:44:17.886 CST [38564] ERROR:  invalid identifier
+2026-10-06 22:44:17.886 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_json(jsonb,integer) line 15 at RAISE
+	SQL statement "SELECT public.audit_assert_json(v, p_depth+1)"
+	PL/pgSQL function audit_assert_json(jsonb,integer) line 9 at PERFORM
+	SQL statement "SELECT public.audit_assert_json(p_changes)"
+	PL/pgSQL function audit_assert_changes(text,jsonb) line 4 at PERFORM
+	SQL statement "SELECT public.audit_assert_changes('water',p_changes)"
+	PL/pgSQL function apply_water_field_mutation(uuid,uuid,jsonb) line 7 at PERFORM
+2026-10-06 22:44:17.886 CST [38564] STATEMENT:  select public.apply_water_field_mutation($1,$2,$3) as result
+2026-10-06 22:44:17.886 CST [38564] ERROR:  invalid document field
+2026-10-06 22:44:17.886 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 28 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.886 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.887 CST [38564] ERROR:  invalid collection or operation
+2026-10-06 22:44:17.887 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 14 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.887 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.888 CST [38564] ERROR:  identity mismatch
+2026-10-06 22:44:17.888 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 45 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.888 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.888 CST [38564] ERROR:  invalid field
+2026-10-06 22:44:17.888 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 43 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.888 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.889 CST [38564] ERROR:  expected text
+2026-10-06 22:44:17.889 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 69 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.889 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.889 CST [38564] ERROR:  invalid nested row
+2026-10-06 22:44:17.889 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 55 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.889 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.890 CST [38564] ERROR:  invalid contact item
+2026-10-06 22:44:17.890 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 57 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.890 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.891 CST [38564] ERROR:  invalid trade status
+2026-10-06 22:44:17.891 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 71 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.891 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:17.898 CST [38564] ERROR:  invalid payload size or depth
+2026-10-06 22:44:17.898 CST [38564] CONTEXT:  PL/pgSQL function audit_assert_json(jsonb,integer) line 5 at RAISE
+	SQL statement "SELECT public.audit_assert_json(p_changes)"
+	PL/pgSQL function audit_assert_changes(text,jsonb) line 4 at PERFORM
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-06 22:44:17.898 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:18.007 CST [20380] ERROR:  cannot remove last owner
+2026-10-06 22:44:18.007 CST [20380] CONTEXT:  PL/pgSQL function remove_site_member(uuid,uuid) line 10 at RAISE
+2026-10-06 22:44:18.007 CST [20380] STATEMENT:  select public.remove_site_member($1,$2) as result
+2026-10-06 22:44:18.009 CST [38564] ERROR:  forbidden
+2026-10-06 22:44:18.009 CST [38564] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-06 22:44:18.009 CST [38564] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-06 22:44:18.057 CST [46336] LOG:  received fast shutdown request
+2026-10-06 22:44:18.108 CST [46336] LOG:  aborting any active transactions
+2026-10-06 22:44:18.112 CST [46336] LOG:  background worker "logical replication launcher" (PID 41192) exited with exit code 1
+2026-10-06 22:44:18.113 CST [45596] LOG:  shutting down
+2026-10-06 22:44:18.139 CST [45596] LOG:  checkpoint starting: shutdown immediate
+2026-10-06 22:44:19.275 CST [45596] LOG:  checkpoint complete: wrote 12 buffers (24.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.012 s, sync=0.785 s, total=1.162 s; sync files=384, longest=0.068 s, average=0.003 s; distance=5509 kB, estimate=5509 kB; lsn=0/1AD3918, redo lsn=0/1AD3918
+2026-10-06 22:44:19.280 CST [46336] LOG:  database system is shut down

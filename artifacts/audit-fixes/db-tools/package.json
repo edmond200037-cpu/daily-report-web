@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@embedded-postgres/windows-x64": "17.10.0-beta.17",
+    "pg": "8.23.1"
+  }
+}

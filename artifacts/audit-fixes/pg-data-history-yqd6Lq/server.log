@@ -1,0 +1,15 @@
+2026-10-07 16:40:45.707 CST [53992] LOG:  starting PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit
+2026-10-07 16:40:45.708 CST [53992] LOG:  listening on IPv4 address "127.0.0.1", port 10484
+2026-10-07 16:40:45.858 CST [60364] LOG:  database system was shut down at 2026-10-07 16:40:33 CST
+2026-10-07 16:40:45.875 CST [52712] FATAL:  the database system is starting up
+2026-10-07 16:40:45.991 CST [53992] LOG:  database system is ready to accept connections
+2026-10-07 16:40:47.361 CST [56524] ERROR:  cannot change name of input parameter "p_items"
+2026-10-07 16:40:47.361 CST [56524] HINT:  Use DROP FUNCTION collaboration_apply_array(jsonb,text,jsonb) first.
+2026-10-07 16:40:47.361 CST [56524] STATEMENT:  create or replace function public.collaboration_apply_array(jsonb,text,jsonb) returns jsonb language sql immutable as $$select $1$$;
+2026-10-07 16:40:47.465 CST [53992] LOG:  received fast shutdown request
+2026-10-07 16:40:47.742 CST [53992] LOG:  aborting any active transactions
+2026-10-07 16:40:47.746 CST [53992] LOG:  background worker "logical replication launcher" (PID 62184) exited with exit code 1
+2026-10-07 16:40:47.747 CST [60500] LOG:  shutting down
+2026-10-07 16:40:47.770 CST [60500] LOG:  checkpoint starting: shutdown immediate
+2026-10-07 16:40:49.831 CST [60500] LOG:  checkpoint complete: wrote 23 buffers (46.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.030 s, sync=1.837 s, total=2.084 s; sync files=387, longest=0.198 s, average=0.005 s; distance=5405 kB, estimate=5405 kB; lsn=0/1AB9800, redo lsn=0/1AB9800
+2026-10-07 16:40:49.836 CST [53992] LOG:  database system is shut down

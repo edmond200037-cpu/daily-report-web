@@ -1,0 +1,1432 @@
+import { isPositiveDecimal } from './shared/decimal';
+import { applyContactPlannedDate } from './daily/entry-workflow';
+import { bindWorkGestures } from './daily/work-gestures';
+import './styles.css';
+import './presentation.css';
+import './daily/material.css';
+import './daily/dialog.css';
+import './daily/daily.css';
+import './water-level/water.css';
+import './account/account.css';
+import './daily/input-workflow.css';
+import { registerSW } from 'virtual:pwa-register';
+import { consumePwaUpdateSuccess, PWA_UPDATE_SUCCESS_MARKER, transitionPwaUpdateState, type PwaUpdateState } from './pwa/update-state';
+import { DailyController, type DailyDeleteUndo, type DailySaveState } from './daily/daily-controller';
+import { formatDailyReport } from './daily/daily-formatter';
+import { clearDebugLogs, confirmMemory, confirmMemoryCandidates, createMaterialType, databaseSummary, deleteMemory, deleteMaterialType, exportMemories, finalizeDailyReport, listMaterialMemory, listMaterialTypes, listMemories, listMemoryCandidates, listRecentFinalizedReports, listTemplates, loadDailyDraft, loadDailyDraftForDate, mergeMemoryBackup, pruneExpiredReports, rejectMaterialMemoryItem, renameMaterialType, reorderMaterialTypes, saveContactEntry, saveMaterialEntry, saveMemory, saveTemplate, type DailySettingsSection, type MaterialMemoryItem, type MaterialType, type MemoryCandidate, type MemoryCandidateKey, type NamedMemory, type SpecialTemplate } from './data/daily-repository';
+import { selectSiteMemory } from './data/daily-repository';
+import { comparableFloor, normalizeFloor } from './daily/floor';
+import { createDailyDraft, type ContactItem, type DailyReportV3, type FinalizedDailyReport, type MaterialEntry, type SpecialItem, type TradeSection } from './domain/daily';
+import { duplicateWorkItemIds, validateDailyForFinalization } from './daily/daily-validator';
+import { withActiveSharedSite } from './daily/report-site';
+import { normalizeName } from './format/normalization';
+import { duplicateVendorTradeIds, groupOutputTrades } from './daily/daily-output-model';
+import { contentStatusTone, itemCountStatusTone, materialStatusTone, tradeStatusTone } from './daily/entry-presentation';
+import { searchTradeManagement, settingsTradeSwipeRelease } from './settings/trade-management';
+import { confirmationSelection, groupMemoryCandidates, memoryCandidateImpact, rejectionSelection } from './settings/memory-review';
+import { completeOAuthRedirect, loadAuthSnapshot, signInWithGoogle, signOut, type AuthSnapshot } from './auth/auth-service';
+import { approveSiteMember, createSharedSite, listAccessibleSites, listPendingJoinRequests, listSiteMembers, rejectSiteMember, removeSiteMember, requestSiteAccess, updateSiteMemberRole, type JoinRequestSummary, type SiteMemberSummary } from './data/remote/site-repository';
+import { cacheActiveSiteRole, loadSharedContext, selectActiveSharedSite } from './data/local/shared-context';
+import { renderAccountPage } from './account/account-view';
+import { AccountLoadTimeoutError, withAccountDeadline } from './account/load-timeout';
+import { DB_VERSION } from './data/db.js';
+import type { SiteSummary } from './domain/shared';
+import { dailyOperationStatusSummary, listAllOperations, retryMissingRpcOperations } from './sync/outbox';
+import type { SyncOperation } from './sync/types';
+import { loadLastPulledAt, refreshCloudMemoryLibrary, runSyncOnce, type SyncRunResult } from './sync/engine';
+import { loadActiveSharedScope } from './sync/context';
+import { persistActiveMemoryPartition, restoreActiveMemoryPartition } from './data/memory-partition';
+import { queueMemoryImport, readLocalMemoryImportSource } from './data/memory-partition';
+import { getSupabaseClient } from './data/remote/supabase-client';
+import { previewMemoryImport, type MemoryImportPreview } from './sync/memory-import';
+import type { RemoteMemoryEntry } from './sync/memory-entries';
+import { persistActiveWaterPartition, restoreActiveWaterPartition } from './data/water-partition';
+import { exportConflictBackups, listConflictReviews, queueConflictResolution, type ConflictReview } from './sync/conflict-review';
+import { applySyncRecovery, previewSyncRecovery, type SyncRecoveryPreview } from './sync/recovery';
+import { subscribeToSiteChanges } from './sync/realtime';
+import { entryDraftKey, readEntryDraft, appendContactTask, type ContactEditorDraft } from './daily/entry-workflow';
+import { workInputView, bindWorkInput, clearWorkItemDetails, consumeWorkDrafts, snapshotWorkDrafts, restoreWorkDrafts } from './daily/work-input';
+import { recordMemoryApplications } from './settings/memory-applications';
+import { refreshCompleteness } from './daily/input-workflow';
+import { withWorkspaceLock } from './sync/workspace-lock';
+import { validateTrade } from './daily/daily-validator';
+import { APP_VERSION } from './version';
+
+type AppRoute =
+  | { module: 'daily'; page: 'main' }
+  | { module: 'daily'; page: 'settings' | 'history' }
+  | { module: 'water-level'; page: 'main' }
+  | { module: 'water-level'; page: 'settings' }
+  | { module: 'settings'; page: 'memory' | 'data' }
+  | { module: 'account'; page: 'main' };
+type WaterController = { root: HTMLElement; initialize(): Promise<void>; refresh(): Promise<void>; render(): void; renderSettings(): void; handleInput(target: HTMLElement): Promise<void>; handleAction(action: string, id?: string): Promise<void>; preview(): string; mode: string };
+type SettingsReturnModule = 'daily' | 'water-level';
+type DailySettingsArea = 'foundation' | 'materials';
+
+const app = document.querySelector<HTMLDivElement>('#app')!;
+let daily!: DailyController;
+let water: WaterController | undefined;
+const waterEditors = new Map<string, WaterController>();
+let tradePickerOpen = false;
+let entryKind: 'engineering' | 'contacts' = 'engineering';
+let dateSwitching = false;
+let tradePickerSearch = '';
+let materialConnectionFocusTradeId: string | null = null;
+let materialConnectionSelectionId: string | null = null;
+let materialConnectionTradeSearch = '';
+const MATERIAL_CONNECTION_NODE_HEIGHT_PX = 68;
+const MATERIAL_CONNECTION_NODE_GAP_PX = 8;
+type MaterialConnectionUndoNotice = { materialId: string; tradeId: string; expiresAt: number; timer: number };
+let materialConnectionUndo: MaterialConnectionUndoNotice | null = null;
+let dailyTrades: NamedMemory[] = []; let dailyVendors: NamedMemory[] = []; let dailyTasks: NamedMemory[] = [];
+let dailySites: NamedMemory[] = []; let siteSearchOpen = false; let siteSearchQuery = ''; let siteSearchComposing = false;
+let materialTypes: MaterialType[] = []; let materialMemory: MaterialMemoryItem[] = [];
+type MaterialEditor = { id: string; originalId: string | null; value: MaterialEntry; errors: string[] };
+type DailyEntrySummary = {
+  kind: 'engineering' | 'material' | 'contact' | 'special';
+  primary: string;
+  secondary: string;
+  status: string;
+  statusTone: ReturnType<typeof contentStatusTone>;
+  leadingControl?: string;
+  contentButtonAttributes?: string;
+};
+let materialEditor: MaterialEditor | null = null;
+type ContactEditor = ContactEditorDraft;
+let contactEditor: ContactEditor | null = null;
+let contactEditorCollapsed = false;
+let entryComposing = false;
+let expandedSpecialId: string | null = null;
+type ContactSearchField = 'trade' | 'vendor' | 'task';
+let activeContactSearch: ContactSearchField | null = null;
+type ActiveWorkAuxEditor = { workItemId: string; kind: 'location' | 'note' } | null;
+let activeWorkAuxEditor: ActiveWorkAuxEditor = null;
+let workAuxMenuId: string | null = null;
+let focusWorkItemId: string | null = null;
+let focusWorkAuxField: 'start' | null = null;
+const workItemComposerByTrade = new Map<string, { query: string; taskId: string | null }>();
+let activeWorkItemComposerTradeId: string | null = null;
+let workItemComposerComposing = false;
+const workItemDrag = { active: false, pending: false, tradeId: null as string | null, workItemId: null as string | null, pointerId: null as number | null, handle: null as HTMLElement | null, originalOrder: [] as string[], startX: 0, startY: 0, clientX: 0, clientY: 0, offsetX: 0, offsetY: 0, activeDropSlotIndex: null as number | null, preview: null as HTMLElement | null, placeholderMarkup: '' };
+let renderToken = 0;
+let dailyPreviewOpen = false;
+let dailyBasicsExpanded = false;
+let dailyCopyFeedback = '';
+let finalizedReports: FinalizedDailyReport[] = [];
+let memoryBackupFeedback = '';
+let dailySaveState: DailySaveState = 'saved';
+let dailyLastSavedAt = '';
+let dailySyncPendingCount = 0;
+let dailySyncConflictCount = 0;
+let memoryQueueSummary = '';
+let lastPulledAt: string | null = null;
+let syncFeedback = '';
+let pwaUpdateState: PwaUpdateState = (() => { try { return consumePwaUpdateSuccess(sessionStorage) ? 'success' : 'idle'; } catch { return 'idle'; } })();
+let pwaUpdateTimeout: number | undefined;
+let applyPwaUpdate: (() => Promise<void>) | undefined;
+let settingsSearchComposing = false;
+let tradePickerSearchComposing = false;
+let contactSearchComposing = false;
+let materialConnectionSearchComposing = false;
+const tradeDrag = { active: false, pending: false, id: null as string | null, originalOrder: [] as string[], pointerId: null as number | null, offsetX: 0, offsetY: 0, startX: 0, startY: 0, activeDropSlotIndex: null as number | null, preview: null as HTMLElement | null, frame: null as number | null, clientX: 0, clientY: 0 };
+const TRADE_DELETE_REVEAL_PX = 88;
+const tradeSwipe = { active: false, eligible: false, id: null as string | null, kind: null as 'trade' | 'material' | 'contact' | 'special' | null, pointerId: null as number | null, startX: 0, startY: 0, offset: 0, root: null as HTMLElement | null };
+type TradeUndoEntry = { undo: DailyDeleteUndo; expiresAt: number; timer: number };
+let tradeUndoQueue: TradeUndoEntry[] = [];
+let suppressTradeSummaryClick = false;
+const backgroundCollapseExclusions = '.trade-card,.contact-card,.app-header,.top-tabs,.basics,.daily-tabs,.settings-button,.floating-add-trade,.preview,.form-card,button,input,textarea,select,label,a,[role="dialog"],.dialog-backdrop,.trade-picker,[data-ignore-background-collapse]';
+const settingsState: { activeSection: DailySettingsSection; activeArea: DailySettingsArea; editingId: string | null; adding: boolean; dirty: boolean; selectedTradeTypeId: string | null; taskSearchKeyword: string } = { activeSection: 'sites', activeArea: 'foundation', editingId: null, adding: false, dirty: false, selectedTradeTypeId: null, taskSearchKeyword: '' };
+let settingsRows: NamedMemory[] = []; let settingsTrades: NamedMemory[] = []; let settingsTemplates: SpecialTemplate[] = []; let settingsDebug: Record<string, number> = {};
+let settingsAllTasks: NamedMemory[] = []; let tradeSearchKeyword = ''; let tradeSearchComposing = false;
+let memoryCandidates: MemoryCandidate[] = [];
+const memoryReviewState: { openKind: MemoryCandidate['kind'] | null | undefined; nextKind: MemoryCandidate['kind'] | null; explicitKeys: Set<MemoryCandidateKey>; expandedKeys: Set<MemoryCandidateKey>; feedback: string; feedbackTone: 'success' | 'error' } = { openKind: undefined, nextKind: null, explicitKeys: new Set(), expandedKeys: new Set(), feedback: '', feedbackTone: 'success' };
+const memoryCandidateLabels: Record<MemoryCandidate['kind'], string> = { sites: '工地', trades: '工種', vendors: '廠商', tasks: '工項', locations: '位置', 'material-types': '材料類型', 'material-items': '材料欄位' };
+let settingsReturnModule: SettingsReturnModule = 'daily';
+let renderedRoute: AppRoute | null = null;
+let accountAuth: AuthSnapshot = { enabled: false, session: null, user: null };
+let accountSites: SiteSummary[] = [];
+let accountActiveSiteRole: SiteSummary['role'] | null = null;
+let accountActiveSiteId: string | null = null;
+let accountPendingCount = 0;
+let accountRequests: JoinRequestSummary[] = [];
+let accountMembers: SiteMemberSummary[] = [];
+let accountFeedback = '';
+let accountError = '';
+let accountSyncDiagnostics: SyncOperation[] = [];
+let accountSyncOperations: SyncOperation[] = [];
+let accountConflictReviews: ConflictReview[] = [];
+type AccountLoadStage = '帳號驗證' | '工地清單' | '成員資料' | '本機同步佇列' | '衝突資料';
+type AccountLoadEvent = { stage: AccountLoadStage; status: 'loading' | 'ok' | 'error' | 'timeout'; durationMs: number; code?: string };
+let accountLoadEvents: AccountLoadEvent[] = [];
+let accountLoadStage: AccountLoadStage | null = null;
+let accountLoadStartedAt = 0;
+let accountLoadCoreReady = false;
+let accountLoadExtrasPending = false;
+let accountQueueStatus: 'loading' | 'ready' | 'error' = 'ready';
+let accountLoadVersion = 0;
+let debugOpen = false;
+let syncInFlight = false;
+let activeSyncEpoch = 0;
+import { escapeHtml } from './shared/html';
+const clearPwaUpdateTimeout = () => { if (pwaUpdateTimeout !== undefined) { window.clearTimeout(pwaUpdateTimeout); pwaUpdateTimeout = undefined; } };
+const pwaUpdateNotice = () => {
+  if (pwaUpdateState === 'idle') return '';
+  const content = pwaUpdateState === 'available'
+    ? { title: '已有新版施工日報', message: '新版已在背景下載完成。更新不會刪除本機日報資料。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">立即更新</button>' }
+    : pwaUpdateState === 'applying'
+      ? { title: '正在儲存資料並套用新版', message: '請勿關閉頁面。日報、記憶與水位資料正在安全儲存。', actions: '' }
+      : pwaUpdateState === 'waiting'
+        ? { title: '新版仍在等待套用', message: '資料已安全儲存，可重新嘗試，或關閉其他已開啟的施工日報分頁後再更新。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' }
+      : pwaUpdateState === 'success'
+        ? { title: '更新完成', message: '已套用最新版，可以繼續使用。', actions: '<button type="button" data-app-action="dismiss-pwa-update">知道了</button>' }
+        : { title: '更新未完成', message: '更新程序發生錯誤，使用者資料未被清除，請重新嘗試。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' };
+  return `<aside class="pwa-update-notice pwa-update-notice--${pwaUpdateState}" role="status" aria-live="polite"><div><strong>${content.title}</strong><p>${content.message}</p></div><div class="pwa-update-notice__actions">${content.actions}</div></aside>`;
+};
+const field = (label: string, name: string, value: string, type = 'text') => `<label>${label}<input data-daily-field="${name}" type="${type}" value="${escapeHtml(value)}"></label>`;
+function sitePickerField(): string {
+  if (accountAuth.user) {
+    const active = accountSites.find((site) => site.id === accountActiveSiteId);
+    const options = accountSites.map((site) => `<button type="button" class="shared-site-picker__option${site.id === accountActiveSiteId ? ' active' : ''}" data-shared-site-select="${escapeHtml(site.id)}"${site.id === accountActiveSiteId ? ' disabled' : ''}><strong>${escapeHtml(site.name)}</strong><small>${site.role === 'viewer' ? '檢視' : site.role === 'editor' ? '編輯' : '管理員'}${site.id === accountActiveSiteId ? ' · 目前使用' : ''}</small></button>`).join('');
+    return `<section class="shared-site-picker" aria-label="共用工地"><div><strong>共用工地</strong><small>${active ? `目前資料會同步至「${escapeHtml(active.name)}」` : '請先選擇共用工地，資料會維持本機模式。'}</small></div><div class="shared-site-picker__options">${options || '<a href="#settings/account">前往建立或加入工地</a>'}</div></section>`;
+  }
+  const query = siteSearchQuery || daily.report.siteNameSnapshot;
+  const keyword = normalizeSearch(query);
+  const matches = dailySites.filter((site) => !keyword || site.normalizedName.includes(keyword)).slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName));
+  const exact = dailySites.some((site) => site.normalizedName === keyword);
+  const suggestions = !siteSearchOpen ? '' : `<div id="site-search-suggestions" class="site-search-field__suggestions contact-suggestions" role="listbox">${matches.map((site) => `<button type="button" class="contact-suggestions__option" role="option" data-site-search-action="select" data-site-id="${escapeHtml(site.id)}"><strong>${escapeHtml(site.name)}</strong><span class="hint">使用 ${site.usageCount} 次</span></button>`).join('')}${query.trim() && !exact ? `<button type="button" class="contact-suggestions__option site-search-field__create" data-site-search-action="create">新增並使用「${escapeHtml(query.trim())}」</button>` : ''}${!matches.length && !query.trim() ? '<p class="empty">尚無工地，可直接輸入後新增。</p>' : ''}</div>`;
+  return `<div class="site-search-field"><label><span class="site-search-field__label">工地<a href="#settings/daily">管理工地</a></span><input data-site-search type="text" role="combobox" aria-autocomplete="list" aria-expanded="${siteSearchOpen}" aria-controls="site-search-suggestions" autocomplete="off" placeholder="搜尋或新增工地" value="${escapeHtml(query)}"></label>${suggestions}</div>`;
+}
+async function selectSharedSiteFromWorkspace(siteId: string): Promise<void> {
+  if (!accountAuth.user || siteId === accountActiveSiteId || !accountSites.some((site) => site.id === siteId)) return;
+  const role = accountSites.find((site) => site.id === siteId)?.role ?? null;
+  await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, siteId, role); });
+  accountActiveSiteId = siteId;
+  accountActiveSiteRole = role;
+  await refreshAccount();
+  await renderApp();
+}
+const tabs: Array<[DailyReportV3['activeTab'], string]> = [['engineering', '施工紀錄'], ['supplies', '進料'], ['contacts', '聯絡事項'], ['special', '特殊事項']];
+const summaryLabels: Record<DailyEntrySummary['kind'], string> = { engineering: '工程', material: '進料', contact: '聯絡', special: '特殊' };
+function dailyEntrySummary(summary: DailyEntrySummary): string {
+  const leading = summary.leadingControl ?? `<span class="daily-entry-summary__leading">${summaryLabels[summary.kind]}</span>`;
+  const content = `<span class="daily-entry-summary__copy"><strong class="daily-entry-summary__primary">${escapeHtml(summary.primary)}</strong><span class="daily-entry-summary__secondary">${escapeHtml(summary.secondary)}</span></span><span class="daily-entry-summary__status entry-status--${summary.statusTone}">${escapeHtml(summary.status)}</span>`;
+  return `${leading}${summary.contentButtonAttributes ? `<button type="button" class="daily-entry-summary__toggle" ${summary.contentButtonAttributes}>${content}</button>` : content}`;
+}
+
+function tradeRowSummary(trade: TradeSection, expanded: boolean, handle: string, interactive = true): string {
+  const nonEmptyWorkItems = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).filter((work) => work.taskTextSnapshot.trim());
+  const firstWork = nonEmptyWorkItems[0];
+  const task = firstWork?.taskTextSnapshot.trim() || '尚未新增工項';
+  const taskSummary = nonEmptyWorkItems.length > 1 ? `${task}・另 ${nonEmptyWorkItems.length - 1} 項` : task;
+  const tradeName = trade.tradeNameSnapshot || '未填工種';
+  const vendor = [trade.vendorNameSnapshot || '未填廠商', trade.workerCount ? `${trade.workerCount} 人` : '人數未填'].join('・');
+  const missing = validateTrade(trade, daily.linkedMaterialEntries(trade.id));
+  const status = trade.status === 'complete' ? '資料齊全' : missing[0]?.message.replace('請輸入施工', '缺').replace('請選擇', '缺').replace('。', '') ?? '需檢查';
+  const content = `<div class="trade-row-summary__trade" title="${escapeHtml(tradeName)}">${escapeHtml(tradeName)}</div><div class="trade-row-summary__task" title="${escapeHtml(taskSummary)}">${escapeHtml(taskSummary)}</div><div class="trade-row-summary__vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</div><div class="trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}">${status}</div><div class="trade-row-summary__mobile-meta"><span class="trade-row-summary__mobile-trade" title="${escapeHtml(tradeName)}">${escapeHtml(tradeName)}</span><span class="trade-row-summary__mobile-vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</span></div>`;
+  const control = interactive ? `<button type="button" class="trade-row-summary__toggle" data-daily-action="toggle-trade" data-id="${escapeHtml(trade.id)}" aria-expanded="${expanded}" aria-controls="trade-content-${escapeHtml(trade.id)}" aria-label="${escapeHtml(`${expanded ? '收合' : '展開'}工程條目：${trade.tradeNameSnapshot}`)}">${content}</button>` : `<div class="trade-row-summary__toggle">${content}</div>`;
+  return `<div class="trade-row-summary collapsed-summary">${handle}${control}</div>`;
+}
+
+function parseRoute(hash: string): AppRoute {
+  const normalized = hash || '#daily';
+  if (normalized === '#settings/daily') return { module: 'daily', page: 'settings' };
+  if (normalized === '#settings/water') return { module: 'water-level', page: 'settings' };
+  if (normalized === '#settings/memory') return { module: 'settings', page: 'memory' };
+  if (normalized === '#settings/data') return { module: 'settings', page: 'data' };
+  if (normalized === '#settings/account') return { module: 'account', page: 'main' };
+  if (normalized === '#account') return { module: 'account', page: 'main' };
+  if (normalized === '#daily') return { module: 'daily', page: 'main' };
+  if (normalized === '#daily/settings') return { module: 'daily', page: 'settings' };
+  if (normalized === '#daily/history') return { module: 'daily', page: 'history' };
+  if (normalized === '#water-level') return { module: 'water-level', page: 'main' };
+  if (normalized === '#water-level/settings') return { module: 'water-level', page: 'settings' };
+  return { module: 'daily', page: 'main' };
+}
+
+function tabCount(tab: DailyReportV3['activeTab']): number { if (tab === 'engineering') return daily.report.tradeSections.length; if (tab === 'supplies') return daily.report.standaloneMaterialEntries.length + (materialEditor && !materialEditor.originalId ? 1 : 0); if (tab === 'contacts') return daily.report.contacts.length + (contactEditor && !contactEditor.originalId ? 1 : 0); return daily.report.specialItems.length; }
+function dailyTabs(): string { return `<section class="daily-tabs" role="tablist" aria-label="施工日報分類">${tabs.map(([id, label]) => { const count = tabCount(id); return `<button type="button" role="tab" data-daily-tab="${id}" aria-selected="${daily.report.activeTab === id}" class="${daily.report.activeTab === id ? 'active' : ''}">${label}${count ? `<span class="daily-tab__count" aria-label="${count} 個項目">${count}</span>` : ''}</button>`; }).join('')}</section>`; }
+const materialDirty = () => Boolean(materialEditor && (!materialEditor.originalId || JSON.stringify(materialEditor.value) !== JSON.stringify(daily.materialEntry(materialEditor.originalId))));
+const materialChoices = (fieldName: 'materialTypeSnapshot' | 'itemName' | 'specification' | 'unit' | 'supplierNameSnapshot', value: string): string[] => {
+  const query = normalizeSearch(value); const typeId = materialEditor?.value.materialTypeId; const memoryField = fieldName === 'materialTypeSnapshot' ? undefined : ({ itemName: 'itemName', specification: 'specification', unit: 'unit', supplierNameSnapshot: 'supplier' } as const)[fieldName];
+  const candidates = fieldName === 'materialTypeSnapshot' ? materialTypes.map((row) => ({ value: row.name, lastUsedAt: row.lastUsedAt ?? '', usageCount: row.usageCount, sortOrder: row.sortOrder })) : materialMemory.filter((row) => (fieldName === 'unit' || fieldName === 'supplierNameSnapshot' || row.materialTypeId === typeId) && row.fieldType === memoryField).map((row) => ({ value: row.value, lastUsedAt: row.lastUsedAt, usageCount: row.usageCount, sortOrder: 0 }));
+  return candidates.filter((row) => !query || normalizeSearch(row.value).includes(query)).sort((a, b) => fieldName === 'materialTypeSnapshot' && !query ? a.sortOrder - b.sortOrder : b.lastUsedAt.localeCompare(a.lastUsedAt) || b.usageCount - a.usageCount || a.value.localeCompare(b.value)).map((row) => row.value).filter((value, index, values) => values.indexOf(value) === index).slice(0, 5);
+};
+function materialInput(label: string, name: 'materialTypeSnapshot' | 'itemName' | 'specification' | 'quantity' | 'unit' | 'supplierNameSnapshot', value: string): string { const list = name === 'quantity' ? '' : ` list="material-${name}"`; const options = name === 'quantity' ? '' : `<datalist id="material-${name}">${materialChoices(name as Exclude<typeof name, 'quantity'>, value).map((item) => `<option value="${escapeHtml(item)}"></option>`).join('')}</datalist>`; const error = materialEditor?.errors.find((item) => item.startsWith(`${name}:`))?.slice(name.length + 1) ?? ''; return `<label>${label}<input data-material-field="${name}" value="${escapeHtml(value)}"${list} aria-invalid="${Boolean(error)}">${options}${error ? `<span class="field-error">${escapeHtml(error)}</span>` : ''}</label>`; }
+function materialEntryView(entry: MaterialEntry): string {
+  const editing = materialEditor?.id === entry.id; const trade = entry.connectedTradeSectionId ? daily.trade(entry.connectedTradeSectionId) : undefined; const connectionLabel = entry.entryType === 'independent' ? (trade ? '已連接' : '未連接') : '普通'; const connectionTone = materialStatusTone(entry.entryType, Boolean(trade)); const details = [entry.materialTypeSnapshot, entry.quantity && entry.unit ? `${entry.quantity} ${entry.unit}` : entry.quantity || entry.unit, entry.supplierNameSnapshot].filter(Boolean).join('｜') || '尚未填寫';
+  const summary = `<header class="daily-entry-summary collapsed-summary material-entry__summary" data-material-standalone="true" data-daily-action="toggle-material" data-material-id="${escapeHtml(entry.id)}">${dailyEntrySummary({ kind: 'material', primary: entry.itemName || '尚未命名', secondary: details, status: connectionLabel, statusTone: connectionTone })}</header>`;
+  // 尚未儲存的表單草稿不屬於日報資料，不能讓它進入刪除／復原流程。
+  const swipe = (content: string) => entry.id.startsWith('draft:') ? content : `<div class="swipe-item material-swipe" data-swipe-item="true" data-swipe-kind="material" data-swipe-id="${escapeHtml(entry.id)}"><div class="swipe-item__delete" aria-hidden="true">🗑</div>${content}</div>`;
+  if (!editing) return swipe(`<article class="daily-entry material-entry material-entry--summary" data-material="${escapeHtml(entry.id)}" data-material-standalone="true">${summary}</article>`);
+  const value = materialEditor!.value; return swipe(`<article class="daily-entry daily-entry--expanded material-entry material-entry--editing" data-material="${escapeHtml(entry.id)}" data-material-editor="${escapeHtml(entry.id)}" data-material-standalone="true">${summary}<div class="material-entry__divider"></div><section class="material-entry__content"><div class="material-form-grid">${materialInput('材料類型', 'materialTypeSnapshot', value.materialTypeSnapshot)}${materialInput('品名', 'itemName', value.itemName)}${materialInput('規格（選填）', 'specification', value.specification)}${materialInput('供應商', 'supplierNameSnapshot', value.supplierNameSnapshot)}${materialInput('數量', 'quantity', value.quantity)}${materialInput('單位', 'unit', value.unit)}</div><label class="material-note">備註（選填）<textarea rows="2" data-material-field="note">${escapeHtml(value.note)}</textarea></label><div class="form-actions form-actions--submit material-form-actions"><button type="button" class="primary" data-daily-action="save-material">儲存</button><button type="button" data-daily-action="cancel-material">取消</button></div><div class="material-data-actions"><button type="button" data-daily-action="toggle-material-type" data-material-id="${escapeHtml(entry.id)}">${entry.entryType === 'normal' ? '轉為獨立進料' : '轉為普通進料'}</button>${entry.entryType === 'independent' && entry.connectedTradeSectionId ? `<button type="button" class="warning-button" data-daily-action="disconnect-material" data-material-id="${escapeHtml(entry.id)}">解除連接</button>` : ''}</div></section></article>`);
+}
+const memoryOrder = (rows: NamedMemory[]) => rows.slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.name.localeCompare(b.name));
+const contactDirty = () => { const editor = contactEditor; return Boolean(editor && (!editor.originalId || JSON.stringify(editor.value) !== JSON.stringify(daily.report.contacts.find((item) => item.id === editor.originalId)))); };
+function contactSuggestions(field: ContactSearchField, rows: NamedMemory[], query: string): string { if (activeContactSearch !== field) return ''; const needle = normalizeSearch(query); const values = memoryOrder(rows).filter((row) => !needle || row.normalizedName.includes(needle)).slice(0, 5); const listId = `contact-${field}-suggestions`; return values.length ? `<div class="contact-suggestions" id="${listId}" role="listbox" data-contact-suggestions="${field}">${values.map((row) => `<button type="button" role="option" class="contact-suggestions__option" data-daily-action="contact-pick-memory" data-memory-id="${escapeHtml(row.id)}" data-memory-name="${escapeHtml(row.name)}"><span>${escapeHtml(row.name)}</span></button>`).join('')}</div>` : ''; }
+function workItemComposerState(tradeId: string): { query: string; taskId: string | null } { const current = workItemComposerByTrade.get(tradeId); if (current) return current; const created = { query: '', taskId: null }; workItemComposerByTrade.set(tradeId, created); return created; }
+function focusWorkItemComposer(tradeId: string): void { const input = app.querySelector<HTMLInputElement>(`[data-work-item-composer-input="${tradeId}"]`); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }
+function focusWorkAuxMenu(id: string): void { app.querySelector<HTMLButtonElement>(`[data-work-aux-menu="${id}"] button`)?.focus(); }
+function focusWorkActionsTrigger(id: string): void { app.querySelector<HTMLButtonElement>(`[data-work-actions="${id}"] .work-item__actions-trigger`)?.focus(); }
+function refreshWorkItemComposer(target: HTMLInputElement): void { const tradeId = target.dataset.workItemComposerInput; if (!tradeId) return; const state = workItemComposerState(tradeId); state.query = target.value; state.taskId = null; activeWorkItemComposerTradeId = tradeId; void renderApp().then(() => focusWorkItemComposer(tradeId)); }
+function contactCard(item: ContactItem): string {
+  const editing = contactEditor?.id === item.id && !contactEditorCollapsed; const value = contactEditor?.id === item.id ? contactEditor.value : item; const title = [value.tradeNameSnapshot || '未選工種', value.vendorNameSnapshot].filter(Boolean).join('｜'); const summary = value.items.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((task) => task.content.trim()).filter(Boolean).join('；') || '尚未填寫內容'; const status = value.items.length ? `${value.items.length} 項` : '未完成'; const statusTone = itemCountStatusTone(value.items.length);
+  const swipe = (content: string) => item.id.startsWith('draft:') ? content : `<div class="swipe-item" data-swipe-item="true" data-swipe-kind="contact" data-swipe-id="${escapeHtml(item.id)}"><div class="swipe-item__delete" aria-hidden="true">🗑</div>${content}</div>`;
+  if (!editing) return swipe(`<article class="daily-entry contact-card" data-contact-card="${escapeHtml(item.id)}"><button type="button" class="daily-entry-summary collapsed-summary contact-card__summary" data-daily-action="toggle-contact" data-contact-id="${escapeHtml(item.id)}" aria-label="展開聯絡事項">${dailyEntrySummary({ kind: 'contact', primary: title, secondary: summary, status, statusTone })}</button></article>`);
+  const trades = contactSuggestions('trade', dailyTrades, contactEditor!.tradeQuery); const vendors = contactSuggestions('vendor', dailyVendors.filter((row) => !value.tradeTypeId || row.tradeTypeId === value.tradeTypeId), contactEditor!.vendorQuery);
+  const taskMemories = value.tradeTypeId ? contactSuggestions('task', dailyTasks.filter((row) => row.tradeTypeId === value.tradeTypeId), contactEditor!.taskQuery) : '';
+  const expanded = (field: ContactSearchField) => activeContactSearch === field;
+  return swipe(`<article class="daily-entry daily-entry--expanded contact-card contact-card--editing" data-contact-card="${escapeHtml(item.id)}"><div class="entry-editor-header"><strong>${escapeHtml(title)}</strong><button type="button" data-daily-action="keep-contact">返回</button></div><details class="contact-discard"><summary>草稿選項</summary><button type="button" data-daily-action="cancel-contact">${contactEditor!.originalId ? '放棄修改' : '取消新增'}</button></details><section class="contact-card__content"><div class="contact-grid"><div class="contact-search-field"><label for="contact-trade">工種</label><input id="contact-trade" class="contact-search-field__input" data-contact-field="trade" role="combobox" aria-expanded="${expanded('trade')}" aria-controls="contact-trade-suggestions" aria-autocomplete="list" value="${escapeHtml(value.tradeNameSnapshot)}" placeholder="搜尋或輸入工種" autocomplete="off">${trades}</div><div class="contact-search-field"><label for="contact-vendor">廠商</label><input id="contact-vendor" class="contact-search-field__input" data-contact-field="vendor" role="combobox" aria-expanded="${expanded('vendor')}" aria-controls="contact-vendor-suggestions" aria-autocomplete="list" value="${escapeHtml(value.vendorNameSnapshot)}" placeholder="搜尋或輸入廠商" autocomplete="off">${vendors}</div></div><label>預定日期（選填）<input type="date" data-contact-date value="${escapeHtml(contactEditor!.plannedDate ?? '')}"></label>${lastContactDate ? `<button type="button" data-daily-action="contact-reuse-date">沿用上筆 ${escapeHtml(lastContactDate.slice(5).replace('-', '/'))}</button>` : ''}<p class="hint">完成時會將預定日期補到未標日期的工項；已有日期的工項保留原日期。</p><h3>工作內容</h3><div class="contact-add"><div class="contact-search-field"><input id="contact-task" class="contact-search-field__input" data-contact-field="task" role="combobox" aria-expanded="${expanded('task')}" aria-controls="contact-task-suggestions" aria-autocomplete="list" value="${escapeHtml(contactEditor!.taskQuery)}" placeholder="搜尋或輸入施工項目" autocomplete="off">${taskMemories}</div><button type="button" data-daily-action="contact-add-task">加入</button></div><details class="contact-task-details"><summary>數量／規格（選填）</summary><label>補充這個工項<input data-contact-details value="${escapeHtml(contactEditor!.taskDetails ?? '')}" placeholder="例：2.5 方，350kgf/cm²"></label></details><div class="contact-tasks">${value.items.map((task, index) => `<div class="contact-task" data-contact-task="${escapeHtml(task.id)}" draggable="true"><span class="contact-task__handle" aria-hidden="true">⠿</span><textarea data-contact-task-content="${escapeHtml(task.id)}" rows="1" aria-label="施工項目 ${index + 1}">${escapeHtml(task.content)}</textarea><button type="button" class="danger-text" data-daily-action="contact-remove-task" data-task-id="${escapeHtml(task.id)}">移除</button></div>`).join('') || '<p class="empty">請加入至少一個施工項目。</p>'}</div>${contactEditor!.errors.length ? `<p class="field-error">${escapeHtml(contactEditor!.errors[0])}</p>` : ''}<div class="form-actions form-actions--submit"><button type="button" data-daily-action="save-contact">完成這筆</button><button type="button" class="primary" data-daily-action="save-contact-next">完成並新增</button></div></section></article>`);
+}
+function specialCard(item: SpecialItem): string { const expanded = expandedSpecialId === item.id; const summary = item.content.trim() || '尚未填寫內容'; const content = expanded ? `<section class="special-card__content"><label>事項內容<textarea data-daily-field="content">${escapeHtml(item.content)}</textarea></label></section>` : ''; const status = item.content.trim() ? '已輸入' : '未填寫'; const statusTone = contentStatusTone(item.content); return `<div class="swipe-item" data-swipe-item="true" data-swipe-kind="special" data-swipe-id="${escapeHtml(item.id)}"><div class="swipe-item__delete" aria-hidden="true">🗑</div><article class="daily-entry ${expanded ? 'daily-entry--expanded' : ''} special-card" data-special="${escapeHtml(item.id)}"><button type="button" class="daily-entry-summary collapsed-summary special-card__summary" data-daily-action="toggle-special" data-id="${escapeHtml(item.id)}" aria-expanded="${expanded}">${dailyEntrySummary({ kind: 'special', primary: summary, secondary: '現場提醒', status, statusTone })}</button>${content}</article></div>`; }
+function tradeCard(trade: TradeSection, index: number): string {
+  const expanded = !tradeDrag.active && daily.expandedId === trade.id;
+  const handle = `<button type="button" class="drag-handle" data-drag-trade="${escapeHtml(trade.id)}" aria-label="拖曳排序"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 5h1m6 0h1M8 12h1m6 0h1M8 19h1m6 0h1" stroke-linecap="round"/></svg></button>`;
+  if (tradeDrag.active && tradeDrag.id === trade.id) return `<div class="trade-swipe" data-trade-swipe="${escapeHtml(trade.id)}"><article class="daily-entry trade-card trade-card--drag-placeholder" data-trade="${escapeHtml(trade.id)}" aria-hidden="true">${tradeRowSummary(trade, false, '<span class="drag-handle" aria-hidden="true">⠿</span>', false)}</article></div>`;
+  const sortableIndex = daily.report.tradeSections.filter((item) => item.id !== tradeDrag.id).findIndex((item) => item.id === trade.id); const indicator = tradeDrag.active && tradeDrag.activeDropSlotIndex === sortableIndex ? '<div class="trade-drop-indicator" style="height:4px;border-radius:2px;background:#df9c2e;margin:-.75rem 0 .55rem;pointer-events:none"></div>' : '';
+  const summary = expanded ? `<div class="entry-editor-header"><button type="button" class="trade-editor-toggle" data-daily-action="keep-trade" data-id="${escapeHtml(trade.id)}" aria-expanded="true" aria-controls="trade-content-${escapeHtml(trade.id)}"><strong>${escapeHtml(trade.tradeNameSnapshot || '施工紀錄')}</strong><span aria-hidden="true">▴</span><span class="hint">收合</span></button><details class="trade-change"><summary>編輯工種</summary><label>工種<input data-daily-field="tradeNameSnapshot" value="${escapeHtml(trade.tradeNameSnapshot)}" list="trade-options"><datalist id="trade-options">${dailyTrades.map((row) => `<option value="${escapeHtml(row.name)}">${row.status === 'candidate' ? '待審核' : ''}</option>`).join('')}</datalist></label></details></div>` : tradeRowSummary(trade, false, handle);
+  const deleteUnderlay = '<div class="trade-swipe__delete" aria-hidden="true"><span>🗑</span></div>';
+  if (!expanded) return `${indicator}<div class="trade-swipe swipe-item" data-swipe-item="true" data-swipe-kind="trade" data-swipe-id="${escapeHtml(trade.id)}">${deleteUnderlay}<article class="daily-entry trade-card trade-card--${escapeHtml(trade.status)}" data-trade="${escapeHtml(trade.id)}" data-sortable-trade data-trade-index="${index}">${summary}</article></div>`;
+  const linked = daily.linkedMaterialEntries(trade.id); const linkedSummary = linked.length ? `<div class="linked-material-summary">${linked.map((entry) => `<span>${escapeHtml(entry.itemName || entry.materialTypeSnapshot || '未命名進料')}</span>`).join('')}</div>` : '<p class="hint">尚未連接獨立進料。</p>'; return `${indicator}<div class="trade-swipe swipe-item" data-swipe-item="true" data-swipe-kind="trade" data-swipe-id="${escapeHtml(trade.id)}">${deleteUnderlay}<article class="daily-entry daily-entry--expanded trade-card trade-card--${escapeHtml(trade.status)}" data-trade="${escapeHtml(trade.id)}" data-sortable-trade data-trade-index="${index}">${summary}<section class="trade-card__content" id="trade-content-${escapeHtml(trade.id)}"><section class="vendor-card"><div class="construction-fields"><label>廠商<input data-daily-field="vendorNameSnapshot" value="${escapeHtml(trade.vendorNameSnapshot)}" list="vendors-${escapeHtml(trade.id)}"><datalist id="vendors-${escapeHtml(trade.id)}">${dailyVendors.filter((row) => row.tradeTypeId === trade.tradeTypeId).map((row) => `<option value="${escapeHtml(row.name)}">${row.status === 'candidate' ? '待審核' : ''}</option>`).join('')}</datalist></label><label>人數<input data-daily-field="workerCount" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(trade.workerCount)}" placeholder="人"></label></div><p class="hint">請確認廠商，填寫今日人數。</p><h3 class="subsection-title">施工工項</h3>${workInputView(trade)}<details class="work-material-details"><summary>獨立進料${linked.length ? ` · ${linked.length} 筆` : ' · 選填'}</summary>${linkedSummary}<button type="button" data-daily-action="manage-material-connections" data-trade-id="${escapeHtml(trade.id)}">管理進料連接</button></details></section><div class="action-row"><button type="button" data-daily-action="finish-entry" data-id="${escapeHtml(trade.id)}">完成這筆</button><button type="button" class="primary" data-daily-action="next-entry" data-id="${escapeHtml(trade.id)}">完成並新增</button></div></section></article></div>`;
+}
+function activeTabContent(): string {
+  if (daily.report.activeTab === 'engineering') { const trailing = tradeDrag.active && tradeDrag.activeDropSlotIndex === daily.report.tradeSections.filter((item) => item.id !== tradeDrag.id).length ? '<div class="trade-drop-indicator" style="height:4px;border-radius:2px;background:#df9c2e;margin:.55rem 0;pointer-events:none"></div>' : ''; return `<section class="daily-section"><header class="daily-section__header"><div><h2>施工紀錄</h2><p>${daily.report.tradeSections.length ? `已建立 ${daily.report.tradeSections.length} 個工種` : '從新增工種開始記錄今天的施工內容。'}</p></div><div class="daily-section__actions"><button type="button" class="primary" data-daily-action="add-trade">新增施工紀錄</button></div></header><section class="daily-section__list trade-list">${daily.report.tradeSections.map(tradeCard).join('') || '<p class="daily-section__empty">尚未新增工程條目。</p>'}${trailing}</section></section>`; }
+  if (daily.report.activeTab === 'supplies') { const entries = daily.report.standaloneMaterialEntries; const draft = materialEditor?.originalId ? [] : materialEditor ? [materialEditor.value] : []; return `<section class="daily-section material-panel"><header class="daily-section__header"><div><h2>進料</h2><p>普通與獨立進料統一管理，獨立進料可連接至工程條目。</p></div><div class="daily-section__actions daily-section__actions--pair"><button type="button" data-daily-action="add-normal-material">新增進料</button><button type="button" class="primary" data-daily-action="add-independent-material">新增獨立進料</button></div></header>${materialConnectionPanel()}<div class="daily-section__list material-list">${[...draft, ...entries].map(materialEntryView).join('') || '<p class="daily-section__empty">尚無進料紀錄。</p>'}</div></section>`; }
+  if (daily.report.activeTab === 'contacts') { const committed = daily.report.contacts; const draft: ContactItem[] = contactEditor?.originalId ? [] : contactEditor ? [contactEditor.value] : []; return `<section class="daily-section"><header class="daily-section__header"><div><h2>聯絡事項</h2><p>以工種記憶快速建立待聯絡的施工項目。</p></div><div class="daily-section__actions"><button type="button" class="primary" data-daily-action="add-contact">新增聯絡事項</button></div></header><div class="daily-section__list contact-list">${[...draft, ...committed].map(contactCard).join('') || '<p class="daily-section__empty">尚未新增聯絡事項。</p>'}</div></section>`; }
+  return `<section class="daily-section"><header class="daily-section__header"><div><h2>特殊事項</h2><p>記錄未歸屬工程或進料的現場提醒。</p></div><div class="daily-section__actions"><button type="button" class="primary" data-daily-action="add-special">新增特殊事項</button></div></header><div class="daily-section__list special-list">${daily.report.specialItems.map(specialCard).join('') || '<p class="daily-section__empty">尚未新增特殊事項。</p>'}</div></section>`;
+}
+function syncMaterialEditor(materialId: string): void { if (materialEditor?.id === materialId) { const entry = daily.materialEntry(materialId); if (entry) materialEditor.value = structuredClone(entry); } }
+function materialConnectionPanel(): string {
+  const materials = daily.report.standaloneMaterialEntries.filter((entry) => entry.entryType === 'independent');
+  const selected = materialConnectionSelectionId ? daily.materialEntry(materialConnectionSelectionId) : undefined;
+  const focus = materialConnectionFocusTradeId;
+  const query = normalizeSearch(materialConnectionTradeSearch);
+  const visibleTrades = daily.report.tradeSections.filter((trade) => !query || normalizeSearch(`${trade.tradeNameSnapshot} ${trade.vendorNameSnapshot}`).includes(query));
+  const visibleTradeIds = new Set(visibleTrades.map((trade) => trade.id));
+  const linkCount = (tradeId: string) => materials.filter((entry) => entry.connectedTradeSectionId === tradeId).length;
+  const mobilePosition = (index: number, total: number) => ((index + .5) / Math.max(total, 1)) * 100;
+  const materialNodes = materials.map((entry) => {
+    const connected = entry.connectedTradeSectionId ? daily.trade(entry.connectedTradeSectionId) : undefined;
+    const title = entry.itemName || entry.materialTypeSnapshot || '未命名進料';
+    const connection = connected ? `已接至 ${connected.tradeNameSnapshot}${visibleTradeIds.has(connected.id) ? '' : '（目前未顯示）'}` : '未連接';
+    return `<button type="button" class="connection-node connection-node--material ${materialConnectionSelectionId === entry.id ? 'is-selected' : ''}" data-daily-action="select-connection-material" data-material-id="${escapeHtml(entry.id)}" aria-pressed="${materialConnectionSelectionId === entry.id}" title="${escapeHtml(title)}"><span class="connection-port" aria-hidden="true"></span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(connection)}</small></button>`;
+  }).join('') || '<p class="empty">先儲存一筆獨立進料，才可建立連接。</p>';
+  const tradeNodes = visibleTrades.map((trade) => {
+    const count = linkCount(trade.id);
+    const title = `${trade.tradeNameSnapshot}${trade.vendorNameSnapshot ? `｜${trade.vendorNameSnapshot}` : ''}`;
+    return `<button type="button" class="connection-node connection-node--trade ${focus === trade.id ? 'is-focused' : ''}" data-daily-action="select-connection-trade" data-trade-id="${escapeHtml(trade.id)}" ${selected ? '' : 'disabled'} title="${escapeHtml(title)}"><span class="connection-port" aria-hidden="true"></span><strong>${escapeHtml(trade.tradeNameSnapshot)}</strong><small>${trade.status === 'complete' ? '已完成' : '草稿'}${count ? `｜已連接 ${count} 筆` : ''}</small>${count ? `<b class="connection-count" aria-label="${count} 筆進料已連接">${count}</b>` : ''}</button>`;
+  }).join('') || '<p class="empty">找不到符合的工種。</p>';
+  const tradeIndex = new Map(visibleTrades.map((trade, index) => [trade.id, index]));
+  const curves = materials.flatMap((entry) => {
+    const targetIndex = entry.connectedTradeSectionId ? tradeIndex.get(entry.connectedTradeSectionId) : undefined;
+    if (targetIndex === undefined) return [];
+    const active = entry.id === materialConnectionSelectionId;
+    return [`<path class="connection-curve${active ? ' is-active' : ''}" data-connection-curve data-material-id="${escapeHtml(entry.id)}" data-trade-id="${entry.connectedTradeSectionId}" vector-effect="non-scaling-stroke"/>`];
+  }).join('');
+  const mobileCurves = materials.flatMap((entry, materialIndex) => {
+    const targetIndex = entry.connectedTradeSectionId ? tradeIndex.get(entry.connectedTradeSectionId) : undefined;
+    if (targetIndex === undefined) return [];
+    const active = entry.id === materialConnectionSelectionId;
+    const startX = mobilePosition(materialIndex, materials.length);
+    const endX = mobilePosition(targetIndex, visibleTrades.length);
+    return [`<path class="connection-curve${active ? ' is-active' : ''}" d="M ${startX} 0 C ${startX} 28, ${endX} 52, ${endX} 80" vector-effect="non-scaling-stroke"/>`];
+  }).join('');
+  const height = Math.max(materials.length, visibleTrades.length, 1) * (MATERIAL_CONNECTION_NODE_HEIGHT_PX + MATERIAL_CONNECTION_NODE_GAP_PX) - MATERIAL_CONNECTION_NODE_GAP_PX;
+  const canvas = `<div class="material-connection-canvas" aria-hidden="true" style="--connection-canvas-height:${height}px"><svg class="material-connection-canvas__desktop" viewBox="0 0 1 1" preserveAspectRatio="none">${curves}</svg><svg class="material-connection-canvas__mobile" viewBox="0 0 100 80" preserveAspectRatio="none">${mobileCurves}</svg></div>`;
+  return `<section class="material-connection-panel" aria-label="進料接線盤" style="--connection-node-height:${MATERIAL_CONNECTION_NODE_HEIGHT_PX}px;--connection-node-gap:${MATERIAL_CONNECTION_NODE_GAP_PX}px"><header><div><p class="eyebrow">MATERIAL PATCH PANEL</p><h3>進料接線盤</h3><p class="hint" aria-live="polite">${selected ? `已選取「${escapeHtml(selected.itemName || selected.materialTypeSnapshot || '未命名進料')}」，請點選工種端口。` : '先點選已儲存的獨立進料，再點選工種。'}</p></div>${selected ? '<button type="button" data-daily-action="clear-connection-selection">取消選取</button>' : ''}</header><div class="material-connection-panel__board"><section class="connection-node-section" style="--connection-mobile-count:${Math.max(materials.length, 1)}"><header><h4>獨立進料</h4></header><div class="connection-node-list">${materialNodes}</div></section>${canvas}<section class="connection-node-section connection-node-section--trades" style="--connection-mobile-count:${Math.max(visibleTrades.length, 1)}"><header><h4>工種</h4><input data-material-connection-search aria-label="搜尋工種或廠商" placeholder="搜尋工種或廠商" value="${escapeHtml(materialConnectionTradeSearch)}" autocomplete="off"></header><div class="connection-node-list">${tradeNodes}</div></section></div></section>`;
+}
+function syncMaterialConnectionCurves(): void {
+  if (window.matchMedia('(max-width: 760px)').matches) return;
+  app.querySelectorAll<HTMLElement>('.material-connection-panel__board').forEach((board) => {
+    const svg = board.querySelector<SVGSVGElement>('.material-connection-canvas__desktop');
+    if (!svg) return;
+    const boardRect = board.getBoundingClientRect();
+    if (!boardRect.width || !boardRect.height) return;
+    svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
+    board.querySelectorAll<SVGPathElement>('[data-connection-curve]').forEach((path) => {
+      const materialId = path.dataset.materialId; const tradeId = path.dataset.tradeId;
+      const sourcePort = [...board.querySelectorAll<HTMLElement>('.connection-node[data-material-id]')].find((node) => node.dataset.materialId === materialId)?.querySelector<HTMLElement>('.connection-port');
+      const targetPort = [...board.querySelectorAll<HTMLElement>('.connection-node[data-trade-id]')].find((node) => node.dataset.tradeId === tradeId)?.querySelector<HTMLElement>('.connection-port');
+      if (!sourcePort || !targetPort) { path.removeAttribute('d'); return; }
+      const source = sourcePort.getBoundingClientRect(); const target = targetPort.getBoundingClientRect();
+      const startX = source.left - boardRect.left + source.width / 2; const startY = source.top - boardRect.top + source.height / 2;
+      const endX = target.left - boardRect.left + target.width / 2; const endY = target.top - boardRect.top + target.height / 2;
+      const control = Math.max(32, Math.abs(endX - startX) * .34);
+      path.setAttribute('d', `M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`);
+    });
+  });
+}
+window.addEventListener('resize', () => requestAnimationFrame(syncMaterialConnectionCurves));
+type ModuleHeaderControl = { kind: 'link'; href: string; label: string; ariaLabel: string } | { kind: 'action'; html: string };
+function moduleHeader(title: string, meta: string, control?: ModuleHeaderControl, metaAttributes = ''): string {
+  const right = !control ? '' : control.kind === 'link' ? `<a class="settings-button" href="${control.href}" aria-label="${control.ariaLabel}">${control.label}</a>` : control.html;
+  return `<header class="top app-header app-header--module module-page__header"><div class="app-header__title"><p class="app-header__meta"${metaAttributes}>${escapeHtml(meta)}</p><h1>${escapeHtml(title)}</h1></div>${right}</header>`;
+}
+function dailyHeader(saveLabel: string): string {
+  return `<header class="top app-header app-header--module module-page__header daily-page__header"><div class="app-header__title"><p class="daily-page__save-status" data-save-status data-state="${dailySaveState}" role="status">${escapeHtml(saveLabel)}</p><h1>施工日報</h1></div><a class="settings-button" href="#settings/daily" aria-label="開啟施工日報設定">設定</a></header>`;
+}
+function syncControl(kind: 'daily' | 'water' = 'daily'): string {
+  if (!accountAuth.user || !accountActiveSiteId) return '';
+  const pulled = lastPulledAt ? new Date(lastPulledAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '尚未同步';
+  const current = kind === 'daily' ? `日報日期：${daily.report.date}` : `共用工地：${accountSites.find((site) => site.id === accountActiveSiteId)?.name ?? '目前工地'}`;
+  return `<section class="manual-sync" aria-label="共用工地同步"><div><strong>${escapeHtml(current)}</strong><small>本機上次取得雲端資料：${escapeHtml(pulled)}</small>${syncFeedback ? `<small role="status">${escapeHtml(syncFeedback)}</small>` : ''}</div><button type="button" class="primary" data-sync-now${syncInFlight ? ' disabled' : ''}>${syncInFlight ? '同步中…' : '立即同步'}</button></section>`;
+}
+function moduleTabs(active: 'daily' | 'water-level'): string {
+  return `<nav class="top-tabs" aria-label="主要功能"><a href="#daily"${active === 'daily' ? ' class="active" aria-current="page"' : ''}>施工日報</a><a href="#water-level"${active === 'water-level' ? ' class="active" aria-current="page"' : ''}>水位變化</a></nav>`;
+}
+function settingsContextTabs(active: 'daily' | 'water' | 'memory' | 'data' | 'account'): string {
+  const items: Array<[typeof active, string, string]> = [['daily', '#settings/daily', '工地記憶'], ['water', '#settings/water', '水位設定'], ['memory', '#settings/memory', '記憶審核'], ['data', '#settings/data', '資料與系統'], ['account', '#settings/account', '共用工地']];
+  return `<nav class="settings-context-tabs" aria-label="設定區域">${items.map(([id, href, label]) => `<a href="${href}"${id === active ? ' class="active" aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
+}
+function workspaceSiteView(): string {
+  if (!accountAuth.user) return '<div class="workspace-site"><strong>本機工作區</strong><a href="#settings/account">登入並選擇工地</a></div>';
+  return `<label class="workspace-site">目前工地<select data-workspace-site aria-label="切換工地"><option value="">本機工作區</option>${accountSites.map((site) => `<option value="${escapeHtml(site.id)}"${site.id === accountActiveSiteId ? ' selected' : ''}>${escapeHtml(site.name)}${site.role === 'viewer' ? '（檢視）' : ''}</option>`).join('')}</select><a href="#settings/account">工地與成員</a></label>`;
+}
+function basicsView(): string {
+  return `<section class="basics daily-basics basics--expanded"><div class="daily-context-row">${workspaceSiteView()}<div class="basics__fields" id="daily-basics-fields">${field('日報日期', 'date', daily.report.date, 'date')}</div></div>${accountAuth.user ? '' : sitePickerField()}</section>`;
+}
+function tradePickerResults(): string {
+  const keyword = normalizeSearch(tradePickerSearch); const picks = dailyTrades.filter((item) => !keyword || item.normalizedName.includes(keyword)).slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName)); const recentVendor = (tradeId: string): NamedMemory | undefined => dailyVendors.filter((item) => item.tradeTypeId === tradeId && item.status === 'confirmed').slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName))[0]; const pickerContent = picks.length ? `<div class="settings-list">${picks.map((trade) => { const vendor = recentVendor(trade.id); return `<button type="button" class="settings-item" data-daily-action="select-trade" data-trade-id="${escapeHtml(trade.id)}"><strong>${escapeHtml(trade.name)}</strong><span class="hint">${vendor ? `最近使用：${escapeHtml(vendor.name)}` : ''}</span></button>`; }).join('')}</div>` : keyword ? '' : '<p class="empty">尚無可用工種。</p>'; const pickerActions = keyword && !picks.some((row) => row.normalizedName === keyword) ? `<div class="form-actions form-actions--submit"><button type="button" class="primary" data-daily-action="create-trade-from-search">立即新增工種「${escapeHtml(tradePickerSearch)}」</button><button type="button" data-daily-action="close-trade-picker">取消</button></div>` : `<div class="dialog-actions"><button type="button" data-daily-action="close-trade-picker">取消</button></div>`;
+  return pickerContent + pickerActions;
+}
+
+function dailyView(): string {
+  pruneTradeUndoQueue();
+  refreshCompleteness(daily.report);
+  const completed = daily.report.tradeSections.filter((trade) => trade.status === 'complete'); const drafts = daily.report.tradeSections.filter((trade) => trade.status === 'draft');
+  const picker = tradePickerOpen ? `<div class="dialog-backdrop"><section class="trade-picker" role="dialog" aria-modal="true" aria-label="新增工種"><h2>新增工種</h2><div class="task-search" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem"><input data-trade-picker-search aria-label="搜尋工種名稱" placeholder="搜尋工種名稱" value="${escapeHtml(tradePickerSearch)}" autofocus><button type="button" data-daily-action="clear-trade-search" ${tradePickerSearch ? '' : 'hidden'}>清除</button></div><div data-trade-picker-results>${tradePickerResults()}</div></section></div>` : '';
+  const saveLabel = dailySyncLabel();
+  const previewSummary = contactEditor ? `尚有 ${drafts.length + 1} 筆需補填（含聯絡草稿）` : drafts.length ? `尚有 ${drafts.length} 筆需補填` : completed.length ? `${completed.length} 筆資料齊全，可檢查日報` : '填寫施工紀錄後即可預覽';
+  const missingLinks = drafts.map((trade) => `<button type="button" class="missing-entry" data-daily-action="fix-entry" data-id="${escapeHtml(trade.id)}">${escapeHtml(trade.tradeNameSnapshot || '施工紀錄')}：${escapeHtml(validateTrade(trade, daily.linkedMaterialEntries(trade.id))[0]?.message ?? '請整理重複廠商')}</button>`).join('');
+  const duplicateWarning = duplicateVendorTradeIds(daily.report).size ? '<p class="daily-output__warning">同一工種存在重複廠商施工卡；預覽保留原內容，但不能定稿。</p>' : '';
+  const nameWarning = groupOutputTrades(daily.report, false).some((group) => new Set(group.sections.map((trade) => trade.tradeNameSnapshot.trim())).size > 1) ? '<p class="daily-output__warning">同一工種的名稱快照不一致；預覽採最前施工卡名稱。</p>' : '';
+  const previewBody = dailyPreviewOpen ? `<div class="daily-output__content">${missingLinks}${drafts.length ? `<p class="daily-output__warning">${escapeHtml(previewSummary)}</p>` : ''}${duplicateWarning}${nameWarning}<pre>${escapeHtml(formatDailyReport(daily.report) || '填寫施工紀錄後，這裡會顯示日報預覽。')}</pre><div class="daily-output__actions"><button type="button" data-daily-action="copy" ${drafts.length || contactEditor ? 'disabled' : ''}>僅複製</button><button type="button" class="primary" data-daily-action="finalize" ${drafts.length || contactEditor || !completed.length ? 'disabled' : ''}>定稿並複製</button><a class="daily-output__history-link" href="#daily/history">查看近 7 天</a></div><p class="hint">定稿會保留 7 天，之後自動清除；草稿保留供繼續編輯。</p>${dailyCopyFeedback ? `<p class="daily-output__feedback" role="status">${escapeHtml(dailyCopyFeedback)}</p>` : ''}</div>` : '';
+  const undoNotice = tradeUndoQueue.length ? `<aside class="trade-undo-notice" role="status" aria-live="polite"><span>已刪除 ${tradeUndoQueue.length} 個工程條目</span><button type="button" data-daily-action="undo-trade-delete">復原上一筆</button></aside>` : '';
+  const connectionNotice = materialConnectionUndo && materialConnectionUndo.expiresAt > Date.now() ? `<aside class="trade-undo-notice material-connection-undo" role="status" aria-live="polite"><span>已解除進料連接</span><button type="button" data-daily-action="undo-material-disconnect">復原</button></aside>` : '';
+  return `<main class="app-shell module-page daily-page">${entrySaveError ? `<p data-entry-save-error role="alert">${escapeHtml(entrySaveError)}</p>` : ''}${dailyHeader(saveLabel)}<div class="module-page__tabs">${moduleTabs('daily')}</div>${syncControl()}${basicsView()}<section class="daily-workspace" aria-label="日報內容">${dailyTabs()}${activeTabContent()}</section><aside class="daily-output ${dailyPreviewOpen ? 'daily-output--open' : ''}"><button type="button" class="daily-output__toggle collapsed-summary" data-daily-action="toggle-preview" aria-expanded="${dailyPreviewOpen}" aria-controls="daily-output-content"><span><strong>${daily.report.tradeSections.length} 筆施工 · ${daily.report.tradeSections.reduce((sum, trade) => sum + (Number(trade.workerCount) || 0), 0)} 人 · ${daily.report.contacts.length} 筆聯絡</strong><span>${escapeHtml(previewSummary)}</span></span><span>${dailyPreviewOpen ? '收合預覽' : '檢查與預覽'}</span></button><div id="daily-output-content">${previewBody}</div></aside>${connectionNotice}${undoNotice}${picker}</main>`;
+}
+function dailyHistoryView(): string { return `<main class="app-shell settings-page"><header class="top app-header"><div><p class="eyebrow">FINALIZED REPORTS</p><h1>近 7 天日報</h1></div><a class="settings-button" href="#daily">返回日報</a></header>${moduleTabs('daily')}${workspaceSiteView()}<section class="history-list">${finalizedReports.length ? finalizedReports.map((report) => `<article><div><strong>${escapeHtml(report.siteNameSnapshot)}｜${escapeHtml(report.date)}</strong><span>定稿：${escapeHtml(new Date(report.finalizedAt).toLocaleString('zh-TW'))}</span></div><pre>${escapeHtml(report.outputText)}</pre><button type="button" data-daily-action="copy-finalized" data-finalized-id="${escapeHtml(report.id)}">再次複製</button></article>`).join('') : '<p class="empty">近 7 天尚無已定稿日報。</p>'}</section><p class="hint">日報定稿後保留 7 天，超過期限會自動清除。</p></main>`; }
+const sectionLabels: Array<[DailySettingsSection, string]> = [['sites', '工地管理'], ['trade-tasks', '工種與工項管理'], ['vendors', '廠商管理'], ['locations', '位置管理'], ['materials', '材料類型管理'], ['templates', '特殊事項模板']];
+const dailySettingsAreas: Array<{ id: DailySettingsArea; title: string; description: string; sections: DailySettingsSection[] }> = [
+  { id: 'foundation', title: '施工基礎', description: '管理填報前會重複使用的工地、人員與位置資料。', sections: ['sites', 'trade-tasks', 'vendors', 'locations'] },
+  { id: 'materials', title: '材料與文字', description: '整理進料分類與日報中的特殊事項文字。', sections: ['materials', 'templates'] },
+];
+function settingsItems(): string {
+  const section = settingsState.activeSection;
+  if (section === 'materials') { const keyword = normalizeSearch(settingsState.taskSearchKeyword); const rows = materialTypes.filter((row) => !keyword || row.normalizedName.includes(keyword)); return `<section class="form-card material-type-settings"><h2>材料類型管理</h2><div class="task-search"><input data-material-type-search placeholder="搜尋材料類型" value="${escapeHtml(settingsState.taskSearchKeyword)}"><button type="button" data-settings-action="add-material-type">＋ 新增材料類型</button></div><div class="settings-list">${rows.map((row) => `<article class="settings-item" draggable="true" data-material-type-id="${escapeHtml(row.id)}"><strong>⠿ ${escapeHtml(row.name)}</strong><span class="hint">使用 ${row.usageCount} 次${row.lastUsedAt ? `｜最近：${escapeHtml(new Date(row.lastUsedAt).toLocaleDateString('zh-TW'))}` : ''}</span><div class="settings-item-actions"><button type="button" data-settings-action="rename-material-type" data-id="${escapeHtml(row.id)}">重新命名</button><button type="button" class="danger-text" data-settings-action="delete-material-type" data-id="${escapeHtml(row.id)}">刪除</button></div></article>`).join('') || '<p class="empty">尚無材料類型。</p>'}</div></section>`; }
+  if (section === 'backup') return `<section class="form-card"><h2>記憶備份與還原</h2><p class="hint">只包含工地、工種、工項、廠商、位置、材料類型、材料候選與特殊事項模板；不包含日報草稿、定稿日報或水位資料。</p><div class="action-row"><button type="button" class="primary" data-settings-action="export-memory-backup">下載記憶備份</button><label class="button-like">匯入記憶備份<input type="file" accept="application/json,.json" data-memory-backup-import hidden></label></div>${memoryBackupFeedback ? `<p class="hint" role="status">${escapeHtml(memoryBackupFeedback)}</p>` : ''}</section>`;
+  if (section === 'debug') return `<section class="form-card"><h2>偵錯資訊</h2><pre>${escapeHtml(JSON.stringify({ ...debugSnapshot(), stores: settingsDebug }, null, 2))}</pre><div class="action-row"><button type="button" data-settings-action="copy-debug">複製偵錯資訊</button><button type="button" class="danger-text" data-settings-action="clear-debug">清除偵錯紀錄</button></div></section>`;
+  if (section === 'trade-tasks') return tradeTasksSettings();
+  const needsTrade = section === 'vendors'; const title = sectionLabels.find(([key]) => key === section)?.[1] ?? '';
+  const rows = section === 'templates' ? settingsTemplates : settingsRows;
+  const tradeSelect = needsTrade ? `<label>工種<select data-settings-field="trade"><option value="">請選擇工種</option>${settingsTrades.map((trade) => `<option value="${escapeHtml(trade.id)}" ${settingsState.selectedTradeTypeId === trade.id ? 'selected' : ''}>${escapeHtml(trade.name)}</option>`).join('')}</select></label>` : '';
+  if (needsTrade && !settingsState.selectedTradeTypeId) return `<section class="form-card"><h2>${title}</h2>${tradeSelect}<p class="hint">請先選擇工種，才能查看與管理${section === 'vendors' ? '廠商' : '工項'}。</p></section>`;
+  const itemRows = rows.map((row) => { const id = row.id; const text = section === 'templates' ? (row as SpecialTemplate).text : (row as NamedMemory).name; const editing = settingsState.editingId === id; return `<article class="settings-item"><strong>${escapeHtml(text)}</strong><div class="settings-item-actions">${section !== 'sites' && section !== 'trades' && section !== 'templates' && (row as NamedMemory).status === 'candidate' ? `<button type="button" data-settings-action="confirm" data-id="${escapeHtml(id)}">確認</button>` : ''}<button type="button" data-settings-action="edit" data-id="${escapeHtml(id)}">編輯</button><button type="button" class="danger-text" data-settings-action="delete" data-id="${escapeHtml(id)}" data-name="${escapeHtml(text)}">刪除</button></div>${editing ? `<form class="settings-edit-form" data-settings-form="edit"><label>名稱<input name="name" maxlength="${section === 'templates' ? 500 : 50}" value="${escapeHtml(text)}" autofocus></label><div class="form-actions form-actions--submit"><button class="primary" type="submit">儲存</button><button type="button" data-settings-action="cancel">取消</button></div></form>` : ''}</article>`; }).join('') || '<p class="empty">尚無設定資料。</p>';
+  const add = settingsState.adding ? `<form class="settings-edit-form" data-settings-form="add"><label>${section === 'templates' ? '模板內容' : '名稱'}<input name="name" maxlength="${section === 'templates' ? 500 : 50}" autofocus></label><div class="form-actions form-actions--submit"><button class="primary" type="submit">儲存</button><button type="button" data-settings-action="cancel">取消</button></div></form>` : `<button type="button" data-settings-action="add">＋ 新增${title.replace('管理', '')}</button>`;
+  return `<section class="form-card"><h2>${title}</h2>${tradeSelect}${add}<div class="settings-list">${itemRows}</div></section>`;
+}
+function tradeTasksSettings(): string {
+  const expandedId = settingsState.selectedTradeTypeId; const results = searchTradeManagement(settingsTrades, settingsAllTasks, tradeSearchKeyword);
+  const taskPanel = (result: typeof results[number]) => { const { trade, nameMatches, matchingTasks } = result; if (expandedId !== trade.id) return ''; const tasks = tradeSearchKeyword && !nameMatches ? matchingTasks : settingsAllTasks.filter((task) => task.tradeTypeId === trade.id); const add = settingsState.adding ? taskForm('add') : '<button type="button" data-settings-action="add-task">＋ 新增工項</button>'; return `<div class="trade-task-panel"><div class="trade-task-panel__bar"><strong>工項</strong>${tradeSearchKeyword && !nameMatches ? `<span class="hint">符合 ${matchingTasks.length} 個工項</span>` : ''}</div>${add}<div class="settings-list">${tasks.map((task) => `<article class="settings-item"><strong>${escapeHtml(task.name)}</strong><div class="settings-item-actions"><button type="button" data-settings-action="edit-task" data-id="${escapeHtml(task.id)}">編輯</button><button type="button" class="danger-text" data-settings-action="delete" data-settings-kind="tasks" data-id="${escapeHtml(task.id)}" data-name="${escapeHtml(task.name)}">刪除</button></div>${settingsState.editingId === task.id ? taskForm('edit', task.name) : ''}</article>`).join('') || '<p class="empty">尚無工項。</p>'}</div></div>`; };
+  const trades = results.map((result) => { const { trade, matchingTasks, nameMatches } = result; return `<div class="settings-trade-swipe" data-settings-trade-swipe data-trade-id="${escapeHtml(trade.id)}"><div class="settings-trade-swipe__underlay settings-trade-swipe__underlay--edit" aria-hidden="true">編輯</div><div class="settings-trade-swipe__underlay settings-trade-swipe__underlay--delete" aria-hidden="true">刪除</div><article class="settings-item trade-task-item settings-trade-swipe__surface" data-trade-type-id="${escapeHtml(trade.id)}"><div class="trade-task-header"><button type="button" class="trade-toggle" data-settings-action="toggle-trade-tasks" data-trade-type-id="${escapeHtml(trade.id)}">${expandedId === trade.id ? '▾' : '▸'} ${escapeHtml(trade.name)}</button>${tradeSearchKeyword && !nameMatches ? `<span class="hint">符合 ${matchingTasks.length} 個工項</span>` : ''}</div>${settingsState.editingId === trade.id ? tradeForm(trade.name) : ''}${taskPanel(result)}</article></div>`; }).join('') || '<p class="empty">找不到符合的工種或工項。</p>';
+  return `<section class="form-card trade-management"><header class="trade-management__header"><h2>工種與工項管理</h2><button type="button" class="primary" data-settings-action="add-trade">＋ 新增工種</button></header>${settingsState.adding && !expandedId ? tradeForm() : ''}<div class="trade-management__search"><input data-trade-search aria-label="搜尋工種或工項" placeholder="搜尋工種或工項" value="${escapeHtml(tradeSearchKeyword)}">${tradeSearchKeyword ? '<button type="button" data-settings-action="clear-trade-search">清除</button>' : ''}</div><div class="settings-list">${trades}</div></section>`;
+}
+function normalizeSearch(value: string): string { return value.trim().replace(/　/g, ' ').replace(/\s+/g, ' ').toLocaleLowerCase('en-US'); }
+function tradeForm(value = ''): string { return `<form class="settings-edit-form" data-settings-form="trade"><label>工種名稱<input name="name" maxlength="50" value="${escapeHtml(value)}" autofocus></label><div class="form-actions form-actions--submit"><button class="primary" type="submit">儲存</button><button type="button" data-settings-action="cancel">取消</button></div></form>`; }
+function taskForm(mode: 'add' | 'edit', value = ''): string { return `<form class="settings-edit-form" data-settings-form="${mode}"><label>工項名稱<input name="name" maxlength="50" value="${escapeHtml(value)}" autofocus></label><div class="form-actions form-actions--submit"><button class="primary" type="submit">儲存</button><button type="button" data-settings-action="cancel">取消</button></div></form>`; }
+function settingsReturnLink(): string { const href = settingsReturnModule === 'water-level' ? '#water-level' : '#daily'; const label = settingsReturnModule === 'water-level' ? '返回水位' : '返回日報'; return `<a class="settings-button" href="${href}">${label}</a>`; }
+function debugSnapshot(): Record<string, unknown> {
+  const counts = { pending: 0, sending: 0, failed: 0, blocked: 0, conflict: 0 };
+  for (const operation of accountSyncOperations) counts[operation.status] += 1;
+  return {
+    appVersion: APP_VERSION, databaseVersion: DB_VERSION, route: location.hash,
+    online: navigator.onLine, serviceWorker: navigator.serviceWorker?.controller ? 'active' : 'not active',
+    authEnabled: accountAuth.enabled, signedIn: Boolean(accountAuth.user), activeSiteSelected: Boolean(accountActiveSiteId),
+    accountLoad: { stage: accountLoadStage, elapsedMs: accountLoadStartedAt ? Date.now() - accountLoadStartedAt : 0, coreReady: accountLoadCoreReady, detailsPending: accountLoadExtrasPending, events: accountLoadEvents },
+    syncQueue: { status: accountQueueStatus, counts }, lastPulledAt,
+  };
+}
+function debugPanel(): string {
+  return `<section id="settings-debug-panel" class="settings-debug-panel" data-debug-panel${debugOpen ? '' : ' hidden'} aria-label="偵錯資訊"><h2>偵錯資訊</h2><p>僅包含狀態與安全錯誤碼，不包含登入憑證、加入碼或日報內容。</p><pre data-debug-output>${escapeHtml(JSON.stringify(debugSnapshot(), null, 2))}</pre><button type="button" data-settings-action="copy-debug">複製偵錯資訊</button></section>`;
+}
+function settingsHeader(eyebrow: string, title: string): string { return `<header class="top app-header"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1></div><div class="settings-header-actions"><button type="button" data-settings-action="toggle-debug" aria-expanded="${debugOpen}" aria-controls="settings-debug-panel">偵錯顯示</button>${settingsReturnLink()}</div></header>${debugPanel()}`; }
+function memoryReviewView(): string {
+  const groups = groupMemoryCandidates(memoryCandidates);
+  const effectiveKeys = new Set(confirmationSelection([...memoryReviewState.explicitKeys], memoryCandidates).keys);
+  const allSelected = memoryCandidates.length > 0 && memoryCandidates.every((row) => memoryReviewState.explicitKeys.has(row.key));
+  const sections = groups.map((group) => {
+    const open = memoryReviewState.openKind === group.kind;
+    const groupSelected = group.rows.every((row) => memoryReviewState.explicitKeys.has(row.key));
+    const rows = group.rows.map((row) => {
+      const impact = memoryCandidateImpact(daily.report, row); const expanded = memoryReviewState.expandedKeys.has(row.key);
+      const detailId = `memory-detail-${row.kind}-${escapeHtml(row.id)}`;
+      const recent = row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleDateString('zh-TW') : '尚無日期';
+      return `<article class="memory-candidate${expanded ? ' expanded' : ''}"><div class="memory-candidate__summary"><label class="memory-candidate__select"><input type="checkbox" data-memory-candidate value="${escapeHtml(row.key)}" aria-label="選取${escapeHtml(row.name)}" ${effectiveKeys.has(row.key) ? 'checked' : ''}></label><button type="button" class="memory-candidate__toggle" data-memory-detail-toggle="${escapeHtml(row.key)}" aria-expanded="${expanded}" aria-controls="${detailId}"><strong>${escapeHtml(row.name)}</strong><span>${memoryCandidateLabels[row.kind]}</span><b>${Math.min(row.usageCount, 4)}/4</b></button></div>${expanded ? `<div class="memory-candidate__detail" id="${detailId}"><dl>${row.parentName ? `<div><dt>所屬資料</dt><dd>${escapeHtml(row.parentName)}</dd></div>` : ''}<div><dt>最近使用</dt><dd>${escapeHtml(recent)}</dd></div><div><dt>目前草稿影響</dt><dd>${impact} 筆</dd></div></dl><button type="button" class="danger-text" data-memory-reject="${escapeHtml(row.key)}">${impact ? '逐筆駁回' : '駁回此候選'}</button></div>` : ''}</article>`;
+    }).join('');
+    return `<section class="settings-work-area memory-review__group${open ? ' expanded' : ''}"><button type="button" class="settings-work-area__toggle memory-review__group-toggle" data-memory-group-toggle="${group.kind}" aria-expanded="${open}"><span><strong>${memoryCandidateLabels[group.kind]}</strong><small>待處理 ${group.rows.length} 筆</small></span><span aria-hidden="true">${open ? '收合' : '展開'}</span></button>${open ? `<div class="settings-work-area__content memory-review__group-content"><label class="memory-review__select-all"><input type="checkbox" data-memory-select-group="${group.kind}" ${groupSelected ? 'checked' : ''}>全選本區</label><div class="settings-management-list memory-review__list">${rows}</div></div>` : ''}</section>`;
+  }).join('');
+  const selected = memoryCandidates.filter((row) => memoryReviewState.explicitKeys.has(row.key));
+  const confirmation = confirmationSelection(selected.map((row) => row.key), memoryCandidates);
+  const rejection = rejectionSelection(selected.map((row) => row.key), memoryCandidates); const rejectionRows = memoryCandidates.filter((row) => rejection.keys.includes(row.key));
+  const safeReject = rejectionRows.length > 0 && rejectionRows.every((row) => memoryCandidateImpact(daily.report, row) === 0);
+  const selectionSummary = groups.map((group) => { const count = group.rows.filter((row) => memoryReviewState.explicitKeys.has(row.key)).length; return count ? `${memoryCandidateLabels[group.kind]} ${count} 筆` : ''; }).filter(Boolean).join('、');
+  const actionBar = selected.length ? `<aside class="settings-management-panel memory-review__action-bar" aria-label="批次操作"><div><strong>已選 ${selected.length} 筆</strong><small>${selectionSummary}</small>${confirmation.addedParentCount ? `<small>確認時另包含 ${confirmation.addedParentCount} 筆必要資料</small>` : ''}${rejection.addedChildCount ? `<small>駁回時另包含 ${rejection.addedChildCount} 筆關聯候選</small>` : ''}${!safeReject ? '<small>含有草稿影響，請展開後逐筆駁回</small>' : ''}</div><div><button type="button" class="danger-text" data-memory-reject-selected ${safeReject ? '' : 'disabled'}>駁回 ${rejection.keys.length} 筆</button><button type="button" class="primary" data-memory-confirm>確認 ${confirmation.keys.length} 筆</button></div></aside>` : '';
+  const overview = `<section class="settings-management-panel memory-review__overview"><div><strong>待處理 ${memoryCandidates.length} 筆</strong><span>待審核也會同步共用；累計 4 次有效套用後自動成為正式記憶。</span></div>${memoryCandidates.length ? `<label class="memory-review__select-all"><input type="checkbox" data-memory-select-all ${allSelected ? 'checked' : ''}>全選全部</label>` : ''}</section>`;
+  return `<main class="app-shell settings-page memory-review${selected.length ? ' has-selection' : ''}">${settingsHeader('MEMORY REVIEW', '記憶審核')}${settingsContextTabs('memory')}${overview}${memoryReviewState.feedback ? `<p class="memory-review__feedback memory-review__feedback--${memoryReviewState.feedbackTone}" role="${memoryReviewState.feedbackTone === 'error' ? 'alert' : 'status'}">${escapeHtml(memoryReviewState.feedback)}</p>` : ''}${memoryCandidates.length ? `<div class="settings-work-areas memory-review__areas">${sections}</div>` : '<p class="empty memory-review__empty">目前沒有待審核的記憶。</p>'}${actionBar}</main>`;
+}
+function dailySettingsView(): string { const areas = dailySettingsAreas.map((area) => { const expanded = settingsState.activeArea === area.id; const items = area.sections.map((section) => { const label = sectionLabels.find(([key]) => key === section)?.[1] ?? ''; const selected = settingsState.activeSection === section; return `<button type="button" class="settings-management-list__item${selected ? ' active' : ''}" data-settings-section="${section}" aria-current="${selected ? 'page' : 'false'}"><span><strong>${label}</strong><small>${section === 'trade-tasks' ? '建立工種、工項與排序規則' : section === 'vendors' ? '依工種維護合作廠商' : section === 'locations' ? '維護常用施工位置' : section === 'sites' ? '維護常用填報工地' : section === 'materials' ? '管理進料分類與順序' : '維護可重複使用的日報文字'}</small></span><span aria-hidden="true">›</span></button>`; }).join(''); return `<section class="settings-work-area${expanded ? ' expanded' : ''}"><button type="button" class="settings-work-area__toggle" data-settings-area="${escapeHtml(area.id)}" aria-expanded="${expanded}"><span><strong>${area.title}</strong><small>${area.description}</small></span><span aria-hidden="true">${expanded ? '收合' : '展開'}</span></button>${expanded ? `<div class="settings-work-area__content"><div class="settings-management-list">${items}</div><div class="settings-management-panel">${settingsItems()}</div></div>` : ''}</section>`; }).join(''); return `<main class="app-shell settings-page">${settingsHeader('DAILY SETTINGS', '施工日報主檔')}${settingsContextTabs('daily')}<div class="settings-work-areas">${areas}</div><p class="hint">這些展開狀態只保留在目前畫面；既有日報快照不會因管理操作而被改寫。</p></main>`; }
+function dataSystemView(): string { const active = settingsState.activeSection === 'debug' ? 'debug' : 'backup'; return `<main class="app-shell settings-page">${settingsHeader('DATA & SYSTEM', '資料與系統')}${settingsContextTabs('data')}<div class="settings-management-list settings-management-list--data"><button type="button" class="settings-management-list__item${active === 'backup' ? ' active' : ''}" data-data-system-section="backup"><span><strong>記憶備份與還原</strong><small>匯出、匯入可重複使用的主檔與候選。</small></span><span aria-hidden="true">›</span></button><button type="button" class="settings-management-list__item${active === 'debug' ? ' active' : ''}" data-data-system-section="debug"><span><strong>偵錯資訊</strong><small>檢視本機資料庫狀態與複製診斷資訊。</small></span><span aria-hidden="true">›</span></button></div><div class="settings-management-panel">${settingsItems()}</div></main>`; }
+function waterShell(settings: boolean): string { const shellClass = settings ? 'app-shell settings-page water-settings-shell' : 'app-shell module-page water-page-shell'; const sharedSite = accountAuth.user ? accountSites.find((item) => item.id === accountActiveSiteId)?.name : undefined; const control = { kind: 'link' as const, href: '#settings/water', label: '設定', ariaLabel: '開啟水位設定' }; const header = settings ? settingsHeader('WATER SETTINGS', '水位設定') : sharedSite ? moduleHeader('水位變化', `共用工地：${sharedSite}`, control) : moduleHeader('水位變化', '本機量測資料', control); const navigation = settings ? settingsContextTabs('water') : moduleTabs('water-level'); return `<main class="${shellClass}">${header}<div class="module-page__tabs">${navigation}</div>${settings ? '' : workspaceSiteView() + syncControl('water')}<div id="water-root"></div></main>`; }
+function dailySyncLabel(): string {
+  const label = dailySaveState === 'saving' ? '儲存中…' : dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : dailySyncConflictCount ? `衝突 ${dailySyncConflictCount} 筆${dailySyncPendingCount ? `・待同步 ${dailySyncPendingCount} 筆` : ''}` : dailySyncPendingCount ? `已存本機・待同步 ${dailySyncPendingCount} 筆` : dailySyncStatusUnknown ? '已存本機・同步狀態待確認' : daily.report.shared && lastPulledAt ? '已存本機・目前日報無待送項目' : dailyLastSavedAt ? `已保存本機 ${dailyLastSavedAt}` : '本機自動儲存';
+  return label + memoryQueueSummary;
+}
+function updateDailySaveStatus(): void {
+  if (daily) for (const trade of daily.report.tradeSections) {
+    const badge = app.querySelector<HTMLElement>(`[data-trade="${escapeHtml(trade.id)}"] .trade-row-summary__status`);
+    if (badge) { const issue = validateTrade(trade, daily.linkedMaterialEntries(trade.id))[0]; badge.textContent = trade.status === 'complete' ? '資料齊全' : issue?.message ?? '需檢查'; badge.className = `trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}`; }
+  }
+  const status = app.querySelector<HTMLElement>('[data-save-status]');
+  if (!status) return;
+  status.dataset.state = dailySaveState;
+  status.textContent = dailySyncLabel();
+}
+async function mountWater(route: Extract<AppRoute, { module: 'water-level' }>, token: number): Promise<void> {
+  app.innerHTML = waterShell(route.page === 'settings');
+  const root = app.querySelector<HTMLElement>('#water-root');
+  if (!root) throw new Error('找不到水位功能容器。');
+  const module = await import('./water-level/controller.js');
+  if (token !== renderToken) return;
+  const scope = await loadActiveSharedScope();
+  if (token !== renderToken) return;
+  const key = scope ? `${scope.userId}:${scope.siteId}` : 'local';
+  let controller = waterEditors.get(key);
+  if (!controller) {
+    controller = new module.WaterLevelController(root, () => { void refreshDailySyncStatus(); }) as WaterController;
+    await controller.initialize();
+    waterEditors.set(key, controller);
+  } else { controller.root = root; await controller.refresh(); }
+  water = controller;
+  if (token !== renderToken) return;
+  if (route.page === 'settings') controller.renderSettings(); else controller.render();
+  app.insertAdjacentHTML('beforeend', pwaUpdateNotice());
+}
+async function refreshDailySyncStatus(): Promise<void> {
+  dailySyncStatusUnknown = false;
+  const scope = await loadActiveSharedScope().catch(() => { dailySyncStatusUnknown = true; return null; });
+  const summary = scope ? await dailyOperationStatusSummary(scope, daily.report.date).catch(() => { dailySyncStatusUnknown = true; return { pending: dailySyncPendingCount, conflict: dailySyncConflictCount }; }) : { pending: 0, conflict: 0 };
+  const operations = scope ? await listAllOperations(scope).catch(() => { dailySyncStatusUnknown = true; return null; }) : [];
+  if (operations) { const memories = operations.filter((row) => row.entity === 'memory' || row.entity === 'memory-entry'); const problems = memories.filter((row) => ['blocked', 'failed', 'conflict'].includes(row.status)).length; memoryQueueSummary = memories.length ? `・工地記憶待同步 ${memories.length} 筆${problems ? `（${problems} 筆需處理）` : ''}` : ''; }
+  dailySyncPendingCount = summary.pending;
+  dailySyncConflictCount = summary.conflict;
+  updateDailySaveStatus();
+}
+async function refreshActiveMemoryCache(): Promise<void> {
+  [dailySites, dailyTrades, dailyVendors, dailyTasks, materialTypes, materialMemory] = await Promise.all([
+    listMemories('sites'), listMemories('trades', undefined, 'all'), listMemories('vendors', undefined, 'all'), listMemories('tasks', undefined, 'all'), listMaterialTypes(), listMaterialMemory(),
+  ]);
+}
+let workspaceSwitching = false;
+async function switchActiveDataPartition(changeContext: () => Promise<void>): Promise<void> {
+  if (workspaceSwitching) throw new Error('工地切換中，請稍候。');
+  if (materialDirty() || contactDirty() || settingsState.dirty) throw new Error('請先儲存目前表單，再切換工地。');
+  workspaceSwitching = true; activeSyncEpoch += 1;
+  try {
+    if (!isReadOnlySite()) { capturePendingWork(); await daily.flush(); await commitInputMemories(); }
+    await memoryCommitTail;
+    await withWorkspaceLock(async () => {
+      await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
+      const date = daily.report.date;
+      await changeContext();
+      await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]);
+      daily.replaceReport((await loadDailyDraftForDate(date)) ?? createDailyDraft(null, '', date));
+      daily.expandedId = null; activeWorkAuxEditor = null; workItemComposerByTrade.clear();
+      await refreshActiveMemoryCache();
+      const scope = await loadActiveSharedScope(); lastPulledAt = scope ? await loadLastPulledAt(scope) : null;
+      syncFeedback = '';
+    });
+  } finally { workspaceSwitching = false; scheduleBackgroundSync(); }
+}
+async function refreshAccount(onProgress?: () => void): Promise<void> {
+  const version = ++accountLoadVersion;
+  accountError = '';
+  accountLoadEvents = [];
+  accountLoadStartedAt = Date.now();
+  accountLoadCoreReady = false;
+  accountLoadExtrasPending = false;
+  const current = () => version === accountLoadVersion;
+  const run = async <T,>(stage: AccountLoadStage, task: Promise<T>): Promise<T> => {
+    const started = Date.now();
+    const remaining = Math.max(1, 15_000 - (started - accountLoadStartedAt));
+    if (current()) { accountLoadStage = stage; accountLoadEvents.push({ stage, status: 'loading', durationMs: 0 }); onProgress?.(); }
+    try {
+      const result = await withAccountDeadline(task, remaining);
+      if (!current()) throw new Error('ACCOUNT_LOAD_STALE');
+      const event = accountLoadEvents.findLast((row) => row.stage === stage && row.status === 'loading');
+      if (event) { event.status = 'ok'; event.durationMs = Date.now() - started; }
+      onProgress?.();
+      return result;
+    } catch (error) {
+      if (current()) {
+        const event = accountLoadEvents.findLast((row) => row.stage === stage && row.status === 'loading');
+        if (event) { event.status = error instanceof AccountLoadTimeoutError ? 'timeout' : 'error'; event.durationMs = Date.now() - started; const code = (error as { code?: unknown })?.code; if (typeof code === 'string' && /^[A-Z0-9_]{2,20}$/.test(code)) event.code = code; }
+        onProgress?.();
+      }
+      throw error;
+    }
+  };
+  try {
+    const auth = await run('帳號驗證', loadAuthSnapshot());
+    if (!current()) return;
+    accountAuth = auth;
+    if (!auth.user) {
+      accountSites = []; accountRequests = []; accountMembers = []; accountActiveSiteId = null; accountActiveSiteRole = null;
+      accountPendingCount = 0; accountSyncDiagnostics = []; accountSyncOperations = []; accountConflictReviews = [];
+      accountQueueStatus = 'ready'; accountLoadCoreReady = true; accountLoadStage = null; onProgress?.(); return;
+    }
+    const [sites, context] = await run('工地清單', Promise.all([listAccessibleSites(auth.user.id), loadSharedContext(auth.user.id)]));
+    if (!current()) return;
+    accountSites = sites;
+    accountActiveSiteId = sites.some((site) => site.id === context.activeSiteId) ? context.activeSiteId : null;
+    accountActiveSiteRole = sites.find((site) => site.id === accountActiveSiteId)?.role ?? null;
+    void cacheActiveSiteRole(auth.user.id, accountActiveSiteRole).catch(() => {});
+    accountRequests = []; accountMembers = []; accountSyncOperations = []; accountSyncDiagnostics = []; accountPendingCount = 0; accountConflictReviews = [];
+    accountQueueStatus = accountActiveSiteId ? 'loading' : 'ready';
+    accountLoadCoreReady = true;
+    accountLoadExtrasPending = true;
+    onProgress?.();
+    if (context.activeSiteId && !accountActiveSiteId) void selectActiveSharedSite(auth.user.id, null).catch(() => {});
+    const scope = accountActiveSiteId ? { userId: auth.user.id, siteId: accountActiveSiteId } : null;
+    const queueTask = run('本機同步佇列', scope ? listAllOperations(scope) : Promise.resolve([])).then((operations) => { if (current()) { accountSyncOperations = operations; accountPendingCount = operations.length; accountSyncDiagnostics = operations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked'); accountQueueStatus = 'ready'; } return operations; }).catch((error) => { if (current()) accountQueueStatus = 'error'; throw error; });
+    const optional = await Promise.allSettled([
+      run('成員資料', Promise.all([listPendingJoinRequests(sites), listSiteMembers(sites)])).then(([requests, members]) => { if (current()) { accountRequests = requests; accountMembers = members; } }),
+      queueTask,
+      run('衝突資料', scope ? queueTask.then(async (operations) => {
+        const reviews = await listConflictReviews(scope, operations);
+        if (operations.some((row) => row.status === 'conflict') && !reviews.length) throw new Error('本機衝突操作未產生衝突明細。');
+        return reviews;
+      }) : Promise.resolve([])).then((reviews) => { if (current()) accountConflictReviews = reviews; }),
+    ]);
+    if (!current()) return;
+    accountLoadExtrasPending = false;
+    accountLoadStage = null;
+    if (optional.some((result) => result.status === 'rejected')) accountError = '部分工地資料讀取失敗或逾時；可查看偵錯資訊並重新讀取。';
+    onProgress?.();
+  } catch (error) {
+    if (!current()) return;
+    accountLoadStage = null;
+    accountLoadExtrasPending = false;
+    const timeout = error instanceof AccountLoadTimeoutError;
+    accountError = timeout ? '讀取共用工地超過 15 秒，請查看偵錯資訊並重新讀取。' : '無法讀取共用工地，請查看偵錯資訊並重新讀取。';
+    onProgress?.();
+  }
+}
+function accountModuleMarkup(content: string): string {
+  const sync = accountActiveSiteId ? '<button type="button" class="primary" data-account-action="sync-now">立即同步</button>' : '';
+  return `<main class="app-shell settings-page account-page-shell">${settingsHeader('SHARED SITE', '共用工地')}${settingsContextTabs('account')}${sync ? `<div class="account-page-actions">${sync}</div>` : ''}${content}</main>${pwaUpdateNotice()}`;
+}
+function renderAccountLoading(): void {
+  const content = accountError
+    ? `<section class="account-content"><section class="form-card account-status" role="alert"><strong>${escapeHtml(accountError)}</strong><p>最後階段：${escapeHtml(accountLoadEvents.at(-1)?.stage ?? '尚未開始')}</p><button type="button" data-account-action="retry-load-account">重新讀取</button></section></section>`
+    : `<section class="account-content"><section class="form-card account-status" aria-busy="true"><strong>正在載入共用工地…</strong><p>目前階段：${escapeHtml(accountLoadStage ?? '準備中')}。超過 15 秒將顯示錯誤與重試。</p></section></section>`;
+  app.innerHTML = accountModuleMarkup(content);
+}
+function renderAccountLoaded(): void {
+  const progress = accountLoadExtrasPending ? '<p class="hint" role="status">工地已可使用，成員與同步診斷仍在載入…</p>' : '';
+  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ auth: accountAuth, sites: accountSites, activeSiteId: accountActiveSiteId, pendingCount: accountPendingCount, requests: accountRequests, members: accountMembers, feedback: accountFeedback, error: accountError, diagnostics: accountSyncDiagnostics, operations: accountSyncOperations, operationsStatus: accountQueueStatus, conflicts: accountConflictReviews, importPreview: memoryImportSiteId === accountActiveSiteId ? memoryImportPreview : null, recoveryPreview: syncRecoverySiteId === accountActiveSiteId ? syncRecoveryPreview : null }));
+}
+async function renderApp(): Promise<void> {
+  if (location.hash === '#settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
+  if (location.hash === '#daily/settings') { history.replaceState(null, '', '#settings/daily'); return renderApp(); }
+  if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
+  if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }
+  const token = ++renderToken; const route = parseRoute(location.hash); const previousRoute = renderedRoute; renderedRoute = route; water = undefined;
+  if ((route.module === 'daily' && route.page === 'settings' && previousRoute?.module === 'daily' && previousRoute.page === 'main') || (route.module === 'water-level' && route.page === 'settings' && previousRoute?.module === 'water-level' && previousRoute.page === 'main')) settingsReturnModule = previousRoute.module;
+  if (route.module === 'account') { renderAccountLoading(); void refreshAccount(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; if (accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); }); return; }
+  if (!accountAuth.enabled) await refreshAccount();
+  if (token !== renderToken) return;
+  if (route.module === 'settings') { if (route.page === 'memory') { memoryCandidates = await listMemoryCandidates(); const keys = new Set(memoryCandidates.map((row) => row.key)); memoryReviewState.explicitKeys = new Set([...memoryReviewState.explicitKeys].filter((key) => keys.has(key))); memoryReviewState.expandedKeys = new Set([...memoryReviewState.expandedKeys].filter((key) => keys.has(key))); const groups = groupMemoryCandidates(memoryCandidates); if (memoryReviewState.openKind === undefined) memoryReviewState.openKind = groups[0]?.kind ?? null; else if (memoryReviewState.openKind !== null && !groups.some((group) => group.kind === memoryReviewState.openKind)) memoryReviewState.openKind = groups.find((group) => group.kind === memoryReviewState.nextKind)?.kind ?? groups[0]?.kind ?? null; memoryReviewState.nextKind = null; } else { if (settingsState.activeSection !== 'backup' && settingsState.activeSection !== 'debug') settingsState.activeSection = 'backup'; await refreshSettings(); } if (token !== renderToken) return; app.innerHTML = `${route.page === 'data' ? dataSystemView() : memoryReviewView()}${pwaUpdateNotice()}`; return; }
+  if (route.module === 'daily') {
+    if (!accountAuth.enabled) await refreshAccount();
+    if (token !== renderToken) return;
+    if (route.page === 'main') {
+      const site = accountAuth.user ? accountSites.find((item) => item.id === accountActiveSiteId) : undefined;
+      const aligned = withActiveSharedSite(daily.report, site);
+      if (aligned !== daily.report) {
+        if (site?.role === 'viewer') daily.report = aligned;
+        else daily.update(() => { daily.report = aligned; });
+      }
+    }
+    if (route.page === 'settings') { if (settingsState.activeSection === 'backup' || settingsState.activeSection === 'debug') settingsState.activeSection = 'sites'; await refreshSettings(); }
+    else if (route.page === 'history') finalizedReports = await listRecentFinalizedReports();
+    if (token !== renderToken) return;
+    restoreEntryScope(); persistEntryDraft();
+    app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`;
+    applyDailyReadOnly();
+    requestAnimationFrame(syncMaterialConnectionCurves);
+    return;
+  }
+  try { await mountWater(route, token); } catch (error) { if (token !== renderToken) return; const summary = error instanceof Error ? error.message : '無法讀取本機水位資料。'; app.innerHTML = `<main class="app-shell"><section class="form-card"><h1>水位功能暫時無法開啟</h1><p>錯誤摘要：${escapeHtml(summary)}</p><p><a href="#water-level">重新載入</a>　<a href="#daily">返回施工日報</a></p></section></main>${pwaUpdateNotice()}`; }
+}
+async function refreshSettings(): Promise<void> { const section = settingsState.activeSection; settingsTrades = await listMemories('trades', undefined, 'all'); if (section === 'materials') materialTypes = await listMaterialTypes(); else if (section === 'templates') settingsTemplates = await listTemplates(); else if (section === 'debug') settingsDebug = await databaseSummary(); else if (section === 'trade-tasks') { settingsAllTasks = await listMemories('tasks', undefined, 'all'); settingsRows = settingsAllTasks.filter((row) => row.tradeTypeId === settingsState.selectedTradeTypeId); } else if (section === 'vendors') settingsRows = settingsState.selectedTradeTypeId ? await listMemories('vendors', settingsState.selectedTradeTypeId) : []; else if (section !== 'backup') settingsRows = await listMemories(section); }
+function isReadOnlySite(): boolean {
+  return Boolean(accountActiveSiteId) && (accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole) === 'viewer';
+}
+const readOnlyDailyActions = new Set(['toggle-trade', 'toggle-preview', 'toggle-contact', 'toggle-special', 'toggle-material', 'toggle-material-type', 'copy', 'copy-finalized', 'fix-entry']);
+function applyDailyReadOnly(): void {
+  if (!isReadOnlySite()) return;
+  app.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-daily-field]:not([data-daily-field="date"]),[data-continuous-work],[data-site-search],[data-material-field],[data-contact-field],[data-contact-task-content]').forEach((input) => input.disabled = true);
+  app.querySelectorAll<HTMLButtonElement>('[data-daily-action],[data-work-commit],[data-work-move],[data-work-suggestion]').forEach((button) => { if (!readOnlyDailyActions.has(button.dataset.dailyAction ?? '')) button.disabled = true; });
+}
+function updateDailyInput(target: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): void {
+  if (isReadOnlySite()) return;
+  const name = target.dataset.dailyField; if (!name || name === 'date') return;
+
+  const tradeId = target.closest<HTMLElement>('[data-trade]')?.dataset.trade; const workId = target.closest<HTMLElement>('[data-work]')?.dataset.work; const materialId = target.closest<HTMLElement>('[data-material]')?.dataset.material; const standalone = Boolean(target.closest<HTMLElement>('[data-material-standalone]')); const contactId = target.closest<HTMLElement>('[data-contact]')?.dataset.contact; const specialId = target.closest<HTMLElement>('[data-special]')?.dataset.special;
+  const trade = tradeId ? daily.trade(tradeId) : undefined; const work = trade?.workItems.find((item) => item.id === workId); const material = materialId && standalone ? daily.materialEntry(materialId) : undefined; const contact = daily.report.contacts.find((item) => item.id === contactId); const special = daily.report.specialItems.find((item) => item.id === specialId); const destination = work ?? material ?? trade ?? contact ?? special ?? daily.report;
+  if (trade) daily.updateTradeOutputData(trade.id, () => { (destination as unknown as Record<string, string>)[name] = target.value; if (name === 'taskTextSnapshot' && work) work.taskId = null; if (name === 'tradeNameSnapshot') trade.tradeTypeId = dailyTrades.find((row) => row.normalizedName === normalizeName(target.value))?.id ?? null; if (name === 'vendorNameSnapshot') trade.vendorId = dailyVendors.find((row) => row.tradeTypeId === trade.tradeTypeId && row.normalizedName === normalizeName(target.value))?.id ?? null; });
+  else daily.update(() => { (destination as unknown as Record<string, string>)[name] = target.value; });
+}
+function startMaterialEditor(entryType: 'normal' | 'independent', existing?: MaterialEntry): void { const value = existing ? structuredClone(existing) : { id: `draft:${crypto.randomUUID()}`, entryType, connectedTradeSectionId: null, materialTypeId: null, materialTypeSnapshot: '', itemName: '', supplierId: null, supplierNameSnapshot: '', quantity: '', unit: '', specification: '', note: '', sortOrder: daily.report.standaloneMaterialEntries.length, createdAt: '', updatedAt: '' }; materialEditor = { id: value.id, originalId: existing?.id ?? null, value, errors: [] }; }
+function discardMaterialEditor(): boolean { if (materialDirty() && !window.confirm('目前進料內容尚未儲存，是否放棄這次修改？')) return false; materialEditor = null; return true; }
+function materialValidation(entry: MaterialEntry): string[] { const errors: string[] = []; if (!entry.materialTypeSnapshot.trim()) errors.push('materialTypeSnapshot:請填寫材料類型。'); if (!entry.itemName.trim()) errors.push('itemName:請填寫品名。'); if (!entry.supplierNameSnapshot.trim()) errors.push('supplierNameSnapshot:請填寫供應商。'); if (!isPositiveDecimal(entry.quantity)) errors.push('quantity:請輸入大於 0 的數量。'); if (!entry.unit.trim()) errors.push('unit:請填寫單位。'); return errors; }
+function refreshTaskSearch(target: HTMLInputElement): void { settingsState.taskSearchKeyword = target.value; void renderApp().then(() => { const search = app.querySelector<HTMLInputElement>('[data-settings-search="tasks"]'); search?.focus(); search?.setSelectionRange(search.value.length, search.value.length); }); }
+function refreshTradeSearch(target: HTMLInputElement): void { tradeSearchKeyword = target.value; void renderApp().then(() => { const search = app.querySelector<HTMLInputElement>('[data-trade-search]'); search?.focus(); search?.setSelectionRange(search.value.length, search.value.length); }); }
+function refreshTradePickerSearch(target: HTMLInputElement): void { tradePickerSearch = target.value; const results = app.querySelector<HTMLElement>('[data-trade-picker-results]'); if (results) results.innerHTML = tradePickerResults(); const clear = app.querySelector<HTMLButtonElement>('[data-daily-action="clear-trade-search"]'); if (clear) clear.hidden = !tradePickerSearch; }
+function refreshMaterialConnectionSearch(target: HTMLInputElement): void { materialConnectionTradeSearch = target.value; void renderApp().then(() => { const search = app.querySelector<HTMLInputElement>('[data-material-connection-search]'); search?.focus(); search?.setSelectionRange(search.value.length, search.value.length); }); }
+function refreshSiteSearch(target: HTMLInputElement): void { siteSearchQuery = target.value; siteSearchOpen = true; daily.update(() => { daily.report.siteId = null; daily.report.siteNameSnapshot = target.value; }); void renderApp().then(() => { const input = app.querySelector<HTMLInputElement>('[data-site-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); }
+async function activateSiteSearch(target: HTMLInputElement): Promise<void> { if (siteSearchOpen) return; siteSearchOpen = true; siteSearchQuery = target.value; dailySites = await listMemories('sites'); await renderApp(); const input = app.querySelector<HTMLInputElement>('[data-site-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }
+async function selectDailySite(value: string): Promise<void> { try { const result = await selectSiteMemory(daily.report, value); daily.report = result.report; dailySites = [result.site, ...dailySites.filter((site) => site.id !== result.site.id)]; await persistActiveMemoryPartition(); siteSearchOpen = false; siteSearchQuery = ''; await renderApp(); } catch (error) { alert(error instanceof Error ? error.message : '設定工地失敗，請稍後再試。'); } }
+async function rejectMemoryCandidate(candidate: MemoryCandidate): Promise<void> { if (candidate.kind === 'material-types') daily.report = await deleteMaterialType(daily.report, candidate.id); else if (candidate.kind === 'material-items') daily.report = await rejectMaterialMemoryItem(daily.report, candidate.id); else { const next = await deleteMemory(candidate.kind, candidate.id); if (next) daily.report = next; } }
+async function performMemoryReviewWrite(action: () => Promise<void>, failureLabel: string): Promise<boolean> { try { await action(); await persistActiveMemoryPartition(); return true; } catch (error) { const detail = error instanceof Error ? error.message : '本機資料寫入失敗。'; memoryReviewState.feedback = `${failureLabel}：${detail} 選取內容已保留，請確認後再試。`; memoryReviewState.feedbackTone = 'error'; await renderApp(); return false; } }
+function prepareNextMemoryGroup(): void { const groups = groupMemoryCandidates(memoryCandidates); const current = groups.findIndex((group) => group.kind === memoryReviewState.openKind); memoryReviewState.nextKind = current >= 0 ? groups[current + 1]?.kind ?? groups.find((_, index) => index !== current)?.kind ?? null : groups[0]?.kind ?? null; }
+let entryScopeKey = '';
+let entryDraftStorageBlocked = false;
+let entrySaveError = '';
+let dailySyncStatusUnknown = false;
+let lastContactDate = '';
+function showEntrySaveError(error: unknown): void {
+  dailyCopyFeedback = error instanceof Error ? error.message : '本機保存失敗，請重試。';
+  entrySaveError = dailyCopyFeedback;
+  updateDailySaveStatus();
+  let notice = app.querySelector<HTMLElement>('[data-entry-save-error]');
+  if (!notice) { notice = document.createElement('p'); notice.dataset.entrySaveError = ''; notice.setAttribute('role', 'alert'); app.prepend(notice); }
+  notice.textContent = dailyCopyFeedback;
+}
+function persistEntryDraft(): void {
+  if (!entryScopeKey || isReadOnlySite() || entryDraftStorageBlocked) return;
+  try { localStorage.setItem(entryScopeKey, JSON.stringify({ contact: contactEditor, work: snapshotWorkDrafts() })); }
+  catch (error) { showEntrySaveError(error); }
+}
+function restoreEntryScope(): void {
+  const key = entryDraftKey(accountAuth.user?.id, accountActiveSiteId ?? daily.report.siteId, daily.report.date);
+  if (key === entryScopeKey) return;
+  persistEntryDraft(); entryScopeKey = key; entryDraftStorageBlocked = false;
+  contactEditor = null; contactEditorCollapsed = false; restoreWorkDrafts([]); lastContactDate = ''; tradePickerOpen = false;
+  try { const stored = readEntryDraft(localStorage, key); contactEditor = stored.contact; restoreWorkDrafts(stored.work); }
+  catch (error) { entryDraftStorageBlocked = true; showEntrySaveError(error); }
+}
+function startContactEntry(name: string, vendor = '', tradeId: string | null = null, vendorId: string | null = null): void {
+  const id = crypto.randomUUID(); const stamp = new Date().toISOString();
+  contactEditor = { id, originalId: null, value: { id, tradeTypeId: tradeId, tradeNameSnapshot: name, vendorId, vendorNameSnapshot: vendor, items: [], sortOrder: daily.report.contacts.length, createdAt: stamp, updatedAt: stamp }, errors: [], tradeQuery: name, vendorQuery: vendor, taskQuery: '', plannedDate: '' };
+  activeContactSearch = null; contactEditorCollapsed = false; persistEntryDraft();
+}
+function appendPendingContactTask(): void { if (contactEditor) { appendContactTask(contactEditor); persistEntryDraft(); } }
+function refreshContactSuggestions(): void {
+  app.querySelectorAll('[data-contact-suggestions]').forEach((node) => node.remove());
+  app.querySelectorAll('[data-contact-field]').forEach((node) => node.setAttribute('aria-expanded', 'false'));
+  if (!contactEditor || !activeContactSearch) return;
+  const field = activeContactSearch;
+  const rows = field === 'trade' ? dailyTrades : (field === 'vendor' ? dailyVendors : dailyTasks).filter((row) => row.tradeTypeId === contactEditor!.value.tradeTypeId);
+  const query = field === 'trade' ? contactEditor.tradeQuery : field === 'vendor' ? contactEditor.vendorQuery : contactEditor.taskQuery;
+  const input = app.querySelector<HTMLInputElement>(`[data-contact-field="${field}"]`);
+  const markup = contactSuggestions(field, rows, query);
+  input?.insertAdjacentHTML('afterend', markup); input?.setAttribute('aria-expanded', String(Boolean(markup)));
+}
+function refreshContactTaskList(): void {
+  if (!contactEditor) return;
+  const template = document.createElement('template'); template.innerHTML = contactCard(contactEditor.value);
+  const list = app.querySelector('.contact-tasks'); const next = template.content.querySelector('.contact-tasks');
+  if (list && next) list.replaceWith(next);
+  const input = app.querySelector<HTMLInputElement>('#contact-task');
+  if (input) { input.value = contactEditor.taskQuery; input.focus({ preventScroll: true }); }
+  const details = app.querySelector<HTMLInputElement>('[data-contact-details]'); if (details) details.value = contactEditor.taskDetails ?? '';
+  activeContactSearch = 'task'; refreshContactSuggestions(); persistEntryDraft();
+}
+function refreshContactSearch(target: HTMLInputElement): void { if (!contactEditor) return; const field = target.dataset.contactField as ContactSearchField; activeContactSearch = field; if (field === 'trade') { contactEditor.tradeQuery = target.value; contactEditor.value.tradeNameSnapshot = target.value; contactEditor.value.tradeTypeId = null; } else if (field === 'vendor') { contactEditor.vendorQuery = target.value; contactEditor.value.vendorNameSnapshot = target.value; contactEditor.value.vendorId = null; } else contactEditor.taskQuery = target.value; refreshContactSuggestions(); persistEntryDraft(); }
+function activateContactSearch(target: HTMLInputElement): void { const field = target.dataset.contactField as ContactSearchField | undefined; if (!contactEditor || !field || activeContactSearch === field) return; activeContactSearch = field; if (field === 'trade') contactEditor.tradeQuery = target.value; else if (field === 'vendor') contactEditor.vendorQuery = target.value; else contactEditor.taskQuery = target.value; refreshContactSuggestions(); persistEntryDraft(); }
+let finalizeInFlight = false;
+let memoryCommitTail: Promise<void> = Promise.resolve();
+function capturePendingWork(): void {
+  for (const [id, text] of consumeWorkDrafts()) { for (const value of text.split('、').map((part) => part.trim()).filter(Boolean)) daily.addWorkItem(id, value); const input = app.querySelector<HTMLInputElement>(`[data-continuous-work="${id}"]`); if (input) input.value = ''; }
+}
+async function savePendingDailyInput(): Promise<void> { capturePendingWork(); await daily.flush(); persistEntryDraft(); }
+async function commitInputMemories(capture = true): Promise<void> {
+  if (isReadOnlySite()) return;
+  if (capture) capturePendingWork(); await daily.flush();
+  const report = structuredClone(daily.report);
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role;
+  if (role === 'viewer') return;
+  const commit = async () => withWorkspaceLock(async () => {
+    await persistActiveMemoryPartition();
+    await recordMemoryApplications(report);
+    await refreshActiveMemoryCache();
+    daily.update(() => {
+      for (const trade of daily.report.tradeSections) {
+        trade.tradeTypeId = dailyTrades.find((row) => row.normalizedName === normalizeName(trade.tradeNameSnapshot))?.id ?? null;
+        trade.vendorId = dailyVendors.find((row) => row.tradeTypeId === trade.tradeTypeId && row.normalizedName === normalizeName(trade.vendorNameSnapshot))?.id ?? null;
+        for (const work of trade.workItems) work.taskId = dailyTasks.find((row) => row.tradeTypeId === trade.tradeTypeId && row.normalizedName === normalizeName(work.taskTextSnapshot))?.id ?? null;
+      }
+    });
+    await daily.flush();
+  });
+  const next = memoryCommitTail.then(commit, commit); memoryCommitTail = next.catch(() => undefined); return next;
+}
+bindWorkGestures(app, {
+  editable: () => !isReadOnlySite() && !workspaceSwitching,
+  move: (id, workId, offset) => { const index = daily.trade(id)?.workItems.findIndex((row) => row.id === workId) ?? -1; daily.reorderWorkItems(id, index, index + offset); },
+  remove: (id, workId) => daily.removeWorkItemForUndo(id, workId),
+  save: () => daily.flush(), render: renderApp,
+  error: (error) => { dailyCopyFeedback = error instanceof Error ? error.message : '儲存失敗，請重試。'; updateDailySaveStatus(); },
+});
+bindWorkInput(app, {
+  trade: (id) => daily.trade(id), tasks: () => dailyTasks,
+  add: (id, text, taskId) => { daily.addWorkItem(id, text, taskId); },
+  edit: (id, workId, text, taskId) => { daily.updateTradeOutputData(id, (trade) => { const work = trade.workItems.find((item) => item.id === workId); if (work) { work.taskTextSnapshot = text; work.taskId = taskId; } }); },
+  clearDetails: (id, workId) => daily.updateTradeOutputData(id, (trade) => { const work = trade.workItems.find((row) => row.id === workId); if (work) clearWorkItemDetails(work); }),
+  draft: persistEntryDraft, remove: (id, workId, undoAddition) => {
+    if (!undoAddition) return daily.deleteWorkItem(id, workId);
+    const removed = Boolean(daily.removeWorkItemForUndo(id, workId));
+    if (removed) persistEntryDraft();
+    return removed;
+  },
+  commit: async () => { await daily.flush(); void commitInputMemories(false).catch(showEntrySaveError); }, render: renderApp,
+  error: (error) => { dailyCopyFeedback = error instanceof Error ? error.message : '儲存失敗，內容已保留。'; updateDailySaveStatus(); },
+});
+app.addEventListener('change', async (event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.matches('[data-workspace-site]')) {
+    try {
+      if (target.value) await selectSharedSiteFromWorkspace(target.value);
+      else if (accountAuth.user) { await switchActiveDataPartition(() => selectActiveSharedSite(accountAuth.user!.id, null).then(() => undefined)); await refreshAccount(); await renderApp(); }
+    } catch (error) { alert(error instanceof Error ? error.message : '切換失敗，請稍後重試。'); await renderApp(); }
+  }
+  if (target.matches('[data-inline-work], [data-daily-field="vendorNameSnapshot"], [data-daily-field="locationTextSnapshot"]')) {
+    try { if (!isReadOnlySite()) await daily.flush(); } catch { dailySaveState = 'error'; updateDailySaveStatus(); }
+  }
+});
+app.addEventListener('compositionstart', () => { entryComposing = true; }, true);
+app.addEventListener('compositionend', () => { entryComposing = false; }, true);
+app.addEventListener('compositionstart', (event) => { const target = event.target as HTMLElement; if (target.matches('[data-settings-search="tasks"]')) settingsSearchComposing = true; if (target.matches('[data-trade-search]')) tradeSearchComposing = true; if (target.matches('[data-trade-picker-search]')) tradePickerSearchComposing = true; if (target.matches('[data-material-connection-search]')) materialConnectionSearchComposing = true; if (target.matches('[data-contact-field]')) contactSearchComposing = true; if (target.matches('[data-work-item-composer-input]')) workItemComposerComposing = true; });
+app.addEventListener('compositionend', (event) => { const target = event.target as HTMLInputElement; if (target.matches('[data-settings-search="tasks"]')) { settingsSearchComposing = false; refreshTaskSearch(target); } if (target.matches('[data-trade-search]')) { tradeSearchComposing = false; refreshTradeSearch(target); } if (target.matches('[data-trade-picker-search]')) { tradePickerSearchComposing = false; refreshTradePickerSearch(target); } if (target.matches('[data-material-connection-search]')) { materialConnectionSearchComposing = false; refreshMaterialConnectionSearch(target); } if (target.matches('[data-contact-field]')) { contactSearchComposing = false; refreshContactSearch(target); } if (target.matches('[data-work-item-composer-input]')) { workItemComposerComposing = false; refreshWorkItemComposer(target); } });
+app.addEventListener('focusin', (event) => { const target = event.target; if (target instanceof HTMLInputElement && target.matches('[data-contact-field]')) activateContactSearch(target); if (target instanceof HTMLInputElement && target.matches('[data-work-item-composer-input]')) { const tradeId = target.dataset.workItemComposerInput ?? null; if (tradeId && activeWorkItemComposerTradeId !== tradeId) { activeWorkItemComposerTradeId = tradeId; void renderApp().then(() => focusWorkItemComposer(tradeId)); } } });
+app.addEventListener('focusout', (event) => { const target = event.target as HTMLElement; const editor = target.closest<HTMLElement>('[data-work-aux-editor]'); if (!editor || !activeWorkAuxEditor) return; const next = event.relatedTarget; if (next instanceof Node && editor.contains(next)) return; const work = daily.report.tradeSections.flatMap((trade) => trade.workItems).find((item) => item.id === activeWorkAuxEditor?.workItemId); const empty = activeWorkAuxEditor.kind === 'location' ? Boolean(work && !work.startFloorRaw.trim() && !work.endFloorRaw.trim() && !work.locationTextSnapshot.trim()) : Boolean(work && !work.note.trim()); if (empty) { activeWorkAuxEditor = null; void renderApp(); } });
+app.addEventListener('pointerdown', (event) => { if ((event.target as HTMLElement).closest('[data-contact-suggestions] [data-daily-action="contact-pick-memory"]')) event.preventDefault(); });
+app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement; const route = parseRoute(location.hash); if (route.module === 'daily' && route.page === 'settings' && target.dataset.tradeSearch !== undefined && !tradeSearchComposing && !(event as InputEvent).isComposing) refreshTradeSearch(target); });
+app.addEventListener('click', (event) => { const target = event.target as HTMLElement; if (!target.closest('[data-settings-action="clear-trade-search"]')) return; tradeSearchKeyword = ''; void renderApp().then(() => app.querySelector<HTMLInputElement>('[data-trade-search]')?.focus()); });
+app.addEventListener('click', (event) => {
+  const action = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-settings-action]')?.dataset.settingsAction;
+  if (action === 'toggle-debug') {
+    event.stopImmediatePropagation();
+    debugOpen = !debugOpen;
+    const panel = app.querySelector<HTMLElement>('[data-debug-panel]');
+    if (panel) { panel.hidden = !debugOpen; const output = panel.querySelector<HTMLElement>('[data-debug-output]'); if (output) output.textContent = JSON.stringify(debugSnapshot(), null, 2); }
+    app.querySelector<HTMLButtonElement>('[data-settings-action="toggle-debug"]')?.setAttribute('aria-expanded', String(debugOpen));
+  } else if (action === 'copy-debug') {
+    event.stopImmediatePropagation();
+    const route = parseRoute(location.hash);
+    const snapshot = { ...debugSnapshot(), ...(route.module === 'settings' && route.page === 'data' && settingsState.activeSection === 'debug' ? { stores: settingsDebug } : {}) };
+    void navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+  }
+});
+app.addEventListener('click', (event) => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-shared-site-select]'); if (button?.dataset.sharedSiteSelect) { event.preventDefault(); void selectSharedSiteFromWorkspace(button.dataset.sharedSiteSelect); } });
+app.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement;
+  const dailyMutation = target.closest<HTMLElement>('[data-daily-action],[data-work-commit],[data-work-move],[data-work-suggestion]');
+  if (isReadOnlySite() && dailyMutation && !readOnlyDailyActions.has(dailyMutation.dataset.dailyAction ?? '')) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+  const mutation = target.closest('[data-memory-confirm],[data-memory-reject],[data-memory-reject-selected],[data-settings-action="confirm"],[data-settings-action="delete"],[data-settings-action="delete-material-type"],[data-settings-action="rename-material-type"],[data-settings-action="add-material-type"],[data-site-search-action],[data-daily-action="finalize"]');
+  if (!mutation) return;
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole;
+  if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改或審核工地記憶。'); return; }
+  window.setTimeout(scheduleBackgroundSync, 1000);
+}, true);
+app.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.isComposing || entryComposing || event.keyCode === 229) return;
+  const target = event.target as HTMLInputElement;
+  if (target.dataset.dailyField === 'workerCount' || target.dataset.dailyField === 'vendorNameSnapshot') {
+    const card = target.closest('[data-trade]');
+    const next = card?.querySelector<HTMLInputElement>(target.dataset.dailyField === 'workerCount' ? '[data-continuous-work]' : '[data-daily-field="workerCount"]');
+    if (next) { event.preventDefault(); next.focus(); }
+  }
+});
+app.addEventListener('submit', (event) => {
+  if (!(event.target instanceof HTMLFormElement) || !event.target.dataset.settingsForm) return;
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole;
+  if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改工地記憶。'); return; }
+  window.setTimeout(scheduleBackgroundSync, 1000);
+}, true);
+app.addEventListener('change', (event) => {
+  if (!(event.target instanceof HTMLInputElement) || !event.target.dataset.memoryBackupImport) return;
+  const role = accountSites.find((site) => site.id === accountActiveSiteId)?.role ?? accountActiveSiteRole;
+  if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); event.target.value = ''; alert('檢視者無法匯入工地記憶。'); }
+}, true);
+app.addEventListener('click', async (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-sync-now]');
+  if (!button || syncInFlight) return;
+  event.stopImmediatePropagation();
+  button.disabled = true; button.textContent = '同步中…';
+  await syncActiveSiteNow();
+  await renderApp();
+});
+app.addEventListener('change', async (event) => {
+  const target = event.target;
+  const route = parseRoute(location.hash);
+  if (!(target instanceof HTMLInputElement) || route.module !== 'daily' || route.page !== 'main' || target.dataset.dailyField !== 'date') return;
+  event.stopImmediatePropagation();
+  const nextDate = target.value;
+  if (!nextDate || nextDate === daily.report.date) return;
+  if (dateSwitching) return;
+  dateSwitching = true; activeSyncEpoch += 1; app.inert = true;
+  try {
+  persistEntryDraft();
+  if (!isReadOnlySite()) { capturePendingWork(); await daily.flush(); }
+  daily.replaceReport((await loadDailyDraftForDate(nextDate)) ?? createDailyDraft(null, '', nextDate));
+  daily.expandedId = null; dailyBasicsExpanded = false;
+  await refreshDailySyncStatus(); await renderApp();
+  } catch (error) { showEntrySaveError(error); await renderApp(); } finally { dateSwitching = false; app.inert = false; scheduleBackgroundSync(); }
+}, true);
+app.addEventListener('click', async (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-account-action]');
+  if (!button) return;
+  event.stopImmediatePropagation();
+  accountFeedback = ''; accountError = '';
+  try {
+    if (button.dataset.accountAction === 'retry-load-account') {
+      const token = ++renderToken; accountError = ''; renderAccountLoading();
+      await refreshAccount(() => { if (token !== renderToken || parseRoute(location.hash).module !== 'account') return; if (accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); });
+      return;
+    }
+    if (button.dataset.accountAction === 'load-conflict-reviews' && accountAuth.user && accountActiveSiteId) {
+      const token = renderToken;
+      button.disabled = true; button.textContent = '讀取中…';
+      try {
+        const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+        const operations = await listAllOperations(scope);
+        const reviews = await listConflictReviews(scope, operations);
+        if (token !== renderToken || parseRoute(location.hash).module !== 'account') return;
+        accountSyncOperations = operations; accountPendingCount = operations.length;
+        accountSyncDiagnostics = operations.filter((row) => row.status === 'failed' || row.status === 'conflict' || row.status === 'blocked');
+        accountConflictReviews = reviews;
+        if (operations.some((row) => row.status === 'conflict') && !reviews.length) accountError = '本機有衝突操作，但仍無法產生衝突明細；備份與原始操作均已保留。';
+      } catch (error) {
+        if (token !== renderToken || parseRoute(location.hash).module !== 'account') return;
+        accountError = `讀取衝突明細失敗：${error instanceof Error ? error.message : '未知錯誤'}。本機操作仍保留。`;
+      }
+      renderAccountLoaded();
+      return;
+    }
+    if (button.dataset.accountAction === 'sign-in') { await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await signInWithGoogle(); return; }
+    if (button.dataset.accountAction === 'sign-out') { await switchActiveDataPartition(signOut); accountSites = []; accountActiveSiteId = null; accountActiveSiteRole = null; accountFeedback = '已登出並切回本機草稿與記憶資料；共用工地快取仍保留在此裝置。'; }
+    if (button.dataset.accountAction === 'copy-join-code' && button.dataset.siteId) {
+      const site = accountSites.find((row) => row.id === button.dataset.siteId);
+      if (!site) { accountError = '找不到此工地的加入碼，請重新載入頁面後再試。'; await renderApp(); return; }
+      try {
+        await navigator.clipboard.writeText(site.joinCode);
+        accountFeedback = `已複製「${site.name}」加入碼`;
+        await renderApp();
+        const copiedButton = app.querySelector<HTMLButtonElement>(`[data-account-action="copy-join-code"][data-site-id="${escapeHtml(site.id)}"]`);
+        if (copiedButton) {
+          copiedButton.textContent = '已複製';
+          window.setTimeout(() => { if (copiedButton.isConnected) copiedButton.textContent = '複製'; }, 1600);
+        }
+      } catch {
+        accountError = '無法自動複製，請手動選取加入碼';
+        await renderApp();
+      }
+      return;
+    }
+    if (button.dataset.accountAction === 'select-site' && accountAuth.user && button.dataset.siteId) {
+      const role = accountSites.find((site) => site.id === button.dataset.siteId)?.role ?? null;
+      await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, button.dataset.siteId!, role); });
+      accountActiveSiteId = button.dataset.siteId;
+      accountActiveSiteRole = role;
+      syncRecoveryPreview = null; syncRecoverySiteId = null;
+      accountFeedback = '已切換目前共用工地、獨立草稿與記憶快取。';
+      scheduleBackgroundSync();
+    }
+    if (button.dataset.accountAction === 'preview-sync-recovery' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner') throw new Error('只有工地管理員可以修復舊同步項目。');
+      syncRecoveryPreview = await previewSyncRecovery({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      syncRecoverySiteId = accountActiveSiteId;
+      accountFeedback = `修復預覽完成：將封存 ${syncRecoveryPreview.legacyDaily + syncRecoveryPreview.legacyWater + syncRecoveryPreview.legacyMemory + syncRecoveryPreview.memoryProblems} 筆舊操作，接管 ${syncRecoveryPreview.cloudMemoryMatches} 筆雲端記憶，重新排送 ${syncRecoveryPreview.memoryToResend} 筆。`;
+    }
+    if (button.dataset.accountAction === 'export-sync-recovery-backup' && accountAuth.user && accountActiveSiteId) {
+      if (syncRecoverySiteId !== accountActiveSiteId || !syncRecoveryPreview) throw new Error('請先重新預覽修復內容。');
+      const local = await exportConflictBackups({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      const backup = { exportedAt: new Date().toISOString(), siteId: accountActiveSiteId, local, preview: syncRecoveryPreview };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = `施工日報-同步修復前備份-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url);
+      accountFeedback = `已下載處理前備份，包含 ${local.length} 筆本機問題資料與目前雲端比對內容。`;
+    }
+    if (button.dataset.accountAction === 'apply-sync-recovery' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner' || syncRecoverySiteId !== accountActiveSiteId || !syncRecoveryPreview) throw new Error('請先由管理員重新預覽修復內容。');
+      if (!window.confirm('執行前請先下載處理前備份。修復會封存舊操作、接管雲端同名記憶並重新排列可安全送出的項目，Supabase 現有資料不會刪除。是否繼續？')) return;
+      const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+      const result = await applySyncRecovery(scope, syncRecoveryPreview.fingerprint);
+      syncRecoveryPreview = null; syncRecoverySiteId = null;
+      if (result.requeued) await runSyncOnce(scope);
+      await refreshAccount();
+      accountFeedback = `修復完成：已封存 ${result.archived} 筆、接管雲端記憶 ${result.adoptedCloudMemory} 筆、重新排送 ${result.requeued} 筆、仍需人工處理 ${result.remainingManual} 筆。`;
+    }
+    if (button.dataset.accountAction === 'preview-memory-import' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner') throw new Error('只有工地管理員可以匯入舊本機記憶。');
+      const source = await readLocalMemoryImportSource();
+      if (!source) throw new Error('這台裝置沒有可匯入的舊本機記憶。');
+      const remote = await readCloudMemoryEntries(accountActiveSiteId);
+      memoryImportPreview = previewMemoryImport(source, remote);
+      memoryImportSource = 'local';
+      memoryImportSiteId = accountActiveSiteId;
+      memoryImportRemoteSignature = cloudMemorySignature(remote);
+      accountFeedback = `預覽完成：新增 ${memoryImportPreview.add.length} 筆、相同 ${memoryImportPreview.duplicate.length} 筆、內容衝突 ${memoryImportPreview.conflict.length} 筆。`;
+    }
+    if (button.dataset.accountAction === 'preview-legacy-memory-import' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner') throw new Error('只有工地管理員可以匯入舊快照。');
+      const old = (await listAllOperations({ userId: accountAuth.user.id, siteId: accountActiveSiteId })).find((row) => row.entity === 'memory');
+      if (!old) throw new Error('找不到舊版待送快照。');
+      const remote = await readCloudMemoryEntries(accountActiveSiteId);
+      memoryImportPreview = previewMemoryImport(old.payload as import('./data/memory-partition').MemorySnapshotPayload, remote);
+      memoryImportSource = 'legacy';
+      memoryImportSiteId = accountActiveSiteId;
+      memoryImportRemoteSignature = cloudMemorySignature(remote);
+      accountFeedback = `舊快照預覽完成：新增 ${memoryImportPreview.add.length} 筆、相同 ${memoryImportPreview.duplicate.length} 筆、衝突 ${memoryImportPreview.conflict.length} 筆。`;
+    }
+    if (button.dataset.accountAction === 'confirm-memory-import' && accountAuth.user && accountActiveSiteId) {
+      const site = accountSites.find((row) => row.id === accountActiveSiteId);
+      if (site?.role !== 'owner' || memoryImportSiteId !== accountActiveSiteId || !memoryImportPreview) throw new Error('請先由管理員重新預覽目標工地。');
+      const remote = await readCloudMemoryEntries(accountActiveSiteId);
+      if (cloudMemorySignature(remote) !== memoryImportRemoteSignature) throw new Error('雲端記憶已變更，請重新預覽後再匯入。');
+      const selectedConflicts = [...app.querySelectorAll<HTMLInputElement>('[data-memory-import-conflict]:checked')]
+        .map((input) => memoryImportPreview!.conflict.find((entry) => entry.id === input.value)).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+      const entries = [...memoryImportPreview.add, ...selectedConflicts];
+      const count = entries.length;
+      if (!count && memoryImportSource !== 'legacy') throw new Error('沒有需要新增的舊記憶。');
+      if (!window.confirm(`將 ${count} 筆舊本機記憶加入目前共用工地？原始本機資料會保留；未勾選的衝突不會匯入。`)) return;
+      const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+      await queueMemoryImport(scope, entries, memoryImportSource === 'legacy');
+      if (memoryImportSource === 'legacy') await refreshCloudMemoryLibrary(scope);
+      memoryImportPreview = null;
+      accountFeedback = `已將 ${count} 筆記憶排入逐筆同步；原始本機資料未清除。`;
+      scheduleBackgroundSync();
+    }
+    if (button.dataset.accountAction === 'sync-now' && accountAuth.user && accountActiveSiteId && !syncInFlight) {
+      await syncActiveSiteNow();
+    }
+    if (button.dataset.accountAction === 'export-conflict-backups' && accountAuth.user && accountActiveSiteId) {
+      const rows = await exportConflictBackups({ userId: accountAuth.user.id, siteId: accountActiveSiteId });
+      const url = URL.createObjectURL(new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = `施工日報-同步衝突備份-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); accountFeedback = `已下載 ${rows.length} 筆衝突原始備份。`;
+    }
+    if (button.dataset.accountAction === 'resolve-conflict' && accountAuth.user && accountActiveSiteId && button.dataset.conflictId) {
+      const review = accountConflictReviews.find((row) => row.id === button.dataset.conflictId); const form = button.closest<HTMLFormElement>('[data-conflict-review]');
+      if (review && form) {
+        const localPaths = [...form.querySelectorAll<HTMLSelectElement>('[data-conflict-choice]')].filter((row) => row.value === 'local').map((row) => row.dataset.conflictChoice!).filter(Boolean);
+        try { await queueConflictResolution({ userId: accountAuth.user.id, siteId: accountActiveSiteId }, review, localPaths); const result = await syncActiveSiteNow(); accountFeedback = result?.failed ? '新同步操作送出失敗；原衝突與備份已保留，可再次重試。' : '已建立並送出新的同步操作；原衝突僅在雲端成功寫入後結案。'; }
+        catch (error) { accountError = error instanceof Error ? error.message : '衝突審核建立失敗，原始資料未變更。'; }
+      }
+    }
+    if (button.dataset.accountAction === 'retry-missing-rpc' && accountAuth.user && accountActiveSiteId) {
+      const scope = { userId: accountAuth.user.id, siteId: accountActiveSiteId };
+      const retried = await retryMissingRpcOperations(scope);
+      const result = retried ? await runSyncOnce(scope) : null;
+      accountFeedback = result?.failed ? `已重新送出 ${retried} 筆，但仍有 ${result.failed} 筆失敗；請查看新的錯誤摘要。` : `已重新送出 ${retried} 筆，請確認待同步數量。`;
+    }
+    const requestId = button.dataset.requestId;
+    if (requestId && button.dataset.accountAction === 'approve-editor') { await approveSiteMember(requestId, 'editor'); accountFeedback = '已核准為編輯者。'; }
+    if (requestId && button.dataset.accountAction === 'approve-viewer') { await approveSiteMember(requestId, 'viewer'); accountFeedback = '已核准為檢視者。'; }
+    if (requestId && button.dataset.accountAction === 'reject-request') { await rejectSiteMember(requestId); accountFeedback = '已拒絕加入申請。'; }
+    const memberSiteId = button.dataset.siteId; const memberUserId = button.dataset.userId;
+    const role = button.dataset.accountAction?.replace('role-', '') as 'owner' | 'editor' | 'viewer' | undefined;
+    if (memberSiteId && memberUserId && role && ['owner', 'editor', 'viewer'].includes(role)) { await updateSiteMemberRole(memberSiteId, memberUserId, role); accountFeedback = '成員角色已更新。'; }
+    if (memberSiteId && memberUserId && button.dataset.accountAction === 'remove-member') {
+      if (!window.confirm('確定移除此工地成員？對方下次連線後將無法存取雲端資料。')) return;
+      await removeSiteMember(memberSiteId, memberUserId); accountFeedback = '成員已移除。';
+    }
+  } catch (error) { accountError = error instanceof Error ? error.message : '帳號操作失敗。'; }
+  await renderApp();
+});
+app.addEventListener('submit', async (event) => {
+  const form = (event.target as HTMLElement).closest<HTMLFormElement>('[data-account-form]');
+  if (!form) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  accountFeedback = ''; accountError = '';
+  const values = new FormData(form);
+  try {
+    if (form.dataset.accountForm === 'create-site') {
+      const result = await createSharedSite(String(values.get('name') ?? ''));
+      if (accountAuth.user) await switchActiveDataPartition(async () => { await selectActiveSharedSite(accountAuth.user!.id, result.siteId, 'owner'); });
+      accountActiveSiteRole = 'owner';
+      accountFeedback = `工地已建立並設為目前工地。加入碼：${result.joinCode}`;
+    } else {
+      await requestSiteAccess(String(values.get('joinCode') ?? ''));
+      accountFeedback = '加入申請已送出，請由工地管理員核准。';
+    }
+  } catch (error) { accountError = error instanceof Error ? error.message : '工地操作失敗。'; }
+  await renderApp();
+});
+app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; const route = parseRoute(location.hash); if (route.module === 'water-level' && water && (target.dataset.waterField || target.dataset.waterReading)) { void water.handleInput(target); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.workItemComposerInput !== undefined) { if (!workItemComposerComposing && !(event as InputEvent).isComposing) refreshWorkItemComposer(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.workItemInput !== undefined && target.dataset.inlineWork === undefined) { const workId = target.closest<HTMLElement>('[data-work]')?.dataset.work; focusWorkItemId = workId ?? null; updateDailyInput(target); void renderApp().then(() => { const input = workId ? app.querySelector<HTMLInputElement>(`[data-work-item-input="${workId}"]`) : null; input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.contactTaskContent && contactEditor) { const task = contactEditor.value.items.find((item) => item.id === target.dataset.contactTaskContent); if (task) { task.content = target.value; contactEditor.errors = []; } return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.contactField !== undefined && contactEditor) { if (!contactSearchComposing && !(event as InputEvent).isComposing) refreshContactSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.materialConnectionSearch !== undefined) { if (!materialConnectionSearchComposing && !(event as InputEvent).isComposing) refreshMaterialConnectionSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.materialField && materialEditor) { (materialEditor.value as unknown as Record<string, string>)[target.dataset.materialField] = target.value; materialEditor.errors = []; const indicator = app.querySelector<HTMLElement>('[data-material-dirty-indicator]'); if (indicator) indicator.hidden = !materialDirty(); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.tradePickerSearch !== undefined) { if (!tradePickerSearchComposing && !(event as InputEvent).isComposing) refreshTradePickerSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'settings' && target.dataset.materialTypeSearch !== undefined) { settingsState.taskSearchKeyword = target.value; void renderApp(); return; } if (route.module === 'daily' && route.page === 'settings' && target.dataset.settingsSearch === 'tasks') { if (!settingsSearchComposing && !(event as InputEvent).isComposing) refreshTaskSearch(target as HTMLInputElement); return; } if (route.module === 'daily' && route.page === 'settings' && target.closest('[data-settings-form]')) { settingsState.dirty = true; return; } if (route.module === 'daily' && route.page === 'main') updateDailyInput(target); });
+app.addEventListener('input', (event) => {
+  const target = event.target as HTMLInputElement;
+  if (contactEditor) {
+    if (target.dataset.contactField === 'task') contactEditor.taskQuery = target.value;
+    if (target.dataset.contactField === 'trade') { contactEditor.value.tradeNameSnapshot = target.value; contactEditor.tradeQuery = target.value; }
+    if (target.dataset.contactField === 'vendor') { contactEditor.value.vendorNameSnapshot = target.value; contactEditor.vendorQuery = target.value; }
+    if (target.matches('[data-contact-date]')) contactEditor.plannedDate = target.value;
+    if (target.matches('[data-contact-details]')) contactEditor.taskDetails = target.value;
+  }
+  persistEntryDraft();
+});
+app.addEventListener('change', async (event) => { const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement; const route = parseRoute(location.hash); if (route.module === 'settings' && route.page === 'memory' && target instanceof HTMLInputElement && target.dataset.memoryCandidate !== undefined) { const candidate = memoryCandidates.find((row) => row.key === target.value); if (!candidate) return; if (target.checked) memoryReviewState.explicitKeys.add(candidate.key); else memoryReviewState.explicitKeys.delete(candidate.key); await renderApp(); return; } if (route.module === 'settings' && route.page === 'memory' && target instanceof HTMLInputElement && target.dataset.memorySelectGroup) { const rows = memoryCandidates.filter((row) => row.kind === target.dataset.memorySelectGroup); rows.forEach((row) => target.checked ? memoryReviewState.explicitKeys.add(row.key) : memoryReviewState.explicitKeys.delete(row.key)); await renderApp(); return; } if (route.module === 'settings' && route.page === 'memory' && target instanceof HTMLInputElement && target.dataset.memorySelectAll !== undefined) { memoryReviewState.explicitKeys = target.checked ? new Set(memoryCandidates.map((row) => row.key)) : new Set(); await renderApp(); return; } if (target instanceof HTMLInputElement && target.dataset.memoryBackupImport) { const file = target.files?.[0]; if (!file) return; try { const summary = await mergeMemoryBackup(JSON.parse(await file.text())); await persistActiveMemoryPartition(); memoryBackupFeedback = `匯入完成：新增 ${summary.added} 筆、略過 ${summary.skipped} 筆、無效 ${summary.invalid} 筆。`; } catch (error) { memoryBackupFeedback = error instanceof Error ? `匯入失敗：${error.message}` : '匯入失敗。'; } target.value = ''; await refreshSettings(); await renderApp(); return; } if (route.module === 'daily' && route.page === 'main' && materialEditor && target.dataset.materialField === 'materialTypeSnapshot') { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(target.value)); materialEditor.value.materialTypeId = type?.id ?? null; materialEditor.value.materialTypeSnapshot = type?.name ?? target.value; materialEditor.value.unit = type?.recentUnit ?? ''; materialEditor.value.supplierNameSnapshot = type?.recentSupplierName ?? ''; await renderApp(); return; } if (route.module === 'daily' && route.page === 'main' && materialEditor && target.dataset.materialField === 'itemName') { const item = materialMemory.filter((row) => row.materialTypeId === materialEditor!.value.materialTypeId && row.fieldType === 'itemName' && row.normalizedValue === normalizeSearch(target.value)).sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0]; if (item) { const specification = materialMemory.filter((row) => row.materialTypeId === item.materialTypeId && row.fieldType === 'specification').sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0]; const type = materialTypes.find((row) => row.id === item.materialTypeId); if (!materialEditor.value.specification) materialEditor.value.specification = specification?.value ?? ''; if (!materialEditor.value.unit) materialEditor.value.unit = type?.recentUnit ?? ''; if (!materialEditor.value.supplierNameSnapshot) materialEditor.value.supplierNameSnapshot = type?.recentSupplierName ?? ''; await renderApp(); return; } } if (route.module === 'daily' && route.page === 'settings' && target.dataset.settingsField === 'trade') { if (settingsState.dirty && !window.confirm('放棄未保存修改？')) { void renderApp(); return; } settingsState.selectedTradeTypeId = target.value || null; settingsState.adding = false; settingsState.editingId = null; settingsState.dirty = false; settingsState.taskSearchKeyword = ''; void renderApp(); return; } if (route.module === 'daily' && route.page === 'main' && target.dataset.dailyField === 'vendorNameSnapshot') { await daily.flush(); return; } if (route.module === 'daily' && route.page === 'main' && (target.dataset.dailyField === 'startFloorRaw' || target.dataset.dailyField === 'endFloorRaw')) { const workId = target.closest<HTMLElement>('[data-work]')?.dataset.work; const work = daily.report.tradeSections.flatMap((trade) => trade.workItems).find((item) => item.id === workId); if (!work) return; const normalized = normalizeFloor(target.value); if (normalized === null) { alert('樓層格式不正確，請輸入數字、B格式，或 RF／PH／MF／R1～R9。'); return; } daily.update(() => { if (target.dataset.dailyField === 'startFloorRaw') { work.startFloorRaw = normalized; work.startFloorNormalized = normalized || null; } else { work.endFloorRaw = normalized; work.endFloorNormalized = normalized || null; } const start = comparableFloor(work.startFloorNormalized); const end = comparableFloor(work.endFloorNormalized); if (start !== null && end !== null && start > end && window.confirm(`起始樓層高於結束樓層，是否交換為 ${work.endFloorNormalized}～${work.startFloorNormalized}？`)) { [work.startFloorRaw, work.endFloorRaw] = [work.endFloorRaw, work.startFloorRaw]; [work.startFloorNormalized, work.endFloorNormalized] = [work.endFloorNormalized, work.startFloorNormalized]; } }); void daily.flush(); void renderApp(); } });
+app.addEventListener('compositionstart', (event) => { if ((event.target as HTMLElement).matches('[data-site-search]')) siteSearchComposing = true; });
+app.addEventListener('compositionend', (event) => { const target = event.target as HTMLInputElement; if (target.matches('[data-site-search]')) { siteSearchComposing = false; refreshSiteSearch(target); } });
+app.addEventListener('focusin', (event) => { const target = event.target; if (target instanceof HTMLInputElement && target.matches('[data-site-search]')) activateSiteSearch(target); });
+app.addEventListener('input', (event) => { const target = event.target as HTMLInputElement; if (target.matches('[data-site-search]') && !siteSearchComposing && !(event as InputEvent).isComposing) refreshSiteSearch(target); });
+app.addEventListener('keydown', (event) => { const target = event.target as HTMLInputElement; if (!target.matches('[data-site-search]')) return; if (event.key === 'Escape') { siteSearchOpen = false; void renderApp(); return; } if (event.key === 'Enter') { event.preventDefault(); void selectDailySite(target.value); } });
+app.addEventListener('click', async (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLButtonElement>('[data-site-search-action]'); if (!action) return; event.stopImmediatePropagation(); const site = dailySites.find((item) => item.id === action.dataset.siteId); if (action.dataset.siteSearchAction === 'select' && site) await selectDailySite(site.name); else if (action.dataset.siteSearchAction === 'create') await selectDailySite(siteSearchQuery); });
+app.addEventListener('click', async (event) => {
+  const target = event.target as HTMLElement; const route = parseRoute(location.hash);
+  const appAction = target.closest<HTMLElement>('[data-app-action]')?.dataset.appAction;
+  if (appAction === 'dismiss-pwa-update') { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); await renderApp(); return; }
+  if (appAction === 'apply-pwa-update' && applyPwaUpdate && pwaUpdateState !== 'applying') {
+    pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'apply');
+    if (pwaUpdateState !== 'applying') return;
+    await renderApp();
+    try {
+      await Promise.all([daily.flush(), persistActiveMemoryPartition(), persistActiveWaterPartition()]);
+      pwaUpdateTimeout = window.setTimeout(() => { if (pwaUpdateState === 'applying') { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'waiting'); void renderApp(); } }, 15_000);
+      await applyPwaUpdate();
+    } catch {
+      clearPwaUpdateTimeout();
+      pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed');
+      await renderApp();
+    }
+    return;
+  }
+  if (route.module === 'settings' && route.page === 'memory') {
+    const groupToggle = target.closest<HTMLButtonElement>('[data-memory-group-toggle]'); if (groupToggle) { const kind = groupToggle.dataset.memoryGroupToggle as MemoryCandidate['kind']; memoryReviewState.openKind = memoryReviewState.openKind === kind ? null : kind; memoryReviewState.expandedKeys.clear(); await renderApp(); return; }
+    const detailToggle = target.closest<HTMLButtonElement>('[data-memory-detail-toggle]'); if (detailToggle) { const key = detailToggle.dataset.memoryDetailToggle as MemoryCandidateKey; if (memoryReviewState.expandedKeys.has(key)) memoryReviewState.expandedKeys.delete(key); else memoryReviewState.expandedKeys.add(key); await renderApp(); return; }
+    const confirmButton = target.closest<HTMLButtonElement>('[data-memory-confirm]'); if (confirmButton) { const selected = memoryCandidates.filter((row) => memoryReviewState.explicitKeys.has(row.key)); const confirmation = confirmationSelection(selected.map((row) => row.key), memoryCandidates); if (!confirmation.keys.length) return; prepareNextMemoryGroup(); if (!await performMemoryReviewWrite(() => confirmMemoryCandidates(confirmation.keys), '確認失敗')) return; memoryReviewState.feedback = `已確認 ${confirmation.keys.length} 筆記憶。`; memoryReviewState.feedbackTone = 'success'; memoryReviewState.explicitKeys.clear(); memoryReviewState.expandedKeys.clear(); await renderApp(); return; }
+    const rejectSelected = target.closest<HTMLButtonElement>('[data-memory-reject-selected]'); if (rejectSelected) { const explicit = memoryCandidates.filter((row) => memoryReviewState.explicitKeys.has(row.key)); const rejection = rejectionSelection(explicit.map((row) => row.key), memoryCandidates); const selected = rejection.keys.map((key) => memoryCandidates.find((row) => row.key === key)).filter((row): row is MemoryCandidate => Boolean(row)); if (!selected.length || selected.some((row) => memoryCandidateImpact(daily.report, row) > 0)) return; const summary = [...new Set(selected.map((row) => memoryCandidateLabels[row.kind]))].join('、'); if (!window.confirm(`駁回所選與關聯的 ${selected.length} 筆候選？\n\n類型：${summary}\n目前草稿不受影響，定稿資料不會變更。`)) return; if (!window.confirm('再次確認：駁回後無法還原，確定繼續？')) return; prepareNextMemoryGroup(); if (!await performMemoryReviewWrite(async () => { for (const candidate of selected) await rejectMemoryCandidate(candidate); }, '駁回失敗')) return; memoryReviewState.feedback = `已駁回 ${selected.length} 筆候選。`; memoryReviewState.feedbackTone = 'success'; memoryReviewState.explicitKeys.clear(); memoryReviewState.expandedKeys.clear(); await renderApp(); return; }
+    const rejectButton = target.closest<HTMLButtonElement>('[data-memory-reject]'); if (rejectButton) { const candidate = memoryCandidates.find((row) => row.key === rejectButton.dataset.memoryReject); if (!candidate) return; const impact = memoryCandidateImpact(daily.report, candidate); if (!window.confirm(`駁回「${candidate.name}」？\n\n目前草稿將連動處理 ${impact} 筆內容；定稿資料不會變更。`)) return; if (impact && !window.confirm('再次確認：此操作會立即改寫目前草稿，確定駁回？')) return; prepareNextMemoryGroup(); if (!await performMemoryReviewWrite(() => rejectMemoryCandidate(candidate), '駁回失敗')) return; memoryReviewState.feedback = `已駁回「${candidate.name}」。`; memoryReviewState.feedbackTone = 'success'; memoryReviewState.explicitKeys.delete(candidate.key); memoryReviewState.expandedKeys.delete(candidate.key); await renderApp(); return; }
+  }
+  if (route.module === 'settings' && route.page === 'data') { const action = target.closest<HTMLButtonElement>('[data-settings-action]')?.dataset.settingsAction; if (action === 'export-memory-backup') { const payload = await exportMemories(); const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = `施工日報-記憶備份-${payload.exportedAt.slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); memoryBackupFeedback = '已下載記憶備份。'; await renderApp(); return; } if (action === 'copy-debug') { await navigator.clipboard.writeText(JSON.stringify(settingsDebug, null, 2)); return; } if (action === 'clear-debug' && window.confirm('確定清除偵錯紀錄？')) { await clearDebugLogs(); await renderApp(); return; } }
+  // The settings action dispatcher intentionally shares one branch across heterogeneous sections.
+  if (route.module === 'daily' && route.page === 'settings' && target.closest('[data-settings-action="add"]')) {
+    settingsState.adding = true;
+    settingsState.editingId = null;
+    settingsState.dirty = false;
+    await renderApp();
+    return;
+  }
+  // @ts-ignore -- narrowed action handling below determines the applicable section.
+  const dataSectionButton = target.closest<HTMLButtonElement>('[data-data-system-section]');
+  if (route.module === 'settings' && route.page === 'data' && dataSectionButton) { settingsState.activeSection = dataSectionButton.dataset.dataSystemSection as 'backup' | 'debug'; await refreshSettings(); await renderApp(); return; }
+  if (route.module === 'daily' && route.page === 'settings') { const areaButton = target.closest<HTMLButtonElement>('[data-settings-area]'); if (areaButton) { const area = areaButton.dataset.settingsArea as DailySettingsArea; if (settingsState.activeArea === area) return; settingsState.activeArea = area; const firstSection = dailySettingsAreas.find((item) => item.id === area)?.sections[0]; if (firstSection) settingsState.activeSection = firstSection; settingsState.editingId = null; settingsState.adding = false; settingsState.dirty = false; settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; await refreshSettings(); await renderApp(); return; } const sectionButton = target.closest<HTMLButtonElement>('[data-settings-section]'); if (sectionButton) { if (settingsState.dirty && !window.confirm('放棄未保存修改？')) return; settingsState.activeSection = sectionButton.dataset.settingsSection as DailySettingsSection; settingsState.editingId = null; settingsState.adding = false; settingsState.dirty = false; settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; await refreshSettings(); await renderApp(); return; } const actionButton = target.closest<HTMLButtonElement>('[data-settings-action]'); if (actionButton) { const action = actionButton.dataset.settingsAction!; const id = actionButton.dataset.id!; const kind = actionButton.dataset.settingsKind as 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations' | undefined; if (action === 'export-memory-backup') { const payload = await exportMemories(); const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = `施工日報-記憶備份-${payload.exportedAt.slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); memoryBackupFeedback = '已下載記憶備份。'; await renderApp(); return; } if (action === 'add-material-type') { const value = window.prompt('材料類型名稱'); if (value !== null) { try { await createMaterialType(value); } catch (error) { alert(error instanceof Error ? error.message : '新增材料類型失敗。'); } } await renderApp(); return; } if (action === 'rename-material-type') { const current = materialTypes.find((row) => row.id === id); const value = window.prompt('材料類型名稱', current?.name ?? ''); if (value !== null) { try { daily.report = await renameMaterialType(daily.report, id, value); } catch (error) { alert(error instanceof Error ? error.message : '重新命名失敗。'); } } await renderApp(); return; } if (action === 'delete-material-type') { const current = materialTypes.find((row) => row.id === id); const entries = daily.report.standaloneMaterialEntries.filter((entry) => entry.materialTypeId === id); const normal = entries.filter((entry) => entry.entryType !== 'independent').length; const independent = entries.length - normal; const linked = entries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId).length; if (!window.confirm(`刪除材料類型「${current?.name ?? ''}」？\n\n普通進料 ${normal} 筆\n獨立進料 ${independent} 筆${linked ? `（已連接 ${linked} 筆）` : ''}\n共計刪除 ${entries.length} 筆進料及相關搜尋記憶。\n\n此操作無法復原。`)) return; try { daily.report = await deleteMaterialType(daily.report, id); } catch (error) { alert(error instanceof Error ? error.message : '刪除材料類型失敗。'); } await renderApp(); return; } if (action === 'toggle-trade-tasks') { settingsState.selectedTradeTypeId = settingsState.selectedTradeTypeId === actionButton.dataset.tradeTypeId ? null : actionButton.dataset.tradeTypeId ?? null; settingsState.editingId = null; settingsState.adding = false; settingsState.taskSearchKeyword = ''; await renderApp(); return; } if (action === 'add-trade') { dailyPreviewOpen = false; settingsState.selectedTradeTypeId = null; settingsState.adding = true; settingsState.editingId = null; } else if (action === 'add-task' || action === 'add-task-from-search') { settingsState.adding = true; settingsState.editingId = null; } else if (action === 'clear-task-search') { settingsState.taskSearchKeyword = ''; await renderApp(); app.querySelector<HTMLInputElement>('[data-settings-search="tasks"]')?.focus(); return; } else if (action === 'edit-trade' || action === 'edit-task' || action === 'edit') { settingsState.editingId = id; settingsState.adding = false; } else if (action === 'cancel') { settingsState.editingId = null; settingsState.adding = false; settingsState.dirty = false; } else if (action === 'confirm' && kind) await confirmMemory(kind as 'vendors' | 'tasks' | 'locations', id); else if (action === 'delete' && kind) { if (!window.confirm(`確定刪除「${actionButton.dataset.name ?? ''}」？\n\n此操作將影響設定記憶與目前草稿中的相關內容；既有日報快照與已複製文字不受影響。`)) return; const savedDraft = await deleteMemory(kind, id); if (savedDraft) daily.mergeRemote(savedDraft); if (kind === 'trades' && settingsState.selectedTradeTypeId === id) { settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; } } else if (action === 'copy-debug') await navigator.clipboard.writeText(JSON.stringify(settingsDebug, null, 2)); else if (action === 'clear-debug') { if (window.confirm('確定清除偵錯紀錄？')) await clearDebugLogs(); } await renderApp(); return; } }
+  const tab = target.closest<HTMLButtonElement>('[data-daily-tab]'); if (tab && route.module === 'daily') { if (!discardMaterialEditor()) return; await savePendingDailyInput(); persistEntryDraft(); activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; daily.switchTab(tab.dataset.dailyTab as DailyReportV3['activeTab']); await daily.flush(); await renderApp(); return; }
+  const waterButton = target.closest<HTMLButtonElement>('[data-water-action],[data-water-view]');
+  if (waterButton && route.module === 'water-level' && water) { if (waterButton.dataset.waterView) { water.mode = waterButton.dataset.waterView; water.render(); return; } if (waterButton.dataset.waterAction) { await water.handleAction(waterButton.dataset.waterAction, waterButton.dataset.id); if (route.page === 'settings') water.renderSettings(); } return; }
+  if (route.module === 'daily' && route.page === 'history') { const finalized = target.closest<HTMLElement>('[data-daily-action="copy-finalized"]'); if (finalized) { const report = finalizedReports.find((item) => item.id === finalized.dataset.finalizedId); if (report) await navigator.clipboard.writeText(report.outputText); return; } }
+  if (workAuxMenuId && route.module === 'daily' && route.page === 'main' && !target.closest('[data-work-actions]')) { workAuxMenuId = null; await renderApp(); return; }
+  const actionElement = target.closest<HTMLElement>('[data-daily-action]'); if (!actionElement || route.module !== 'daily' || route.page !== 'main') return;
+  const action = actionElement.dataset.dailyAction!;
+  if (action === 'undo-trade-delete') {
+    pruneTradeUndoQueue();
+    const entry = tradeUndoQueue.pop();
+    if (!entry) return;
+    window.clearTimeout(entry.timer);
+    const result = daily.restoreDeletedItem(entry.undo);
+    try { await daily.flush(); } catch { alert('復原儲存失敗，請勿關閉頁面後再試。'); }
+    if (result.skipped) dailyCopyFeedback = `已復原工程條目；${result.skipped} 筆獨立進料已改連其他工種，未覆蓋。`;
+    await renderApp(); return;
+  }
+  if (action === 'fix-entry') { dailyPreviewOpen = false; daily.expandedId = actionElement.dataset.id!; daily.report.activeTab = 'engineering'; dailyPreviewOpen = false; await renderApp(); const trade = daily.trade(daily.expandedId)!; const issue = validateTrade(trade, daily.linkedMaterialEntries(trade.id))[0]?.field; const name = issue === 'vendor' ? 'vendorNameSnapshot' : issue === 'workerCount' ? 'workerCount' : issue === 'trade' ? 'tradeNameSnapshot' : ''; const selector = name ? `[data-trade="${escapeHtml(trade.id)}"] [data-daily-field="${name}"]` : `[data-continuous-work="${escapeHtml(trade.id)}"]`; app.querySelector<HTMLInputElement>(selector)?.focus(); return; }
+  if (action === 'keep-trade') { if (entryComposing) return; try { await savePendingDailyInput(); daily.expandedId = null; await renderApp(); } catch (error) { showEntrySaveError(error); } return; }
+  if (action === 'finish-entry' || action === 'next-entry') {
+    if (entryComposing || dateSwitching) return;
+    const trade = daily.trade(actionElement.dataset.id!); if (!trade) return;
+    capturePendingWork();
+    const issues = daily.complete(trade.id);
+    try { await daily.flush(); persistEntryDraft(); } catch (error) { daily.expandedId = trade.id; showEntrySaveError(error); return; }
+    if (issues.length) {
+      await renderApp();
+      alert(`尚未完成：\n${issues.join('\n')}`);
+      const field = validateTrade(trade, daily.linkedMaterialEntries(trade.id))[0]?.field;
+      const name = field === 'vendor' ? 'vendorNameSnapshot' : field === 'workerCount' ? 'workerCount' : field === 'trade' ? 'tradeNameSnapshot' : '';
+      app.querySelector<HTMLInputElement>(name ? `[data-trade="${escapeHtml(trade.id)}"] [data-daily-field="${name}"]` : `[data-continuous-work="${escapeHtml(trade.id)}"]`)?.focus();
+      return;
+    }
+    if (action === 'next-entry') { entryKind = 'engineering'; tradePickerOpen = true; tradePickerSearch = ''; }
+    await renderApp();
+    void commitInputMemories(false).catch(showEntrySaveError);
+    return;
+  }
+  if (action === 'toggle-basics') { dailyBasicsExpanded = !dailyBasicsExpanded; await renderApp(); return; }
+  if (action === 'toggle-preview') { if (!isReadOnlySite()) await savePendingDailyInput(); dailyPreviewOpen = !dailyPreviewOpen; await renderApp(); return; }
+  if (action === 'toggle-material') { const id = actionElement.dataset.materialId!; if (materialEditor?.id === id) { if (!discardMaterialEditor()) return; await renderApp(); return; } const entry = daily.materialEntry(id); if (!entry || (materialEditor && !discardMaterialEditor())) return; startMaterialEditor(entry.entryType ?? 'normal', entry); await renderApp(); return; }
+  if (action === 'edit-material') { const entry = daily.materialEntry(actionElement.dataset.materialId!); if (!entry) return; if (materialEditor && materialEditor.id !== entry.id && !discardMaterialEditor()) return; startMaterialEditor(entry.entryType ?? 'normal', entry); await renderApp(); app.querySelector<HTMLInputElement>('[data-material-field="materialTypeSnapshot"]')?.focus(); return; }
+  if (action === 'add-normal-material' || action === 'add-independent-material') { if (materialEditor && !discardMaterialEditor()) return; startMaterialEditor(action === 'add-normal-material' ? 'normal' : 'independent'); await renderApp(); app.querySelector<HTMLInputElement>('[data-material-field="materialTypeSnapshot"]')?.focus(); return; }
+  if (action === 'cancel-material') { if (!discardMaterialEditor()) return; await renderApp(); return; }
+  if (action === 'save-material' && materialEditor) { const errors = materialValidation(materialEditor.value); if (errors.length) { materialEditor.errors = errors; await renderApp(); app.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return; } try { const entry = { ...materialEditor.value, id: materialEditor.originalId ?? '' }; const saved = await saveMaterialEntry(daily.report, entry); daily.report = saved.report; await daily.flush(); await commitInputMemories(); materialTypes = await listMaterialTypes(); materialMemory = await listMaterialMemory(); materialEditor = null; await renderApp(); } catch (error) { alert(error instanceof Error ? error.message : '儲存進料失敗，已保留草稿。'); } return; }
+  if (action === 'toggle-contact') { dailyPreviewOpen = false; const id = actionElement.dataset.contactId!; if (contactEditor?.id === id) { activeContactSearch = null; contactEditorCollapsed = !contactEditorCollapsed; persistEntryDraft(); await renderApp(); return; } const current = daily.report.contacts.find((item) => item.id === id); if (!current || (contactEditor && contactDirty() && !window.confirm('目前聯絡事項尚未儲存，是否放棄這次修改？'))) return; activeContactSearch = null; contactEditorCollapsed = false; contactEditor = { id: current.id, originalId: current.id, value: structuredClone(current), errors: [], tradeQuery: current.tradeNameSnapshot, vendorQuery: current.vendorNameSnapshot, taskQuery: '' }; await renderApp(); return; }
+  if (action === 'edit-contact') { const current = daily.report.contacts.find((item) => item.id === actionElement.dataset.contactId); if (!current) return; if (contactEditor && contactEditor.id !== current.id && contactDirty() && !window.confirm('目前聯絡事項尚未儲存，是否放棄這次修改？')) return; activeContactSearch = null; contactEditorCollapsed = false; contactEditor = { id: current.id, originalId: current.id, value: structuredClone(current), errors: [], tradeQuery: current.tradeNameSnapshot, vendorQuery: current.vendorNameSnapshot, taskQuery: '' }; await renderApp(); return; }
+  if (action === 'add-contact') { dailyPreviewOpen = false; if (contactEditor) { alert('請先完成或取消目前的聯絡草稿。'); return; } entryKind = 'contacts'; tradePickerOpen = true; tradePickerSearch = ''; await renderApp(); return; }
+  if (action === 'keep-contact') { contactEditorCollapsed = true; activeContactSearch = null; persistEntryDraft(); await renderApp(); return; }
+  if (action === 'cancel-contact') { if (contactDirty() && !window.confirm('放棄未儲存的聯絡事項變更？')) return; activeContactSearch = null; contactEditor = null; await renderApp(); return; }
+  if (action === 'pick-work-item-memory') { const tradeId = actionElement.dataset.tradeId!; const memory = dailyTasks.find((item) => item.id === actionElement.dataset.memoryId); if (!memory) return; const composer = workItemComposerState(tradeId); composer.query = memory.name; composer.taskId = memory.id; activeWorkItemComposerTradeId = tradeId; await renderApp(); focusWorkItemComposer(tradeId); return; }
+  if (action === 'add-work-item') { const tradeId = actionElement.dataset.tradeId!; const trade = daily.trade(tradeId); const composer = workItemComposerState(tradeId); const value = composer.query.trim(); if (!trade || !value) return; const work = daily.addWorkItem(tradeId, value, composer.taskId); composer.query = ''; composer.taskId = null; activeWorkItemComposerTradeId = tradeId; if (work && duplicateWorkItemIds(daily.trade(tradeId)! ).has(work.id)) { activeWorkItemComposerTradeId = null; activeWorkAuxEditor = { workItemId: work.id, kind: 'location' }; focusWorkItemId = work.id; focusWorkAuxField = 'start'; } else { focusWorkItemId = null; focusWorkAuxField = null; } await daily.flush(); await renderApp(); if (focusWorkAuxField === 'start') { app.querySelector<HTMLInputElement>(`[data-work="${work?.id}"] [data-daily-field="startFloorRaw"]`)?.focus(); focusWorkAuxField = null; } else focusWorkItemComposer(tradeId); return; }
+  if (action === 'contact-pick-memory' && contactEditor) { const id = actionElement.dataset.memoryId!; const trade = dailyTrades.find((item) => item.id === id); const vendor = dailyVendors.find((item) => item.id === id); const task = dailyTasks.find((item) => item.id === id); if (trade) { const changedTrade = contactEditor.value.tradeTypeId !== trade.id; if (contactEditor.value.items.length && changedTrade && !window.confirm('切換工種會清除目前已加入的施工項目，是否繼續？')) return; contactEditor.value.tradeTypeId = trade.id; contactEditor.value.tradeNameSnapshot = trade.name; if (changedTrade) contactEditor.value.items = []; const recent = memoryOrder(dailyVendors.filter((item) => item.tradeTypeId === trade.id))[0]; contactEditor.value.vendorId = recent?.id ?? null; contactEditor.value.vendorNameSnapshot = recent?.name ?? ''; contactEditor.tradeQuery = trade.name; contactEditor.vendorQuery = contactEditor.value.vendorNameSnapshot; } else if (vendor) { contactEditor.value.vendorId = vendor.id; contactEditor.value.vendorNameSnapshot = vendor.name; contactEditor.vendorQuery = vendor.name; } else if (task) { appendContactTask(contactEditor, task.name); refreshContactTaskList(); return; } activeContactSearch = null; await renderApp(); return; }
+  if (action === 'contact-reuse-date' && contactEditor) { contactEditor.plannedDate = lastContactDate; persistEntryDraft(); const input = app.querySelector<HTMLInputElement>('[data-contact-date]'); if (input) input.value = lastContactDate; return; }
+  if (action === 'contact-add-task' && contactEditor) { if (contactSearchComposing) return; appendPendingContactTask(); refreshContactTaskList(); return; }
+  if (action === 'contact-remove-task' && contactEditor) { contactEditor.value.items = contactEditor.value.items.filter((item) => item.id !== actionElement.dataset.taskId).map((item, index) => ({ ...item, sortOrder: index })); await renderApp(); return; }
+  if ((action === 'save-contact' || action === 'save-contact-next') && contactEditor) { if (entryComposing || contactSearchComposing) return; if (contactEditor.taskDetails?.trim() && !contactEditor.taskQuery.trim()) { alert('請輸入數量／規格所屬的工作內容，再完成這筆。'); app.querySelector<HTMLInputElement>('#contact-task')?.focus(); return; } appendPendingContactTask(); applyContactPlannedDate(contactEditor); const value = contactEditor.value; const items = value.items.map((item) => ({ ...item, content: item.content.trim() })).filter((item) => item.content); const duplicate = new Set<string>(); const duplicateFound = items.some((item) => { const key = normalizeSearch(item.content); if (duplicate.has(key)) return true; duplicate.add(key); return false; }); const errors = !value.tradeNameSnapshot.trim() ? ['請選擇工種。'] : !value.vendorNameSnapshot.trim() ? ['請選擇廠商。'] : !items.length ? ['請至少加入一個施工項目。'] : duplicateFound ? ['同一筆聯絡事項不可重複施工項目。'] : []; if (errors.length) { contactEditor.errors = errors; activeContactSearch = null; await renderApp(); app.querySelector<HTMLInputElement>(!value.tradeNameSnapshot.trim() ? '#contact-trade' : !value.vendorNameSnapshot.trim() ? '#contact-vendor' : '#contact-task')?.focus(); return; } try { app.inert = true; lastContactDate = contactEditor.plannedDate ?? ''; const saved = await saveContactEntry(daily.report, { ...value, id: contactEditor.originalId ?? contactEditor.id, items }); daily.report = saved.report; await daily.flush(); activeContactSearch = null; contactEditor = null; persistEntryDraft(); if (action === 'save-contact-next') { entryKind = 'contacts'; tradePickerOpen = true; tradePickerSearch = ''; } await renderApp(); void commitInputMemories(false).catch(showEntrySaveError); } catch (error) { alert(error instanceof Error ? error.message : '儲存聯絡事項失敗，已保留草稿。'); } finally { app.inert = false; } return; }
+  if (action === 'toggle-trade') { dailyPreviewOpen = false;
+    if (target.closest('.drag-handle,.trade-card__status')) return;
+    if (suppressTradeSummaryClick) { suppressTradeSummaryClick = false; return; }
+    activeWorkAuxEditor = null; workAuxMenuId = null;
+    daily.toggle(actionElement.dataset.id!);
+    await renderApp(); return;
+  }
+  if (action === 'toggle-work-aux-menu') { const id = actionElement.dataset.workItemId!; const open = workAuxMenuId !== id; workAuxMenuId = open ? id : null; await renderApp(); if (open) focusWorkAuxMenu(id); else focusWorkActionsTrigger(id); return; }
+  if (action === 'open-work-aux') { activeWorkAuxEditor = { workItemId: actionElement.dataset.workItemId!, kind: actionElement.dataset.workAuxKind as 'location' | 'note' }; workAuxMenuId = null; await renderApp(); return; }
+  if (action === 'close-work-aux') { activeWorkAuxEditor = null; workAuxMenuId = null; await renderApp(); return; }
+  if (action === 'toggle-special') { expandedSpecialId = expandedSpecialId === actionElement.dataset.id ? null : actionElement.dataset.id ?? null; await renderApp(); return; }
+  if (action === 'delete-trade') { const id = actionElement.dataset.id!; const trade = daily.trade(id); if (!trade) return; if (!daily.deleteTrade(id)) return; activeWorkAuxEditor = null; workAuxMenuId = null; await daily.flush(); await renderApp(); return; }
+  const button = actionElement;
+  if (action === 'add-trade') { entryKind = 'engineering'; tradePickerOpen = true; tradePickerSearch = ''; await renderApp(); return; }
+  if (action === 'close-trade-picker') { tradePickerOpen = false; await renderApp(); return; }
+  if (action === 'clear-trade-search') { const search = app.querySelector<HTMLInputElement>('[data-trade-picker-search]'); if (search) { search.value = ''; refreshTradePickerSearch(search); search.focus(); } return; }
+  if (action === 'select-trade') { dailyPreviewOpen = false; const trade = dailyTrades.find((item) => item.id === button.dataset.tradeId); if (!trade) return; const vendor = dailyVendors.filter((item) => item.tradeTypeId === trade.id && item.status === 'confirmed').slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.normalizedName.localeCompare(b.normalizedName))[0]; const existing = daily.findDuplicate(trade.id, trade.name, vendor?.id ?? null, vendor?.name ?? ''); if (entryKind === 'contacts') { startContactEntry(trade.name, vendor?.name ?? '', trade.id, vendor?.id ?? null); tradePickerOpen = false; await renderApp(); app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return; } const created = daily.addTrade(trade.name, vendor?.name ?? '', trade.id, vendor?.id ?? null); tradePickerOpen = false; if (existing) alert('此工種與最近使用廠商已存在。'); await daily.flush(); await renderApp(); if (created) app.querySelector<HTMLInputElement>(`[data-trade="${escapeHtml(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return; }
+  if (action === 'create-trade-from-search') { dailyPreviewOpen = false; const name = tradePickerSearch.trim(); if (!name) return; if (entryKind === 'contacts') { startContactEntry(name); tradePickerOpen = false; await renderApp(); app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return; } const created = daily.addTrade(name, '', null, null); tradePickerOpen = false; await daily.flush(); await renderApp(); if (created) app.querySelector<HTMLInputElement>(`[data-trade="${escapeHtml(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return; }
+  if (action === 'add-work') {
+    const tradeId = button.dataset.tradeId!;
+    daily.addWorkItem(tradeId);
+    focusWorkItemId = daily.trade(tradeId)?.workItems.at(-1)?.id ?? null;
+  }
+  else if (action === 'undo-material-disconnect') { const undo = materialConnectionUndo; if (!undo || !daily.undoDisconnectMaterial(undo)) return; syncMaterialEditor(undo.materialId); window.clearTimeout(undo.timer); materialConnectionUndo = null; }
+  else if (action === 'disconnect-material') { const undo = daily.disconnectMaterial(button.dataset.materialId!); if (undo) { syncMaterialEditor(undo.materialId); enqueueMaterialConnectionUndo(undo.materialId, undo.tradeId); } }
+  else if (action === 'toggle-material-type') { const entry = daily.materialEntry(button.dataset.materialId!); if (!entry) return; const previousTradeId = entry.entryType === 'independent' ? entry.connectedTradeSectionId ?? null : null; const trade = previousTradeId ? daily.trade(previousTradeId) : undefined; if (previousTradeId && !window.confirm(`轉為普通進料將解除與「${trade?.tradeNameSnapshot ?? '原工種'}」的連接。確定繼續？`)) return; daily.convertMaterialType(entry.id); if (materialEditor?.id === entry.id) materialEditor.value = structuredClone(daily.materialEntry(entry.id)!); }
+  else if (action === 'manage-material-connections') { materialConnectionFocusTradeId = button.dataset.tradeId!; materialConnectionSelectionId = null; daily.switchTab('supplies'); await daily.flush(); await renderApp(); return; }
+  else if (action === 'select-connection-material') { materialConnectionSelectionId = button.dataset.materialId!; await renderApp(); return; }
+  else if (action === 'clear-connection-selection') { materialConnectionSelectionId = null; await renderApp(); return; }
+  else if (action === 'select-connection-trade') { const materialId = materialConnectionSelectionId; const tradeId = button.dataset.tradeId!; if (!materialId) return; const entry = daily.materialEntry(materialId); if (!entry) return; const previous = entry.connectedTradeSectionId ? daily.trade(entry.connectedTradeSectionId) : undefined; if (previous && previous.id !== tradeId && !window.confirm(`改接「${entry.itemName || entry.materialTypeSnapshot || '未命名進料'}」？\n\n${previous.tradeNameSnapshot} → ${daily.trade(tradeId)?.tradeNameSnapshot ?? '新工種'}\n\n兩個工種都會退回草稿。`)) return; daily.connectMaterial(tradeId, materialId); syncMaterialEditor(materialId); materialConnectionSelectionId = null; materialConnectionFocusTradeId = null; }
+  else if (action === 'delete-material') daily.deleteMaterial(button.dataset.materialId!);
+  else if (action === 'delete-work-item') { if (activeWorkAuxEditor?.workItemId === button.dataset.workItemId) activeWorkAuxEditor = null; if (workAuxMenuId === button.dataset.workItemId) workAuxMenuId = null; daily.deleteWorkItem(button.dataset.tradeId!, button.dataset.workItemId!); }
+  else if (action === 'delete-trade') daily.deleteTrade(button.dataset.id!);
+  else if (action === 'complete') { const issues = daily.complete(button.dataset.id!); if (issues.length) alert(`尚未完成：\n${issues.join('\n')}`); }
+  else if (action === 'copy') { if (contactEditor) { alert('請先完成或取消聯絡草稿。'); return; } await navigator.clipboard.writeText(formatDailyReport(daily.report)); dailyCopyFeedback = '已複製完整日報。'; window.setTimeout(() => { dailyCopyFeedback = ''; void renderApp(); }, 2400); }
+  else if (action === 'finalize') {
+    if (contactEditor) { alert('請先完成或取消聯絡草稿，再定稿。'); return; }
+    if (finalizeInFlight) return;
+    finalizeInFlight = true; button.setAttribute('disabled', ''); button.textContent = '本機定稿中…';
+    try {
+      capturePendingWork(); await daily.flush();
+      const issues = validateDailyForFinalization(daily.report);
+      if (issues.length) { alert('尚未完成：\n' + issues.join('\n')); return; }
+      const finalized = await finalizeDailyReport(daily.report, formatDailyReport(daily.report));
+      daily.report = finalized.retainedDraft;
+      try {
+        await navigator.clipboard.writeText(finalized.outputText);
+        dailyCopyFeedback = finalized.created ? '已在本機定稿並複製；草稿已保留。' : '內容未變，已再次複製。';
+      } catch {
+        dailyCopyFeedback = '本機已定稿，但剪貼簿未允許寫入；請再按「複製」。';
+      }
+      dailyCopyFeedback += ' 記憶與草稿同步於背景處理，定稿快照保存在此裝置。';
+      dailyPreviewOpen = true;
+      void commitInputMemories().then(scheduleBackgroundSync).catch((error) => {
+        dailyCopyFeedback = '本機定稿已保留；記憶更新待重試：' + (error instanceof Error ? error.message : '保存失敗');
+        updateDailySaveStatus();
+      });
+    } catch (error) { alert(error instanceof Error ? error.message : '定稿失敗，原草稿已保留。'); }
+    finally { finalizeInFlight = false; await renderApp(); }
+    return;
+  }
+  else if (action === 'delete-contact') { const item = daily.report.contacts.find((row) => row.id === button.dataset.id); if (!item) { activeContactSearch = null; contactEditor = null; await renderApp(); return; } if (!window.confirm(`刪除聯絡事項？\n\n工種：${item.tradeNameSnapshot}\n廠商：${item.vendorNameSnapshot}\n施工項目：${item.items.length} 項\n\n此操作無法復原。`)) return; daily.update(() => { daily.report.contacts = daily.report.contacts.filter((row) => row.id !== item.id); daily.report.contacts.forEach((row, index) => row.sortOrder = index); }); activeContactSearch = null; contactEditor = null; }
+  else if (action === 'add-special') { daily.addSpecial(); expandedSpecialId = daily.report.specialItems.at(-1)?.id ?? null; }
+  else if (action === 'delete-special') daily.update(() => daily.report.specialItems = daily.report.specialItems.filter((item) => item.id !== button.dataset.id));
+  await daily.flush(); await renderApp();
+  if (focusWorkItemId) {
+    app.querySelector<HTMLInputElement>(`[data-work-item-input="${focusWorkItemId}"]`)?.focus();
+    focusWorkItemId = null;
+  }
+});
+document.addEventListener('click', (event) => {
+  if (tradeDrag.active || tradeDrag.pending || suppressTradeSummaryClick || !daily?.expandedId) return;
+  const route = parseRoute(location.hash); if (route.module !== 'daily' || route.page !== 'main' || daily.report.activeTab !== 'engineering') return;
+  const target = event.target; if (!(target instanceof Element) || target.closest(backgroundCollapseExclusions)) return;
+  daily.expandedId = null; activeWorkAuxEditor = null; workAuxMenuId = null;
+  void renderApp();
+});
+document.addEventListener('click', (event) => {
+  if (!contactEditor || !activeContactSearch) return;
+  const target = event.target; if (!(target instanceof Element)) return;
+  if (target.closest('[data-contact-field], [data-contact-suggestions], [data-daily-action="contact-add-task"]')) return;
+  activeContactSearch = null; refreshContactSuggestions();
+});
+document.addEventListener('click', (event) => {
+  if (!contactEditor) return;
+  const route = parseRoute(location.hash); if (route.module !== 'daily' || route.page !== 'main' || daily.report.activeTab !== 'contacts') return;
+  const target = event.target; if (!(target instanceof Element) || target.closest(backgroundCollapseExclusions)) return;
+  persistEntryDraft(); activeContactSearch = null; refreshContactSuggestions();
+});
+function tradeDragPreview(id: string): string { const trade = daily.trade(id)!; return `<div class="daily-page trade-drag-preview__surface"><article class="daily-entry trade-card trade-card--${escapeHtml(trade.status)}">${tradeRowSummary(trade, false, '<span class="drag-handle" aria-hidden="true">⠿</span>', false)}</article></div>`; }
+function clearTradeSwipe(restorePosition = true): void { if (restorePosition) tradeSwipe.root?.style.setProperty('--trade-swipe-offset', '0px'); if (tradeSwipe.root?.hasPointerCapture(tradeSwipe.pointerId ?? -1)) tradeSwipe.root.releasePointerCapture(tradeSwipe.pointerId ?? -1); tradeSwipe.active = false; tradeSwipe.eligible = false; tradeSwipe.id = null; tradeSwipe.kind = null; tradeSwipe.pointerId = null; tradeSwipe.offset = 0; tradeSwipe.root = null; }
+async function persistWorkItemReorder(tradeId: string, from: number, to: number): Promise<boolean> { const trade = daily.trade(tradeId); if (!trade) return false; const originalWorkItems = structuredClone(trade.workItems); const originalStatus = trade.status; if (!daily.reorderWorkItems(tradeId, from, to)) return false; try { await daily.flush(); return true; } catch { trade.workItems = originalWorkItems; trade.status = originalStatus; try { await daily.flush(); } catch { /* preserve restored in-memory data for the next automatic save */ } alert('工項排序儲存失敗，已恢復原順序。'); return false; } }
+function inertWorkItemClone(row: HTMLElement): HTMLElement { const clone = row.cloneNode(true) as HTMLElement; clone.removeAttribute('data-work'); clone.removeAttribute('data-sortable-work'); clone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id')); clone.querySelectorAll('[aria-controls]').forEach((element) => element.removeAttribute('aria-controls')); clone.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement>('input, textarea, select, button').forEach((control) => { control.disabled = true; control.tabIndex = -1; }); return clone; }
+function positionWorkItemDragPreview(preview: HTMLElement, pointerX: number, pointerY: number): void { const edge = 8; const rect = preview.getBoundingClientRect(); const maxLeft = Math.max(edge, window.innerWidth - rect.width - edge); const maxTop = Math.max(edge, window.innerHeight - rect.height - edge); preview.style.left = `${Math.min(Math.max(edge, pointerX - workItemDrag.offsetX), maxLeft)}px`; preview.style.top = `${Math.min(Math.max(edge, pointerY - workItemDrag.offsetY), maxTop)}px`; }
+function clearWorkItemDrag(): void { const handle = workItemDrag.handle; if (handle?.hasPointerCapture(workItemDrag.pointerId ?? -1)) handle.releasePointerCapture(workItemDrag.pointerId ?? -1); workItemDrag.preview?.remove(); workItemDrag.active = false; workItemDrag.pending = false; workItemDrag.tradeId = null; workItemDrag.workItemId = null; workItemDrag.pointerId = null; workItemDrag.handle = null; workItemDrag.originalOrder = []; workItemDrag.activeDropSlotIndex = null; workItemDrag.preview = null; workItemDrag.placeholderMarkup = ''; }
+function updateWorkItemDragTarget(): void { if (!workItemDrag.active || !workItemDrag.tradeId) return; const rows = [...app.querySelectorAll<HTMLElement>(`[data-trade="${workItemDrag.tradeId}"] [data-sortable-work]`)].filter((row) => row.dataset.work !== workItemDrag.workItemId); const nextSlot = resolveDropSlotIndex(workItemDrag.clientY, rows); if (nextSlot === workItemDrag.activeDropSlotIndex) return; workItemDrag.activeDropSlotIndex = nextSlot; void renderApp(); }
+function startWorkItemDrag(row: HTMLElement): void { const tradeId = workItemDrag.tradeId; const workItemId = workItemDrag.workItemId; const trade = tradeId ? daily.trade(tradeId) : undefined; if (!tradeId || !workItemId || !trade) { clearWorkItemDrag(); return; } const rect = row.getBoundingClientRect(); const placeholder = inertWorkItemClone(row); placeholder.classList.add('work-item--drag-placeholder'); placeholder.setAttribute('aria-hidden', 'true'); workItemDrag.pending = false; workItemDrag.active = true; workItemDrag.originalOrder = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).map((item) => item.id); workItemDrag.offsetX = workItemDrag.startX - rect.left; workItemDrag.offsetY = workItemDrag.startY - rect.top; workItemDrag.placeholderMarkup = placeholder.outerHTML; const preview = document.createElement('div'); preview.className = 'work-item-drag-preview'; preview.style.width = `${rect.width}px`; preview.style.height = `${rect.height}px`; preview.append(inertWorkItemClone(row)); document.body.append(preview); workItemDrag.preview = preview; positionWorkItemDragPreview(preview, workItemDrag.startX, workItemDrag.startY); updateWorkItemDragTarget(); void renderApp(); }
+function pruneTradeUndoQueue(now = Date.now()): void { const active: TradeUndoEntry[] = []; tradeUndoQueue.forEach((entry) => { if (entry.expiresAt > now) active.push(entry); else window.clearTimeout(entry.timer); }); tradeUndoQueue = active; }
+function enqueueTradeUndo(undo: DailyDeleteUndo): void { const entry: TradeUndoEntry = { undo, expiresAt: Date.now() + 6000, timer: 0 }; entry.timer = window.setTimeout(() => { tradeUndoQueue = tradeUndoQueue.filter((item) => item !== entry); void renderApp(); }, 6000); tradeUndoQueue.push(entry); }
+function enqueueMaterialConnectionUndo(materialId: string, tradeId: string): void { if (materialConnectionUndo) window.clearTimeout(materialConnectionUndo.timer); const notice: MaterialConnectionUndoNotice = { materialId, tradeId, expiresAt: Date.now() + 6000, timer: 0 }; notice.timer = window.setTimeout(() => { if (materialConnectionUndo === notice) { materialConnectionUndo = null; void renderApp(); } }, 6000); materialConnectionUndo = notice; }
+async function deleteItemBySwipe(kind: NonNullable<typeof tradeSwipe.kind>, id: string): Promise<void> { const undo = kind === 'trade' ? daily.deleteTradeForUndo(id) : kind === 'material' ? daily.deleteMaterialForUndo(id) : kind === 'contact' ? daily.deleteContactForUndo(id) : daily.deleteSpecialForUndo(id); if (!undo) return; try { await daily.flush(); } catch { daily.restoreDeletedItem(undo); try { await daily.flush(); } catch { /* preserve the restored in-memory draft for the next automatic save */ } alert('刪除儲存失敗，已復原項目。'); await renderApp(); return; } enqueueTradeUndo(undo); await renderApp(); }
+function clearTradeDrag(): void { if (tradeDrag.frame) cancelAnimationFrame(tradeDrag.frame); tradeDrag.preview?.remove(); tradeDrag.active = false; tradeDrag.pending = false; tradeDrag.id = null; tradeDrag.activeDropSlotIndex = null; tradeDrag.pointerId = null; }
+function resolveDropSlotIndex(pointerY: number, cards: HTMLElement[]): number { for (let index = 0; index < cards.length; index += 1) { const rect = cards[index].getBoundingClientRect(); if (pointerY < rect.top + rect.height / 2) return index; } return cards.length; }
+function updateTradeDragTarget(): void { if (!tradeDrag.active) return; const cards = [...app.querySelectorAll<HTMLElement>('[data-sortable-trade]')].filter((card) => card.dataset.trade !== tradeDrag.id); const nextSlot = resolveDropSlotIndex(tradeDrag.clientY, cards); if (nextSlot === tradeDrag.activeDropSlotIndex) return; tradeDrag.activeDropSlotIndex = nextSlot; void renderApp(); }
+function positionTradeDragPreview(preview: HTMLElement, pointerX: number, pointerY: number): void { const edge = 8; const rect = preview.getBoundingClientRect(); const maxLeft = Math.max(edge, window.innerWidth - rect.width - edge); const maxTop = Math.max(edge, window.innerHeight - rect.height - edge); preview.style.left = `${Math.min(Math.max(edge, pointerX - tradeDrag.offsetX), maxLeft)}px`; preview.style.top = `${Math.min(Math.max(edge, pointerY - tradeDrag.offsetY), maxTop)}px`; }
+function startTradeDrag(card: HTMLElement): void { const id = tradeDrag.id; if (!id) return; const rect = card.getBoundingClientRect(); const summaryHeight = card.querySelector<HTMLElement>('.trade-row-summary')?.getBoundingClientRect().height ?? rect.height; tradeDrag.pending = false; tradeDrag.active = true; tradeDrag.originalOrder = daily.report.tradeSections.map((item) => item.id); tradeDrag.offsetX = tradeDrag.startX - rect.left; tradeDrag.offsetY = tradeDrag.startY - rect.top; daily.expandedId = null; activeWorkAuxEditor = null; workAuxMenuId = null; const preview = document.createElement('div'); preview.className = 'trade-drag-preview'; preview.style.width = `${rect.width}px`; preview.style.height = `${summaryHeight + 2}px`; preview.innerHTML = tradeDragPreview(id); document.body.append(preview); positionTradeDragPreview(preview, tradeDrag.startX, tradeDrag.startY); tradeDrag.preview = preview; void renderApp(); }
+app.addEventListener('pointerdown', (event) => { const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-drag-trade]'); if (!handle || tradeDrag.active || tradeDrag.pending) return; const card = handle.closest<HTMLElement>('[data-trade]'); const id = handle.dataset.dragTrade; if (!card || !id) return; event.preventDefault(); tradeDrag.pending = true; tradeDrag.id = id; tradeDrag.pointerId = event.pointerId; tradeDrag.startX = tradeDrag.clientX = event.clientX; tradeDrag.startY = tradeDrag.clientY = event.clientY; handle.setPointerCapture(event.pointerId); });
+app.addEventListener('pointerdown', (event) => { const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-work-item-handle]'); if (!handle || tradeDrag.active || tradeDrag.pending || workItemDrag.active || workItemDrag.pending) return; const tradeId = handle.dataset.tradeId; const workItemId = handle.dataset.workItemId; if (!tradeId || !workItemId) return; event.preventDefault(); workItemDrag.pending = true; workItemDrag.tradeId = tradeId; workItemDrag.workItemId = workItemId; workItemDrag.pointerId = event.pointerId; workItemDrag.handle = handle; workItemDrag.startX = workItemDrag.clientX = event.clientX; workItemDrag.startY = workItemDrag.clientY = event.clientY; handle.setPointerCapture(event.pointerId); });
+app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; const root = target.closest<HTMLElement>('[data-swipe-item]'); if (!root || tradeDrag.active || tradeDrag.pending || tradeSwipe.active || target.closest('.drag-handle,.work-item__drag-handle,.trade-card__content,.material-entry__content,.contact-card__content,input,textarea,select,label')) return; const id = root.dataset.swipeId; const kind = root.dataset.swipeKind as typeof tradeSwipe.kind; if (!id || !kind) return; tradeSwipe.active = true; tradeSwipe.eligible = false; tradeSwipe.id = id; tradeSwipe.kind = kind; tradeSwipe.pointerId = event.pointerId; tradeSwipe.startX = event.clientX; tradeSwipe.startY = event.clientY; tradeSwipe.offset = 0; tradeSwipe.root = root; });
+app.addEventListener('pointermove', (event) => { if ((!tradeDrag.active && !tradeDrag.pending) || event.pointerId !== tradeDrag.pointerId) return; tradeDrag.clientX = event.clientX; tradeDrag.clientY = event.clientY; if (tradeDrag.pending) { const moved = Math.hypot(event.clientX - tradeDrag.startX, event.clientY - tradeDrag.startY); if (moved < 6) return; const card = app.querySelector<HTMLElement>(`[data-trade="${escapeHtml(tradeDrag.id)}"]`); if (!card) { clearTradeDrag(); return; } startTradeDrag(card); } if (tradeDrag.preview) positionTradeDragPreview(tradeDrag.preview, event.clientX, event.clientY); const edge = 100; const speed = event.clientY < edge ? -Math.round(4 + (edge - event.clientY) / edge * 14) : event.clientY > innerHeight - edge ? Math.round(4 + (event.clientY - (innerHeight - edge)) / edge * 14) : 0; if (speed) window.scrollBy(0, speed); updateTradeDragTarget(); });
+window.addEventListener('pointermove', (event) => { if ((!workItemDrag.active && !workItemDrag.pending) || event.pointerId !== workItemDrag.pointerId) return; workItemDrag.clientX = event.clientX; workItemDrag.clientY = event.clientY; if (workItemDrag.pending) { if (Math.hypot(event.clientX - workItemDrag.startX, event.clientY - workItemDrag.startY) < 6) return; const row = app.querySelector<HTMLElement>(`[data-work="${workItemDrag.workItemId}"]`); if (!row) { clearWorkItemDrag(); return; } startWorkItemDrag(row); } event.preventDefault(); if (workItemDrag.preview) positionWorkItemDragPreview(workItemDrag.preview, event.clientX, event.clientY); const edge = 100; const speed = event.clientY < edge ? -Math.round(4 + (edge - event.clientY) / edge * 14) : event.clientY > innerHeight - edge ? Math.round(4 + (event.clientY - (innerHeight - edge)) / edge * 14) : 0; if (speed) window.scrollBy(0, speed); updateWorkItemDragTarget(); });
+app.addEventListener('pointermove', (event) => { if (!tradeSwipe.active || event.pointerId !== tradeSwipe.pointerId) return; const deltaX = event.clientX - tradeSwipe.startX; const deltaY = event.clientY - tradeSwipe.startY; if (!tradeSwipe.eligible) { if (Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX)) { clearTradeSwipe(); return; } if (deltaX > -8) return; tradeSwipe.eligible = true; tradeSwipe.root?.setPointerCapture(event.pointerId); } event.preventDefault(); tradeSwipe.offset = Math.max(-TRADE_DELETE_REVEAL_PX, Math.min(0, deltaX)); tradeSwipe.root?.style.setProperty('--trade-swipe-offset', `${tradeSwipe.offset}px`); });
+app.addEventListener('pointerup', async (event) => { if ((!tradeDrag.active && !tradeDrag.pending) || event.pointerId !== tradeDrag.pointerId) return; if (tradeDrag.pending) { clearTradeDrag(); return; } suppressTradeSummaryClick = true; window.setTimeout(() => { suppressTradeSummaryClick = false; }, 0); const dragged = tradeDrag.id; const slot = tradeDrag.activeDropSlotIndex; const original = [...tradeDrag.originalOrder]; if (dragged && slot !== null) { const ids = original.filter((id) => id !== dragged); ids.splice(Math.max(0, Math.min(slot, ids.length)), 0, dragged); const changed = ids.length !== original.length || ids.some((id, index) => id !== original[index]); if (changed) { const old = daily.report.tradeSections.slice(); daily.update(() => { daily.report.tradeSections = ids.map((id) => old.find((item) => item.id === id)!).filter(Boolean); daily.report.tradeSections.forEach((item, index) => { item.sortOrder = index; item.status = 'draft'; }); }); try { await daily.flush(); } catch { daily.report.tradeSections = original.map((id) => old.find((item) => item.id === id)!).filter(Boolean); daily.report.tradeSections.forEach((item, index) => item.sortOrder = index); alert('排序儲存失敗，已恢復原順序。'); } } } clearTradeDrag(); await renderApp(); });
+window.addEventListener('pointerup', async (event) => { if ((!workItemDrag.active && !workItemDrag.pending) || event.pointerId !== workItemDrag.pointerId) return; if (workItemDrag.pending) { clearWorkItemDrag(); return; } const tradeId = workItemDrag.tradeId; const workItemId = workItemDrag.workItemId; const slot = workItemDrag.activeDropSlotIndex; const originalOrder = [...workItemDrag.originalOrder]; try { if (tradeId && workItemId && slot !== null) { const from = originalOrder.indexOf(workItemId); const remaining = originalOrder.filter((id) => id !== workItemId); const to = Math.max(0, Math.min(slot, remaining.length)); if (from >= 0 && originalOrder.some((id, index) => id !== [...remaining.slice(0, to), workItemId, ...remaining.slice(to)][index])) await persistWorkItemReorder(tradeId, from, to); } } finally { clearWorkItemDrag(); await renderApp(); } });
+window.addEventListener('pointerup', (event) => { if (!tradeSwipe.active || event.pointerId !== tradeSwipe.pointerId) return; const shouldDelete = tradeSwipe.offset <= -TRADE_DELETE_REVEAL_PX; const id = tradeSwipe.id; const kind = tradeSwipe.kind; const suppressClick = tradeSwipe.eligible; clearTradeSwipe(!shouldDelete); if (suppressClick) { suppressTradeSummaryClick = true; window.setTimeout(() => { suppressTradeSummaryClick = false; }, 0); } if (shouldDelete && id && kind) void deleteItemBySwipe(kind, id); });
+window.addEventListener('pointercancel', () => { if (tradeDrag.active || tradeDrag.pending) { clearTradeDrag(); void renderApp(); } if (workItemDrag.active || workItemDrag.pending) { clearWorkItemDrag(); void renderApp(); } if (tradeSwipe.active) clearTradeSwipe(); if (settingsTradeSwipe.root) clearSettingsTradeSwipe(); });
+const settingsTradeSwipe = { root: null as HTMLElement | null, id: '', pointerId: -1, startX: 0, startY: 0, offset: 0, verticalCancelled: false };
+function clearSettingsTradeSwipe(): void { settingsTradeSwipe.root?.style.setProperty('--settings-trade-swipe-offset', '0px'); settingsTradeSwipe.root = null; settingsTradeSwipe.id = ''; settingsTradeSwipe.pointerId = -1; }
+app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; const root = target.closest<HTMLElement>('[data-settings-trade-swipe]'); if (!root || target.closest('button,input,textarea,select,label,.settings-edit-form')) return; settingsTradeSwipe.root = root; settingsTradeSwipe.id = root.dataset.tradeId ?? ''; settingsTradeSwipe.pointerId = event.pointerId; settingsTradeSwipe.startX = event.clientX; settingsTradeSwipe.startY = event.clientY; settingsTradeSwipe.offset = 0; settingsTradeSwipe.verticalCancelled = false; });
+app.addEventListener('pointermove', (event) => { if (event.pointerId !== settingsTradeSwipe.pointerId || !settingsTradeSwipe.root) return; const dx = event.clientX - settingsTradeSwipe.startX; const dy = event.clientY - settingsTradeSwipe.startY; if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { settingsTradeSwipe.verticalCancelled = true; clearSettingsTradeSwipe(); return; } settingsTradeSwipe.offset = Math.max(-88, Math.min(88, dx)); settingsTradeSwipe.root.style.setProperty('--settings-trade-swipe-offset', `${settingsTradeSwipe.offset}px`); });
+window.addEventListener('pointerup', async (event) => { if (event.pointerId !== settingsTradeSwipe.pointerId || !settingsTradeSwipe.root) return; const action = settingsTradeSwipeRelease(settingsTradeSwipe.offset, settingsTradeSwipe.verticalCancelled); const id = settingsTradeSwipe.id; clearSettingsTradeSwipe(); if (action === 'edit' && id) { settingsState.selectedTradeTypeId = id; settingsState.editingId = id; settingsState.adding = false; await renderApp(); } if (action === 'delete' && id) { const trade = settingsTrades.find((item) => item.id === id); if (!trade) return; const [vendors, tasks] = await Promise.all([listMemories('vendors', id), listMemories('tasks', id)]); const sections = daily.report.tradeSections.filter((item) => item.tradeTypeId === id).length; const contacts = daily.report.contacts.filter((item) => item.tradeTypeId === id).length; if (!window.confirm(`刪除工種「${trade.name}」？\n\n將刪除主檔：${vendors.length} 個廠商、${tasks.length} 個工項\n目前草稿：${sections} 筆工程、${contacts} 筆聯絡事項\n定稿不會變更。`)) return; if (!window.confirm('再次確認：確定刪除工種及上述目前草稿關聯資料？')) return; const next = await deleteMemory('trades', id); if (next) daily.report = next; if (settingsState.selectedTradeTypeId === id) settingsState.selectedTradeTypeId = null; await renderApp(); } });
+window.addEventListener('keydown', (event) => { if (event.key !== 'Escape') return; if (workItemDrag.active || workItemDrag.pending) { clearWorkItemDrag(); event.preventDefault(); void renderApp(); return; } if (workAuxMenuId) { const id = workAuxMenuId; workAuxMenuId = null; event.preventDefault(); void renderApp().then(() => focusWorkActionsTrigger(id)); return; } if (tradeDrag.active || tradeDrag.pending) { clearTradeDrag(); void renderApp(); } if (tradeSwipe.active) clearTradeSwipe(); if (settingsTradeSwipe.root) clearSettingsTradeSwipe(); });
+window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && activeContactSearch) { activeContactSearch = null; void renderApp(); } });
+app.addEventListener('keydown', (event) => { const target = event.target as HTMLElement; if (event.key !== 'Enter' || !(target instanceof HTMLInputElement) || event.isComposing) return; if (target.matches('[data-contact-field="task"]')) { if (contactSearchComposing || event.keyCode === 229) return; event.preventDefault(); target.closest('.contact-card')?.querySelector<HTMLElement>('[data-daily-action="contact-add-task"]')?.click(); } else if (target.matches('[data-work-item-composer-input]')) { if (workItemComposerComposing) return; event.preventDefault(); const tradeId = target.dataset.workItemComposerInput; if (tradeId) app.querySelector<HTMLButtonElement>(`[data-daily-action="add-work-item"][data-trade-id="${tradeId}"]`)?.click(); } });
+let draggedContactTaskId: string | null = null;
+app.addEventListener('dragstart', (event) => { const row = (event.target as HTMLElement).closest<HTMLElement>('[data-contact-task]'); if (!row || !(event.target as HTMLElement).closest('.contact-task__handle')) { event.preventDefault(); return; } draggedContactTaskId = row.dataset.contactTask ?? null; event.dataTransfer?.setData('text/plain', draggedContactTaskId ?? ''); });
+app.addEventListener('dragover', (event) => { const row = (event.target as HTMLElement).closest<HTMLElement>('[data-contact-task]'); if (draggedContactTaskId && row) event.preventDefault(); });
+app.addEventListener('drop', (event) => { const row = (event.target as HTMLElement).closest<HTMLElement>('[data-contact-task]'); if (!draggedContactTaskId || !row || !contactEditor) return; event.preventDefault(); const from = contactEditor.value.items.findIndex((item) => item.id === draggedContactTaskId); const to = contactEditor.value.items.findIndex((item) => item.id === row.dataset.contactTask); if (from >= 0 && to >= 0 && from !== to) { const [task] = contactEditor.value.items.splice(from, 1); contactEditor.value.items.splice(to, 0, task); contactEditor.value.items.forEach((item, index) => item.sortOrder = index); } draggedContactTaskId = null; void renderApp(); });
+app.addEventListener('dragend', () => { draggedContactTaskId = null; });
+app.addEventListener('submit', async (event) => { const form = event.target as HTMLFormElement; if (form.dataset.settingsForm) { event.preventDefault(); try { const name = String(new FormData(form).get('name') ?? ''); const section = settingsState.activeSection; const mode = form.dataset.settingsForm; if (section === 'trade-tasks') { const isTrade = mode === 'trade'; await saveMemory(isTrade ? 'trades' : 'tasks', name, isTrade ? undefined : settingsState.selectedTradeTypeId ?? undefined, isTrade && settingsState.editingId ? settingsState.editingId : !isTrade && mode === 'edit' ? settingsState.editingId ?? undefined : undefined); if (isTrade && mode === 'trade' && !settingsState.editingId) { const created = (await listMemories('trades', undefined, 'all')).find((item) => item.normalizedName === normalizeSearch(name)); settingsState.selectedTradeTypeId = created?.id ?? null; } } else if (section === 'templates') await saveTemplate(name, mode === 'edit' ? settingsState.editingId ?? undefined : undefined); else await saveMemory(section as 'sites' | 'vendors' | 'locations', name, section === 'vendors' ? settingsState.selectedTradeTypeId ?? undefined : undefined, mode === 'edit' ? settingsState.editingId ?? undefined : undefined); const savedDraft = await loadDailyDraft(); if (savedDraft) daily.mergeRemote(savedDraft); await persistActiveMemoryPartition(); settingsState.adding = false; settingsState.editingId = null; settingsState.dirty = false; await renderApp(); } catch (error) { alert(error instanceof Error ? error.message : '儲存設定失敗。'); } return; } if (form.id === 'trade-picker-form') { event.preventDefault(); const values = new FormData(form); const trade = dailyTrades.find((item) => item.id === String(values.get('tradeId') ?? '')); const vendor = dailyVendors.find((item) => item.id === String(values.get('vendorId') ?? '')); if (!trade || !vendor || vendor.tradeTypeId !== trade.id) { alert('請選擇此工種所屬的廠商。'); return; } const existing = daily.findDuplicate(trade.id, trade.name, vendor.id, vendor.name); daily.addTrade(trade.name, vendor.name, trade.id, vendor.id); if (existing) alert('此工種與廠商已存在。'); tradePickerOpen = false; await daily.flush(); await renderApp(); return; } if (form.id === 'point-form' && water) { event.preventDefault(); await water.handleAction('save-point', String(new FormData(form).get('name') ?? '')); water.renderSettings(); } });
+let draggedMaterialTypeId: string | null = null;
+app.addEventListener('dragstart', (event) => { const row = (event.target as HTMLElement).closest<HTMLElement>('[data-material-type-id]'); if (row) { draggedMaterialTypeId = row.dataset.materialTypeId ?? null; event.dataTransfer?.setData('text/plain', draggedMaterialTypeId ?? ''); } });
+app.addEventListener('dragover', (event) => { if (draggedMaterialTypeId && (event.target as HTMLElement).closest('[data-material-type-id]')) event.preventDefault(); });
+app.addEventListener('drop', async (event) => { const targetRow = (event.target as HTMLElement).closest<HTMLElement>('[data-material-type-id]'); if (!draggedMaterialTypeId || !targetRow) return; event.preventDefault(); const targetId = targetRow.dataset.materialTypeId!; const ids = materialTypes.map((row) => row.id); const from = ids.indexOf(draggedMaterialTypeId); const to = ids.indexOf(targetId); if (from >= 0 && to >= 0 && from !== to) { ids.splice(from, 1); ids.splice(to, 0, draggedMaterialTypeId); try { await reorderMaterialTypes(ids); } catch { alert('排序儲存失敗，已恢復原順序。'); } } draggedMaterialTypeId = null; await renderApp(); });
+app.addEventListener('dragend', () => { draggedMaterialTypeId = null; });
+window.addEventListener('beforeunload', (event) => { if (settingsState.dirty || materialDirty() || contactDirty()) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('hashchange', () => { const route = parseRoute(location.hash); if (materialEditor && !discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } activeContactSearch = null; activeWorkAuxEditor = null; workAuxMenuId = null; if (route.module === 'water-level') void daily.flush(); if (route.module === 'daily' && route.page === 'main') { daily.expandedId = null; dailyBasicsExpanded = false; } void renderApp(); });
+function formatSyncFeedback(result: SyncRunResult, operations: SyncOperation[]): string {
+  const pending = operations.length; const blocked = operations.filter((row) => ['blocked', 'failed', 'conflict'].includes(row.status)).length;
+  return `日報：送出 ${result.dailyApplied}／接收 ${result.dailyPulled}；水位：送出 ${result.waterApplied}／接收 ${result.waterPulled}；工地記憶：送出 ${result.memoryApplied}／接收 ${result.memoryPulled}；本輪衝突 ${result.conflicts}、失敗 ${result.failed}；尚未送達 ${pending} 筆，其中 ${blocked} 筆需處理。${result.pullError ? ` 接收失敗：${result.pullError}` : ''}`;
+}
+async function syncActiveSiteNow(): Promise<SyncRunResult | null> {
+  if (workspaceSwitching || dateSwitching || syncInFlight) return null;
+  const route = parseRoute(location.hash);
+  if ((route.module === 'daily' && route.page === 'settings' && settingsState.dirty) || (route.module === 'daily' && route.page === 'main' && (materialDirty() || contactDirty()))) {
+    syncFeedback = '請先儲存目前編輯中的表單，再按立即同步。';
+    return null;
+  }
+  const epoch = activeSyncEpoch;
+  syncInFlight = true;
+  try {
+    await daily.flush();
+    const scope = await loadActiveSharedScope();
+    if (!scope) { syncFeedback = '請先登入並選擇共用工地。'; return null; }
+    await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]);
+    const result = await runSyncOnce(scope);
+    if (epoch !== activeSyncEpoch) return null;
+    lastPulledAt = await loadLastPulledAt(scope);
+    await refreshDailySyncStatus();
+    if (result.memoryPulled) await refreshActiveMemoryCache();
+    if (result.waterPulled && water) await water.refresh();
+    if (result.dailyPulled) {
+      const refreshed = await loadDailyDraftForDate(daily.report.date);
+      if (refreshed) daily.mergeRemote(refreshed);
+    }
+    syncFeedback = formatSyncFeedback(result, await listAllOperations(scope));
+    accountFeedback = `同步結果：${syncFeedback}`;
+    return result;
+  } catch (error) {
+    syncFeedback = error instanceof Error ? `同步失敗：${error.message}` : '同步失敗，請查看共用工地的診斷資訊。';
+    accountError = syncFeedback;
+    return null;
+  } finally { syncInFlight = false; }
+}
+let backgroundSyncTimer: number | undefined;
+let subscribedSiteId: string | null = null;
+let unsubscribeSiteChanges: (() => void) | null = null;
+function scheduleBackgroundSync(): void {
+  if (backgroundSyncTimer) window.clearTimeout(backgroundSyncTimer);
+  backgroundSyncTimer = window.setTimeout(() => { backgroundSyncTimer = undefined; void runBackgroundSync(); }, 350);
+}
+async function runBackgroundSync(): Promise<void> {
+  if (workspaceSwitching || dateSwitching || syncInFlight || !navigator.onLine || document.hidden) return;
+  const epoch = activeSyncEpoch;
+  const scope = await loadActiveSharedScope().catch(() => null);
+  if (!scope) { unsubscribeSiteChanges?.(); unsubscribeSiteChanges = null; subscribedSiteId = null; return; }
+  if (epoch !== activeSyncEpoch) return;
+  if (!accountSites.length) {
+    try {
+      accountSites = await listAccessibleSites(scope.userId);
+      accountActiveSiteId = scope.siteId;
+      accountActiveSiteRole = accountSites.find((site) => site.id === scope.siteId)?.role ?? null;
+      await cacheActiveSiteRole(scope.userId, accountActiveSiteRole);
+    } catch { /* Cached role remains available while offline. */ }
+  }
+  if (subscribedSiteId !== scope.siteId) {
+    unsubscribeSiteChanges?.(); subscribedSiteId = scope.siteId;
+    unsubscribeSiteChanges = subscribeToSiteChanges(scope, scheduleBackgroundSync);
+  }
+  syncInFlight = true;
+  try {
+    await persistActiveMemoryPartition();
+    const result = await runSyncOnce(scope, false);
+    if (epoch !== activeSyncEpoch) return;
+    lastPulledAt = await loadLastPulledAt(scope);
+    if (result.memoryPulled) await refreshActiveMemoryCache();
+    if (result.dailyPulled) { const report = await loadDailyDraftForDate(daily.report.date); if (report) daily.mergeRemote(report); }
+    if (result.waterPulled && water) await water.refresh();
+    await refreshDailySyncStatus();
+    const focused = document.activeElement;
+    if ((result.memoryPulled || result.dailyPulled) && !(focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement || focused instanceof HTMLSelectElement) && !(parseRoute(location.hash).module === 'account' && memoryImportPreview) && !daily.expandedId && !tradePickerOpen && !settingsState.dirty && !materialDirty() && !contactDirty()) await renderApp();
+  } catch (error) {
+    console.warn('背景同步失敗；本機佇列保留供重試。', error);
+  } finally { syncInFlight = false; }
+}
+let memoryImportPreview: MemoryImportPreview | null = null;
+let memoryImportSiteId: string | null = null;
+let memoryImportSource: 'local' | 'legacy' = 'local';
+let memoryImportRemoteSignature = '';
+let syncRecoveryPreview: SyncRecoveryPreview | null = null;
+let syncRecoverySiteId: string | null = null;
+async function readCloudMemoryEntries(siteId: string): Promise<RemoteMemoryEntry[]> {
+  const all: RemoteMemoryEntry[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await getSupabaseClient().from('memory_entries')
+      .select('id,kind,parent_id,normalized_name,payload,status,usage_count,finalized_usage_count,revision,deleted_at')
+      .eq('site_id', siteId).order('id').range(offset, offset + 499);
+    if (error) throw error;
+    all.push(...(data ?? []) as RemoteMemoryEntry[]);
+    if (!data || data.length < 500) return all;
+  }
+}
+const cloudMemorySignature = (rows: RemoteMemoryEntry[]): string => JSON.stringify(rows.map((row) => [row.id, row.revision, row.deleted_at]));
+window.addEventListener('memory-outbox-changed', scheduleBackgroundSync);
+window.addEventListener('online', scheduleBackgroundSync);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { void daily.flush(); void persistActiveMemoryPartition(); void persistActiveWaterPartition(); } else scheduleBackgroundSync(); });
+window.setInterval(scheduleBackgroundSync, 30_000);
+async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#settings/account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); daily = new DailyController(await loadDailyDraft(), (state) => { dailySaveState = state; if (state === 'saved') { dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); materialTypes = await listMaterialTypes(); for (const name of [...new Set(daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } materialTypes = await listMaterialTypes(); let migrated = false; daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); accountActiveSiteId = initialScope?.siteId ?? null; accountActiveSiteRole = initialScope ? (await loadSharedContext(initialScope.userId)).activeSiteRole ?? null : null; lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (pwaUpdateState === 'success') window.setTimeout(() => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) applyPwaUpdate = registerSW({ onNeedRefresh: () => { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (pwaUpdateState === 'applying' || pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { pwaUpdateState = transitionPwaUpdateState(pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
+void pruneExpiredReports();
+bootstrap().then(scheduleBackgroundSync).catch(() => { app.innerHTML = '<main class="app-shell"><h1>無法開啟施工日報</h1><p>請確認瀏覽器允許本機資料儲存。</p></main>'; });

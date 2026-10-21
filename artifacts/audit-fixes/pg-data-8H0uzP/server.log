@@ -1,0 +1,86 @@
+2026-10-05 20:50:50.102 CST [12948] LOG:  starting PostgreSQL 17.10 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit
+2026-10-05 20:50:50.103 CST [12948] LOG:  listening on IPv4 address "127.0.0.1", port 4316
+2026-10-05 20:50:50.337 CST [31972] LOG:  database system was shut down at 2026-10-05 20:50:35 CST
+2026-10-05 20:50:50.352 CST [28264] FATAL:  the database system is starting up
+2026-10-05 20:50:50.433 CST [12948] LOG:  database system is ready to accept connections
+2026-10-05 20:50:51.802 CST [43520] ERROR:  forbidden
+2026-10-05 20:50:51.802 CST [43520] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-05 20:50:51.802 CST [43520] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.806 CST [44056] ERROR:  forbidden
+2026-10-05 20:50:51.806 CST [44056] CONTEXT:  PL/pgSQL function pull_site_changes(uuid,bigint,integer) line 4 at RAISE
+2026-10-05 20:50:51.806 CST [44056] STATEMENT:  select * from public.pull_site_changes($1,0,100)
+2026-10-05 20:50:51.807 CST [44056] ERROR:  forbidden
+2026-10-05 20:50:51.807 CST [44056] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-05 20:50:51.807 CST [44056] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.811 CST [39144] ERROR:  forbidden
+2026-10-05 20:50:51.811 CST [39144] CONTEXT:  PL/pgSQL function pull_site_changes(uuid,bigint,integer) line 4 at RAISE
+2026-10-05 20:50:51.811 CST [39144] STATEMENT:  select * from public.pull_site_changes($1,0,100)
+2026-10-05 20:50:51.812 CST [39144] ERROR:  forbidden
+2026-10-05 20:50:51.812 CST [39144] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-05 20:50:51.812 CST [39144] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.814 CST [9996] ERROR:  permission denied for function pull_site_changes
+2026-10-05 20:50:51.814 CST [9996] STATEMENT:  select * from public.pull_site_changes($1,0,100)
+2026-10-05 20:50:51.815 CST [9996] ERROR:  permission denied for function apply_daily_field_mutation
+2026-10-05 20:50:51.815 CST [9996] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.815 CST [46912] ERROR:  new row violates row-level security policy for table "daily_drafts"
+2026-10-05 20:50:51.815 CST [46912] STATEMENT:  insert into public.daily_drafts(id,site_id,report_date,payload,updated_by) values($1,$2,$3,$4,$5)
+2026-10-05 20:50:51.816 CST [46912] ERROR:  forbidden
+2026-10-05 20:50:51.816 CST [46912] CONTEXT:  PL/pgSQL function apply_water_field_mutation(uuid,uuid,jsonb) line 5 at RAISE
+2026-10-05 20:50:51.816 CST [46912] STATEMENT:  select public.apply_water_field_mutation($1,$2,$3) as result
+2026-10-05 20:50:51.817 CST [43520] ERROR:  forbidden
+2026-10-05 20:50:51.817 CST [43520] CONTEXT:  PL/pgSQL function update_site_member_role(uuid,uuid,text) line 5 at RAISE
+2026-10-05 20:50:51.817 CST [43520] STATEMENT:  select public.update_site_member_role($1,$2,$3) as result
+2026-10-05 20:50:51.987 CST [46912] ERROR:  invalid identifier
+2026-10-05 20:50:51.987 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_json(jsonb,integer) line 15 at RAISE
+	SQL statement "SELECT public.audit_assert_json(v, p_depth+1)"
+	PL/pgSQL function audit_assert_json(jsonb,integer) line 9 at PERFORM
+	SQL statement "SELECT public.audit_assert_json(p_changes)"
+	PL/pgSQL function audit_assert_changes(text,jsonb) line 4 at PERFORM
+	SQL statement "SELECT public.audit_assert_changes('water',p_changes)"
+	PL/pgSQL function apply_water_field_mutation(uuid,uuid,jsonb) line 7 at PERFORM
+2026-10-05 20:50:51.987 CST [46912] STATEMENT:  select public.apply_water_field_mutation($1,$2,$3) as result
+2026-10-05 20:50:51.988 CST [46912] ERROR:  invalid document field
+2026-10-05 20:50:51.988 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 24 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-05 20:50:51.988 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.989 CST [46912] ERROR:  invalid collection or operation
+2026-10-05 20:50:51.989 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 10 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-05 20:50:51.989 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.989 CST [46912] ERROR:  identity mismatch
+2026-10-05 20:50:51.989 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 41 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-05 20:50:51.989 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.990 CST [46912] ERROR:  invalid field
+2026-10-05 20:50:51.990 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 39 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-05 20:50:51.990 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.990 CST [46912] ERROR:  expected text
+2026-10-05 20:50:51.990 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_changes(text,jsonb) line 54 at RAISE
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-05 20:50:51.990 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:51.998 CST [46912] ERROR:  invalid payload size or depth
+2026-10-05 20:50:51.998 CST [46912] CONTEXT:  PL/pgSQL function audit_assert_json(jsonb,integer) line 5 at RAISE
+	SQL statement "SELECT public.audit_assert_json(p_changes)"
+	PL/pgSQL function audit_assert_changes(text,jsonb) line 4 at PERFORM
+	SQL statement "SELECT public.audit_assert_changes('daily',p_changes)"
+	PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 9 at PERFORM
+2026-10-05 20:50:51.998 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:52.028 CST [45372] ERROR:  cannot remove last owner
+2026-10-05 20:50:52.028 CST [45372] CONTEXT:  PL/pgSQL function remove_site_member(uuid,uuid) line 10 at RAISE
+2026-10-05 20:50:52.028 CST [45372] STATEMENT:  select public.remove_site_member($1,$2) as result
+2026-10-05 20:50:52.029 CST [46912] ERROR:  forbidden
+2026-10-05 20:50:52.029 CST [46912] CONTEXT:  PL/pgSQL function apply_daily_field_mutation(uuid,uuid,uuid,date,jsonb) line 6 at RAISE
+2026-10-05 20:50:52.029 CST [46912] STATEMENT:  select public.apply_daily_field_mutation($1,$2,$3,$4,$5) as result
+2026-10-05 20:50:52.416 CST [12948] LOG:  received fast shutdown request
+2026-10-05 20:50:52.947 CST [12948] LOG:  aborting any active transactions
+2026-10-05 20:50:52.951 CST [12948] LOG:  background worker "logical replication launcher" (PID 46784) exited with exit code 1
+2026-10-05 20:50:52.992 CST [35660] LOG:  shutting down
+2026-10-05 20:50:53.096 CST [35660] LOG:  checkpoint starting: shutdown immediate
+2026-10-05 20:51:09.059 CST [35660] LOG:  checkpoint complete: wrote 1085 buffers (53.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.198 s, sync=15.565 s, total=16.067 s; sync files=383, longest=0.783 s, average=0.041 s; distance=5458 kB, estimate=5458 kB; lsn=0/1AC6D50, redo lsn=0/1AC6D50
+2026-10-05 20:51:09.071 CST [12948] LOG:  database system is shut down
