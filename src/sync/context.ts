@@ -1,9 +1,14 @@
-import { loadGasConfig } from '../data/remote/gas-client';
+import { getSupabaseClient, sharedBackendEnabled } from '../data/remote/supabase-client';
+import { loadSharedContext } from '../data/local/shared-context';
 import type { SharedScope } from '../domain/shared';
 
-// 一個試算表就是一個工地、沒有帳號：固定範圍，設定了後端才啟用同步。
-export const SHARED_SCOPE: SharedScope = { userId: 'shared', siteId: 'shared' };
-
 export async function loadActiveSharedScope(): Promise<SharedScope | null> {
-  return loadGasConfig() ? SHARED_SCOPE : null;
+  if (!sharedBackendEnabled()) return null;
+  const { data, error } = await getSupabaseClient().auth.getSession();
+  if (error) throw error;
+  const userId = data.session?.user.id;
+  if (!userId) return null;
+  const context = await loadSharedContext(userId);
+  return context.activeSiteId ? { userId, siteId: context.activeSiteId } : null;
 }
+

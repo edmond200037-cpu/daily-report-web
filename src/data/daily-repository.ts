@@ -69,7 +69,7 @@ export async function saveDailyDraft(report: DailyReportV3): Promise<void> {
   // Shared context lookup must never prevent the local-first save path.
   const scope = await loadActiveSharedScope().catch(() => null);
   if (scope && (!report.shared || report.shared.userId !== scope.userId || report.shared.siteId !== scope.siteId || report.shared.reportDate !== report.date)) {
-    report.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: report.date, reportDate: report.date, revision: 0 }; // 以日期為雲端 ID：兩台裝置同日建立也是同一份，不會各存一份
+    report.shared = { userId: scope.userId, siteId: scope.siteId, cloudId: crypto.randomUUID(), reportDate: report.date, revision: 0 };
   }
   if (!scope) delete report.shared;
   const database = await db();
