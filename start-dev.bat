@@ -1,24 +1,32 @@
 @echo off
 setlocal
 
-rem Start the Vite development server and open the daily report page.
+rem Start the Vite dev server for THIS checkout (branch or worktree) and open the daily report page.
+rem Each folder gets its own port (5300 + hash of the folder path), so every branch/worktree has its own
+rem browser origin and therefore its own IndexedDB; different DB_VERSIONs never collide.
 cd /d "%~dp0"
 
 set "DEV_HOST=127.0.0.1"
-set "DEV_PORT=5300"
+for /f %%p in ('powershell -NoProfile -Command "$s=0; [Text.Encoding]::UTF8.GetBytes((Get-Location).Path.ToLower()) | ForEach-Object { $s=($s*31+$_) %% 400 }; 5300+$s"') do set "DEV_PORT=%%p"
 set "DEV_URL=http://%DEV_HOST%:%DEV_PORT%/#daily"
+echo Folder: %CD%
+echo URL:    %DEV_URL%
 
 if not exist "node_modules\.bin\vite.cmd" (
-    echo node_modules not found. Run npm install in this folder first.
-    pause
-    exit /b 1
+    echo node_modules not found. Running npm ci for this folder...
+    call npm.cmd ci
+    if errorlevel 1 (
+        echo npm ci failed.
+        pause
+        exit /b 1
+    )
 )
 
-rem Stop an older Vite dev server still holding the port (only processes whose command line contains vite).
-powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort %DEV_PORT% -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $_.OwningProcess); if ($p -and $p.CommandLine -like '*vite*') { Stop-Process -Id $p.ProcessId -Force } }"
+rem Stop an older Vite dev server of THIS folder still holding the port (never touches other checkouts).
+powershell -NoProfile -Command "$here=(Get-Location).Path; Get-NetTCPConnection -LocalPort %DEV_PORT% -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $_.OwningProcess); if ($p -and $p.CommandLine -like '*vite*' -and $p.CommandLine -like ('*' + $here + '*')) { Stop-Process -Id $p.ProcessId -Force } }"
 timeout /t 1 /nobreak >nul
 
-start "Daily Report - Vite Dev Server" /D "%~dp0" cmd /k "call npm.cmd run dev -- --host %DEV_HOST% --port %DEV_PORT% --strictPort"
+start "Daily Report - %DEV_PORT%" /D "%~dp0" cmd /k "call npm.cmd run dev -- --host %DEV_HOST% --port %DEV_PORT% --strictPort"
 
 rem Wait until Vite is ready instead of relying on a fixed delay.
 set /a WAIT_RETRIES=30
@@ -35,7 +43,7 @@ start "" "%DEV_URL%"
 goto finish
 
 :vite_timeout
-echo Vite did not respond within 30 seconds. Check the dev server window.
+echo Vite did not respond within 30 seconds. Check the dev server window (port %DEV_PORT% may belong to another program).
 pause
 
 :finish
