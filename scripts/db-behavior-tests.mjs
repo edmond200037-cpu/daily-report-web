@@ -222,6 +222,18 @@ export async function runDatabaseTests({ Client, connectionString, initialize = 
       const first = await rpc(sessions.editor, 'apply_memory_entry_mutation', args), replay = await rpc(sessions.editor, 'apply_memory_entry_mutation', args);
       assert.equal(first.status, 'conflict'); assert.deepEqual(replay, { ...first, replayed: true });
     });
+    await check('memory child can be deleted after its parent trade', async () => {
+      const parent = randomUUID(), child = randomUUID();
+      const parentEntry = { id: parent, kind: 'trade', parent_id: null, normalized_name: '先刪父項', payload: { id: parent, name: '先刪父項', normalizedName: '先刪父項', status: 'confirmed' }, status: 'confirmed', usage_count: 0, finalized_usage_count: 0 };
+      const childEntry = { id: child, kind: 'vendor', parent_id: parent, normalized_name: '子廠商', payload: { id: child, name: '子廠商', normalizedName: '子廠商', tradeTypeId: parent, status: 'confirmed' }, status: 'confirmed', usage_count: 0, finalized_usage_count: 0 };
+      await rpc(sessions.editor, 'apply_memory_entry_mutation', [site, randomUUID(), 0, JSON.stringify(parentEntry)]);
+      await rpc(sessions.editor, 'apply_memory_entry_mutation', [site, randomUUID(), 0, JSON.stringify(childEntry)]);
+      assert.equal((await rpc(sessions.editor, 'apply_memory_entry_mutation', [site, randomUUID(), 1, JSON.stringify({ ...parentEntry, deleted: true })])).status, 'applied');
+      // Upserts still require an active parent.
+      await denied(() => rpc(sessions.editor, 'apply_memory_entry_mutation', [site, randomUUID(), 1, JSON.stringify({ ...childEntry, normalized_name: '改名', payload: { ...childEntry.payload, normalizedName: '改名' } })]), '23503');
+      assert.equal((await rpc(sessions.editor, 'apply_memory_entry_mutation', [site, randomUUID(), 1, JSON.stringify({ ...childEntry, deleted: true })])).status, 'applied');
+      assert.ok((await admin.query('select deleted_at from public.memory_entries where id=$1', [child])).rows[0].deleted_at);
+    });
     await check('memory application event is counted once across request identities', async () => {
       const id = randomUUID();
       const entry = { id, kind: 'trade', parent_id: null, normalized_name: '事件去重測試', payload: { id, name: '事件去重測試', normalizedName: '事件去重測試', status: 'candidate' }, status: 'candidate', usage_count: 1, finalized_usage_count: 0, learning_key: 'apply:event-1', learning_delta: { usage: 1, finalized: 0 } };
