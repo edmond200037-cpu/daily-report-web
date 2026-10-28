@@ -12,7 +12,7 @@ export function bindWorkspaceEvents(): void {
     const target = event.target as HTMLElement;
     const dailyMutation = target.closest<HTMLElement>('[data-daily-action],[data-work-commit],[data-work-move],[data-work-suggestion]');
     if (isReadOnlySite() && dailyMutation && !readOnlyDailyActions.has(dailyMutation.dataset.dailyAction ?? '')) { event.preventDefault(); event.stopImmediatePropagation(); return; }
-    const mutation = target.closest('[data-memory-confirm],[data-memory-reject],[data-memory-reject-selected],[data-settings-action="confirm"],[data-settings-action="delete"],[data-settings-action="delete-material-type"],[data-settings-action="rename-material-type"],[data-settings-action="add-material-type"],[data-site-search-action],[data-daily-action="finalize"]');
+    const mutation = target.closest('[data-memory-confirm],[data-memory-reject],[data-memory-reject-selected],[data-settings-action="confirm"],[data-settings-action="delete"],[data-settings-action="delete-material-type"],[data-settings-action="delete-template"],[data-settings-action="add-material-type"],[data-material-action="delete-item"],[data-site-search-action],[data-daily-action="finalize"]');
     if (!mutation) return;
     const role = appState.accountSites.find((site) => site.id === appState.accountActiveSiteId)?.role ?? appState.accountActiveSiteRole;
     if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改或審核工地記憶。'); return; }
@@ -28,7 +28,7 @@ export function bindWorkspaceEvents(): void {
     }
   });
   app.addEventListener('submit', (event) => {
-    if (!(event.target instanceof HTMLFormElement) || !event.target.dataset.settingsForm) return;
+    if (!(event.target instanceof HTMLFormElement) || !(event.target.dataset.settingsForm || event.target.dataset.materialItemForm)) return;
     const role = appState.accountSites.find((site) => site.id === appState.accountActiveSiteId)?.role ?? appState.accountActiveSiteRole;
     if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改工地記憶。'); return; }
     window.setTimeout(scheduleBackgroundSync, 1000);

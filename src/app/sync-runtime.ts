@@ -29,8 +29,8 @@ export async function refreshDailySyncStatus(): Promise<void> {
   updateDailySaveStatus();
 }
 export async function refreshActiveMemoryCache(): Promise<void> {
-  [appState.dailySites, appState.dailyTrades, appState.dailyVendors, appState.dailyTasks, appState.materialTypes, appState.materialMemory] = await Promise.all([
-    listMemories('sites'), listMemories('trades', undefined, 'all'), listMemories('vendors', undefined, 'all'), listMemories('tasks', undefined, 'all'), listMaterialTypes(), listMaterialMemory(),
+  [appState.dailySites, appState.dailyTrades, appState.dailyVendors, appState.dailyTasks, appState.dailyLocations, appState.materialTypes, appState.materialMemory] = await Promise.all([
+    listMemories('sites'), listMemories('trades', undefined, 'all'), listMemories('vendors', undefined, 'all'), listMemories('tasks', undefined, 'all'), listMemories('locations'), listMaterialTypes(), listMaterialMemory(),
   ]);
 }
 export async function switchActiveDataPartition(changeContext: () => Promise<void>): Promise<void> {

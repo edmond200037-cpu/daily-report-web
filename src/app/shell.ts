@@ -31,9 +31,5 @@ export function syncControl(kind: 'daily' | 'water' = 'daily'): string {
 export function moduleTabs(active: 'daily' | 'water-level'): string {
   return `<nav class="top-tabs" aria-label="主要功能"><a href="#daily"${active === 'daily' ? ' class="active" aria-current="page"' : ''}>施工日報</a><a href="#water-level"${active === 'water-level' ? ' class="active" aria-current="page"' : ''}>水位變化</a></nav>`;
 }
-export function settingsContextTabs(active: 'daily' | 'water' | 'memory' | 'data' | 'account' | 'debug'): string {
-  const items: Array<[typeof active, string, string]> = [['daily', '#settings/daily', '工地記憶'], ['water', '#settings/water', '水位設定'], ['memory', '#settings/memory', '記憶審核'], ['data', '#settings/data', '資料與系統'], ['account', '#settings/account', '共用工地'], ['debug', '#settings/debug', '偵錯與同步']];
-  return `<nav class="settings-context-tabs" aria-label="設定區域">${items.map(([id, href, label]) => `<a href="${href}"${id === active ? ' class="active" aria-current="page"' : ''}>${label}</a>`).join('')}</nav>`;
-}
 export function normalizeSearch(value: string): string { return value.trim().replace(/　/g, ' ').replace(/\s+/g, ' ').toLocaleLowerCase('en-US'); }
-export function settingsHeader(eyebrow: string, title: string): string { return `<header class="top app-header"><div>${eyebrow ? `<p class="eyebrow">${eyebrow}</p>` : ''}<h1>${title}</h1></div><div class="settings-header-actions">${settingsReturnLink()}</div></header>`; }
+export function settingsHeader(title: string, home = false): string { return `<header class="top app-header"><div><h1>${title}</h1></div><div class="settings-header-actions">${home ? settingsReturnLink() : '<a class="settings-button" href="#settings" aria-label="返回設定">‹ 設定</a>'}</div></header>`; }

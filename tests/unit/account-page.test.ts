@@ -90,10 +90,10 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('aria-pressed="true"');
   });
 
-  it('共用工地使用設定頁首與第五個設定入口', () => {
+  it('共用工地使用設定子頁頁首，並由設定首頁進入', () => {
     expect(main).toContain('class="app-shell settings-page account-page-shell"');
-    expect(main).toContain("settingsContextTabs(isDebug ? 'debug' : 'account')");
-    expect(main).toContain("['account', '#settings/account', '共用工地']");
+    expect(main).toContain("settingsHeader(isDebug ? '同步診斷' : '共用工地')");
+    expect(main).toContain('class="settings-status" href="#settings/account"');
     expect(main).toContain("if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }");
   });
 
