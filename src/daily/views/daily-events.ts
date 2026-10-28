@@ -9,7 +9,7 @@ import { selectActiveSharedSite } from '../../data/local/shared-context';
 import { bindWorkInput, clearWorkItemDetails } from '../work-input';
 import { escapeHtml } from '../../shared/html';
 import { renderApp, parseRoute } from '../../main';
-import { app, appState, tradeDrag, workItemDrag, tradeSwipe, settingsTradeSwipe } from '../../app/state';
+import { app, appState, tradeDrag, workItemDrag, tradeSwipe } from '../../app/state';
 import { memoryOrder, normalizeSearch } from '../../app/shell';
 import { isReadOnlySite, switchActiveDataPartition, scheduleBackgroundSync } from '../../app/sync-runtime';
 import { selectSharedSiteFromWorkspace, refreshAccount } from '../../account/account-controller';
@@ -19,7 +19,6 @@ import { refreshContactSearch, activateContactSearch, contactDirty, refreshConta
 import { persistEntryDraft, showEntrySaveError, commitInputMemories, refreshTradePickerSearch, refreshSiteSearch, activateSiteSearch, selectDailySite, savePendingDailyInput, capturePendingWork } from './daily-entry';
 import { deleteItemBySwipe, pruneTradeUndoQueue, clearWorkItemDrag, clearTradeDrag, clearTradeSwipe } from './daily-gestures';
 import { refreshTaskSearch, refreshTradeSearch } from '../../settings/views/settings-view';
-import { clearSettingsTradeSwipe } from '../../settings/views/settings-events';
 const backgroundCollapseExclusions = '.trade-card,.contact-card,.app-header,.top-tabs,.basics,.daily-tabs,.settings-button,.floating-add-trade,.preview,.form-card,button,input,textarea,select,label,a,[role="dialog"],.dialog-backdrop,.trade-picker,[data-ignore-background-collapse]';
 export async function handleDailyAction(target: HTMLElement, actionElement: HTMLElement): Promise<void> {
   const action = actionElement.dataset.dailyAction!;
@@ -329,7 +328,7 @@ export function bindBackgroundCollapseEvents(): void {
   });
 }
 export function bindDailyKeyEvents(): void {
-  window.addEventListener('keydown', (event) => { if (event.key !== 'Escape') return; if (workItemDrag.active || workItemDrag.pending) { clearWorkItemDrag(); event.preventDefault(); void renderApp(); return; } if (appState.workAuxMenuId) { const id = appState.workAuxMenuId; appState.workAuxMenuId = null; event.preventDefault(); void renderApp().then(() => focusWorkActionsTrigger(id)); return; } if (tradeDrag.active || tradeDrag.pending) { clearTradeDrag(); void renderApp(); } if (tradeSwipe.active) clearTradeSwipe(); if (settingsTradeSwipe.root) clearSettingsTradeSwipe(); });
+  window.addEventListener('keydown', (event) => { if (event.key !== 'Escape') return; if (workItemDrag.active || workItemDrag.pending) { clearWorkItemDrag(); event.preventDefault(); void renderApp(); return; } if (appState.workAuxMenuId) { const id = appState.workAuxMenuId; appState.workAuxMenuId = null; event.preventDefault(); void renderApp().then(() => focusWorkActionsTrigger(id)); return; } if (tradeDrag.active || tradeDrag.pending) { clearTradeDrag(); void renderApp(); } if (tradeSwipe.active) clearTradeSwipe(); });
   window.addEventListener('keydown', (event) => { if (event.key === 'Escape' && appState.activeContactSearch) { appState.activeContactSearch = null; void renderApp(); } });
   app.addEventListener('keydown', (event) => { const target = event.target as HTMLElement; if (event.key !== 'Enter' || !(target instanceof HTMLInputElement) || event.isComposing) return; if (target.matches('[data-contact-field="task"]')) { if (appState.contactSearchComposing || event.keyCode === 229) return; event.preventDefault(); target.closest('.contact-card')?.querySelector<HTMLElement>('[data-daily-action="contact-add-task"]')?.click(); } else if (target.matches('[data-work-item-composer-input]')) { if (appState.workItemComposerComposing) return; event.preventDefault(); const tradeId = target.dataset.workItemComposerInput; if (tradeId) app.querySelector<HTMLButtonElement>(`[data-daily-action="add-work-item"][data-trade-id="${tradeId}"]`)?.click(); } });
 }

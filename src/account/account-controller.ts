@@ -13,7 +13,7 @@ import { previewSyncRecovery, applySyncRecovery } from '../sync/recovery';
 import { escapeHtml } from '../shared/html';
 import { renderApp, parseRoute } from '../main';
 import { appState, type AccountLoadStage, app } from '../app/state';
-import { settingsHeader, settingsContextTabs, pwaUpdateNotice } from '../app/shell';
+import { settingsHeader, pwaUpdateNotice } from '../app/shell';
 import { switchActiveDataPartition, scheduleBackgroundSync, readCloudMemoryEntries, cloudMemorySignature, syncActiveSiteNow, isReadOnlySite } from '../app/sync-runtime';
 import { debugPanel } from '../settings/views/settings-view';
 export async function selectSharedSiteFromWorkspace(siteId: string): Promise<void> {
@@ -101,7 +101,7 @@ export async function refreshAccount(onProgress?: () => void): Promise<void> {
 }
 function accountModuleMarkup(content: string): string {
   const isDebug = parseRoute(location.hash).page === 'debug';
-  return `<main class="app-shell settings-page account-page-shell">${settingsHeader('', isDebug ? '偵錯與同步' : '共用工地')}${settingsContextTabs(isDebug ? 'debug' : 'account')}${content}${isDebug ? debugPanel() : ''}</main>${pwaUpdateNotice()}`;
+  return `<main class="app-shell settings-page account-page-shell">${settingsHeader(isDebug ? '同步診斷' : '共用工地')}${content}${isDebug ? debugPanel() : ''}</main>${pwaUpdateNotice()}`;
 }
 export function renderAccountLoading(): void {
   const content = appState.accountError

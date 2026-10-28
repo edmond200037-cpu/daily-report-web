@@ -50,3 +50,29 @@ describe('水位摘要呈現契約', () => {
     expect(recalculate(records.filter((record) => record.id !== 'first'))[0].readings[0].change).toBeNull();
   });
 });
+
+describe('井位設定行內表單', () => {
+  const controller = () => { const c = new WaterLevelController({ innerHTML: '' }); c.points = [{ id: 'p1', name: 'A井' }, { id: 'p2', name: 'B井' }]; return c; };
+  it('井位以單行列呈現，列上無編輯／刪除按鈕，改名不使用 prompt', () => {
+    const html = controller().pointsView();
+    expect(html).toContain('class="settings-row" data-water-action="edit-point" data-id="p1"');
+    expect(html).toContain('data-water-action="add-point"');
+    expect(html).not.toContain('rename-point');
+    expect(html).not.toContain('delete-point');
+    expect(WaterLevelController.toString()).not.toContain('prompt(');
+  });
+  it('編輯時以表單取代該列並提供儲存／取消／刪除', async () => {
+    const c = controller(); await c.handleAction('edit-point', 'p2');
+    const html = c.pointsView();
+    expect(html).toContain('id="point-edit-form"');
+    expect(html).toContain('data-water-action="delete-point" data-id="p2"');
+    expect(html).not.toContain('data-id="p2"><span');
+    expect(html).toContain('data-id="p1"');
+  });
+  it('新增表單開啟時隱藏新增按鈕', async () => {
+    const c = controller(); await c.handleAction('add-point');
+    const html = c.pointsView();
+    expect(html).toContain('id="point-form"');
+    expect(html).not.toContain('data-water-action="add-point"');
+  });
+});

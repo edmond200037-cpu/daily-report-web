@@ -22,6 +22,7 @@ export class WaterLevelController {
     this.points = [];
     this.logs = [];
     this.editing = null;
+    this.pointEditing = null;
     this.mode = 'entry';
     this.expandedHistoryId = null;
     this.outputOpen = false;
@@ -59,7 +60,7 @@ export class WaterLevelController {
   }
 
   renderSettings() {
-    this.root.innerHTML = `<section class="water-page water-settings"><section class="workflow-section"><header class="workflow-section__header"><div><h2>井位管理</h2><p>刪除井位只影響後續輸入；既有歷史紀錄保留名稱快照。</p></div></header><section class="form-card water-points-card">${this.pointsView()}</section></section></section>`;
+    this.root.innerHTML = `<section class="water-page water-settings"><p class="hint">刪除井位只影響後續輸入；既有歷史紀錄保留名稱快照。</p>${this.pointsView()}</section>`;
   }
 
   entryView(log, errors) {
@@ -86,7 +87,9 @@ export class WaterLevelController {
   }
 
   pointsView() {
-    return `<form id="point-form" class="water-point-form"><label>井位名稱<input name="name" required placeholder="例如 A井"></label><div class="form-actions form-actions--single"><button type="submit" class="primary">新增井位</button></div></form><div class="point-list">${this.points.map((point) => `<article class="water-point-row"><strong>${escapeHtml(point.name)}</strong><div><button type="button" data-water-action="rename-point" data-id="${escapeHtml(point.id)}">改名</button><button type="button" class="danger-text" data-water-action="delete-point" data-id="${escapeHtml(point.id)}">刪除</button></div></article>`).join('') || '<p class="empty">尚未建立井位。</p>'}</div>`;
+    const form = (id, name) => `<form id="${id ? 'point-edit-form' : 'point-form'}" class="settings-edit-form" ${id ? `data-id="${escapeHtml(id)}"` : ''}><label>井位名稱<input name="name" required maxlength="50" value="${escapeHtml(name)}" placeholder="例如 A井" autofocus></label><div class="form-actions form-actions--submit"><button type="submit" class="primary">儲存</button><button type="button" data-water-action="cancel-point">取消</button>${id ? `<button type="button" class="danger-text settings-edit-form__delete" data-water-action="delete-point" data-id="${escapeHtml(id)}">刪除</button>` : ''}</div></form>`;
+    const rows = this.points.map((point) => this.pointEditing === point.id ? form(point.id, point.name) : `<button type="button" class="settings-row" data-water-action="edit-point" data-id="${escapeHtml(point.id)}"><span class="settings-row__name">${escapeHtml(point.name)}</span><span class="settings-row__meta">編輯</span></button>`).join('') || '<p class="empty">尚無井位。</p>';
+    return `<div class="settings-toolbar settings-toolbar--end">${this.pointEditing === 'new' ? '' : '<button type="button" class="settings-add" data-water-action="add-point">＋ 新增井位</button>'}</div>${this.pointEditing === 'new' ? form('', '') : ''}<div class="settings-rows">${rows}</div>`;
   }
 
   async handleInput(target) {
@@ -95,17 +98,20 @@ export class WaterLevelController {
     if (target.dataset.waterReading !== undefined && Number.isInteger(index) && this.editing.readings[index]) this.editing.readings[index].value = target.value;
   }
 
-  async handleAction(action, id) {
+  async handleAction(action, id, extra) {
     if (action === 'toggle-output') { this.outputOpen = !this.outputOpen; this.render(); return; }
     if (action === 'toggle-history') { this.expandedHistoryId = this.expandedHistoryId === id ? null : id; this.render(); return; }
     if (action === 'copy-water') { await navigator.clipboard.writeText(this.preview()); return; }
     if (action === 'save-log') { const errors = validateLog(this.editing); if (errors.length) { this.render(); return; } await saveLog(this.editing); this.onLocalSaved(); window.dispatchEvent(new Event('local-data-saved')); this.editing = newLog(await loadPoints()); await this.refresh(); return; }
-    if (action === 'save-point') { await savePoint(String(id)); this.onLocalSaved(); await this.refresh(); return; }
+    if (action === 'add-point') { this.pointEditing = 'new'; return; }
+    if (action === 'edit-point') { this.pointEditing = id; return; }
+    if (action === 'cancel-point') { this.pointEditing = null; return; }
+    if (action === 'save-point') { await savePoint(String(id)); this.pointEditing = null; this.onLocalSaved(); await this.refresh(); return; }
+    if (action === 'update-point') { await savePoint(String(extra), id); this.pointEditing = null; this.onLocalSaved(); await this.refresh(); return; }
     if (action === 'cancel-edit') { this.editing = newLog(await loadPoints()); this.mode = 'entry'; this.render(); return; }
     if (action === 'edit-log') { const log = this.logs.find((item) => item.id === id); if (log) { this.editing = structuredClone(log); this.mode = 'entry'; this.expandedHistoryId = null; this.render(); } return; }
     if (action === 'delete-log' && confirm('刪除後，後續下降量將重新計算。確定刪除？')) { await deleteLog(id); this.onLocalSaved(); if (this.expandedHistoryId === id) this.expandedHistoryId = null; await this.refresh(); return; }
-    if (action === 'delete-point' && confirm('刪除井位只影響後續輸入，不會刪除歷史讀值。確定刪除？')) { await deletePoint(id); this.onLocalSaved(); await this.refresh(); return; }
-    if (action === 'rename-point') { const point = this.points.find((item) => item.id === id); if (!point) return; const name = prompt('新的井位名稱', point.name); if (name !== null) { await savePoint(name, id); this.onLocalSaved(); await this.refresh(); } return; }
+    if (action === 'delete-point' && confirm('刪除井位只影響後續輸入，不會刪除歷史讀值。確定刪除？')) { await deletePoint(id); this.pointEditing = null; this.onLocalSaved(); await this.refresh(); return; }
     if (action === 'parse-import') await this.importText();
   }
 

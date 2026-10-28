@@ -11,7 +11,6 @@ import type { SyncOperation } from '../sync/types';
 import type { MemoryImportPreview } from '../sync/memory-import';
 import type { ConflictReview } from '../sync/conflict-review';
 import type { SyncRecoveryPreview } from '../sync/recovery';
-import type { DailySettingsArea } from '../settings/views/settings-view';
 export const app = document.querySelector<HTMLDivElement>('#app')!;
 class AppState {
   daily!: DailyController;
@@ -75,6 +74,8 @@ class AppState {
   settingsTemplates: SpecialTemplate[] = [];
   settingsDebug: Record<string, number> = {};
   settingsAllTasks: NamedMemory[] = [];
+  settingsAllVendors: NamedMemory[] = [];
+  settingsMaterialMemory: MaterialMemoryItem[] = [];
   tradeSearchKeyword = '';
   tradeSearchComposing = false;
   memoryCandidates: MemoryCandidate[] = [];
@@ -126,9 +127,9 @@ export type AppRoute =
   | { module: 'daily'; page: 'settings' | 'history' }
   | { module: 'water-level'; page: 'main' }
   | { module: 'water-level'; page: 'settings' }
-  | { module: 'settings'; page: 'memory' | 'data' }
+  | { module: 'settings'; page: 'home' | 'memory' | 'data' }
   | { module: 'account'; page: 'main' | 'debug' };
-export type WaterController = { root: HTMLElement; initialize(): Promise<void>; refresh(): Promise<void>; render(): void; renderSettings(): void; handleInput(target: HTMLElement): Promise<void>; handleAction(action: string, id?: string): Promise<void>; preview(): string; mode: string };
+export type WaterController = { root: HTMLElement; initialize(): Promise<void>; refresh(): Promise<void>; render(): void; renderSettings(): void; handleInput(target: HTMLElement): Promise<void>; handleAction(action: string, id?: string, extra?: string): Promise<void>; preview(): string; mode: string };
 type SettingsReturnModule = 'daily' | 'water-level';
 export const waterEditors = new Map<string, WaterController>();
 export type MaterialConnectionUndoNotice = { materialId: string; tradeId: string; expiresAt: number; timer: number };
@@ -141,8 +142,7 @@ export const workItemDrag = { active: false, pending: false, tradeId: null as st
 export const tradeDrag = { active: false, pending: false, id: null as string | null, originalOrder: [] as string[], pointerId: null as number | null, offsetX: 0, offsetY: 0, startX: 0, startY: 0, activeDropSlotIndex: null as number | null, preview: null as HTMLElement | null, frame: null as number | null, clientX: 0, clientY: 0 };
 export const tradeSwipe = { active: false, eligible: false, id: null as string | null, kind: null as 'trade' | 'material' | 'contact' | 'special' | null, pointerId: null as number | null, startX: 0, startY: 0, offset: 0, root: null as HTMLElement | null };
 export type TradeUndoEntry = { undo: DailyDeleteUndo; expiresAt: number; timer: number };
-export const settingsState: { activeSection: DailySettingsSection; activeArea: DailySettingsArea; editingId: string | null; adding: boolean; dirty: boolean; selectedTradeTypeId: string | null; taskSearchKeyword: string } = { activeSection: 'sites', activeArea: 'foundation', editingId: null, adding: false, dirty: false, selectedTradeTypeId: null, taskSearchKeyword: '' };
+export const settingsState: { activeSection: DailySettingsSection; editingId: string | null; adding: boolean; dirty: boolean; selectedTradeTypeId: string | null; taskSearchKeyword: string; editingKind: 'trade' | 'tasks' | 'vendors' | null; expandedMaterialTypeId: string | null; editingMaterialItemId: string | null } = { activeSection: 'sites', editingId: null, adding: false, dirty: false, selectedTradeTypeId: null, taskSearchKeyword: '', editingKind: null, expandedMaterialTypeId: null, editingMaterialItemId: null };
 export const memoryReviewState: { openKind: MemoryCandidate['kind'] | null | undefined; nextKind: MemoryCandidate['kind'] | null; explicitKeys: Set<MemoryCandidateKey>; expandedKeys: Set<MemoryCandidateKey>; feedback: string; feedbackTone: 'success' | 'error' } = { openKind: undefined, nextKind: null, explicitKeys: new Set(), expandedKeys: new Set(), feedback: '', feedbackTone: 'success' };
 export type AccountLoadStage = '帳號驗證' | '工地清單' | '成員資料' | '本機同步佇列' | '衝突資料';
 type AccountLoadEvent = { stage: AccountLoadStage; status: 'loading' | 'ok' | 'error' | 'timeout'; durationMs: number; code?: string };
-export const settingsTradeSwipe = { root: null as HTMLElement | null, id: '', pointerId: -1, startX: 0, startY: 0, offset: 0, verticalCancelled: false };

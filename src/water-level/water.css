@@ -27,13 +27,6 @@
 .water-import__result { border-top: 1px solid var(--line); color: var(--ink-soft); font-size: .875rem; padding-top: var(--space-2); }
 .water-import__result ul { margin: 0; padding-left: 1.25rem; }
 
-.water-points-card { display: grid; gap: var(--space-4); }
-.water-point-form { display: grid; gap: var(--space-1); }
-.water-point-form label { margin: 0; }
-.point-list { display: grid; gap: var(--space-2); }
-.water-point-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
-.water-point-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.water-point-row > div { display: flex; flex: none; gap: var(--space-2); }
 
 .water-output { border-color: var(--field-green); }
 .water-output .output-drawer__content .primary { width: 100%; }
@@ -48,7 +41,4 @@
   .reading-list { grid-template-columns: minmax(0, 1fr); }
   .water-history-card__summary { grid-template-columns: 3.25rem minmax(0, 1fr) auto; gap: var(--space-2); padding-inline: var(--space-2); }
   .water-history-card__status { padding-inline: .35rem; }
-  .water-point-row { align-items: flex-start; flex-direction: column; }
-  .water-point-row > div { width: 100%; }
-  .water-point-row > div button { flex: 1 1 0; }
 }
