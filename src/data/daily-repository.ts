@@ -57,7 +57,11 @@ function normalizeDraft(value: DailyReportV3 | undefined): DailyReportV3 | undef
   });
   return value;
 }
-const partitionId = (userId: string | null, siteId: string | null, date: string): string => userId && siteId ? `${userId}:${siteId}:${date}` : 'local';
+const partitionId = (userId: string | null, siteId: string | null, date: string): string => userId && siteId ? `${userId}:${siteId}:${date}` : `local:${date}`;
+function latestLocalDraftPartition(partitions: DraftPartition[], reportDate?: string): DraftPartition | undefined {
+  return partitions.filter((row) => (row.id === 'local' || row.id.startsWith('local:')) && (reportDate === undefined || row.reportDate === reportDate))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+}
 export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> {
   const scope = await loadActiveSharedScope().catch(() => null);
   const database = await db();
@@ -66,7 +70,7 @@ export async function loadDailyDraft(): Promise<DailyReportV3 | undefined> {
     const partitions = await request(tx.objectStore('draft_partitions').getAll()) as DraftPartition[];
     const matching = scope
       ? partitions.filter((row) => row.userId === scope.userId && row.siteId === scope.siteId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
-      : partitions.find((row) => row.id === 'local');
+      : latestLocalDraftPartition(partitions);
     if (matching) return normalizeDraft(structuredClone(matching.report));
     if (scope) return undefined;
     return normalizeDraft(await request(tx.objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined);
@@ -76,7 +80,7 @@ export async function loadDailyDraftForDate(reportDate: string): Promise<DailyRe
   const scope = await loadActiveSharedScope().catch(() => null); const database = await db();
   try {
     const partitions = await request(database.transaction('draft_partitions').objectStore('draft_partitions').getAll()) as DraftPartition[];
-    const row = scope ? partitions.find((item) => item.userId === scope.userId && item.siteId === scope.siteId && item.reportDate === reportDate) : partitions.find((item) => item.id === 'local' && item.reportDate === reportDate);
+    const row = scope ? partitions.find((item) => item.userId === scope.userId && item.siteId === scope.siteId && item.reportDate === reportDate) : latestLocalDraftPartition(partitions, reportDate);
     return row ? normalizeDraft(structuredClone(row.report)) : undefined;
   } finally { database.close(); }
 }
@@ -93,9 +97,11 @@ export async function saveDailyDraft(report: DailyReportV3, baseline?: DailyRepo
     const stores = scope ? ['live_report_draft', 'draft_partitions', 'sync_outbox'] : ['live_report_draft', 'draft_partitions'];
     const tx = database.transaction(stores, 'readwrite');
     const partitionIdValue = partitionId(scope?.userId ?? null, scope?.siteId ?? null, report.date);
-    const partitionBefore = await request(tx.objectStore('draft_partitions').get(partitionIdValue)) as DraftPartition | undefined;
+    const partitionBefore = scope
+      ? await request(tx.objectStore('draft_partitions').get(partitionIdValue)) as DraftPartition | undefined
+      : latestLocalDraftPartition(await request(tx.objectStore('draft_partitions').getAll()) as DraftPartition[], report.date);
     const shared = report.shared;
-    if (baseline && partitionBefore && baseline.date === report.date) report = mergeEditorIntent(partitionBefore.report, baseline, report);
+    if (baseline && partitionBefore?.reportDate === report.date && baseline.date === report.date) report = mergeEditorIntent(partitionBefore.report, baseline, report);
     if (scope) report.shared ??= shared;
     refreshCompleteness(report);
     tx.objectStore('live_report_draft').put(report);
@@ -159,12 +165,16 @@ export async function listTemplates(): Promise<SpecialTemplate[]> { const databa
 export function validateText(value: string, max: number, template = false): string | null { const cleaned = cleanName(value); if (!cleaned) return template ? '請輸入特殊事項模板。' : '請輸入名稱。'; if (cleaned.length > max) return template ? '特殊事項模板最多只能輸入 500 個字。' : '名稱最多只能輸入 50 個字。'; return null; }
 async function mutateActiveDraft(tx: IDBTransaction, scope: SharedScope | null, mutate: (draft: DailyReportV3) => void): Promise<DailyReportV3 | undefined> {
   const partitions = await request(tx.objectStore('draft_partitions').getAll()) as DraftPartition[];
-  const partition = scope ? partitions.filter(row => row.userId === scope.userId && row.siteId === scope.siteId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] : partitions.find(row => row.id === 'local');
-  const draft = normalizeDraft(partition ? structuredClone(partition.report) : !scope ? await request(tx.objectStore('live_report_draft').get('current')) : undefined);
+  const liveDraft = !scope ? await request(tx.objectStore('live_report_draft').get('current')) as DailyReportV3 | undefined : undefined;
+  const localDraft = liveDraft?.shared ? undefined : liveDraft;
+  const partition = scope ? partitions.filter(row => row.userId === scope.userId && row.siteId === scope.siteId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] : latestLocalDraftPartition(partitions, localDraft?.date);
+  const draft = normalizeDraft(partition ? structuredClone(partition.report) : localDraft);
   if (!draft) return;
   const before = structuredClone(draft); mutate(draft); refreshCompleteness(draft); draft.updatedAt = now();
   tx.objectStore('live_report_draft').put(draft);
-  tx.objectStore('draft_partitions').put({ id: partitionId(scope?.userId ?? null, scope?.siteId ?? null, draft.date), userId: scope?.userId ?? null, siteId: scope?.siteId ?? null, reportDate: draft.date, report: draft, updatedAt: now() });
+  // Legacy 'local' rows stay untouched; edits are stored in the dated partition.
+  const id = partition && partition.id !== 'local' ? partition.id : partitionId(scope?.userId ?? null, scope?.siteId ?? null, draft.date);
+  tx.objectStore('draft_partitions').put({ id, userId: scope?.userId ?? null, siteId: scope?.siteId ?? null, reportDate: draft.date, report: draft, updatedAt: now() });
   if (scope && draft.shared) {
     const changes = buildFieldMutations('daily', before as unknown as Record<string, unknown>, draft as unknown as Record<string, unknown>);
     if (changes.length) tx.objectStore('sync_outbox').put(buildSyncOperation({ ...scope, entity: 'daily-patch', entityId: draft.shared.cloudId, baseRevision: draft.shared.revision, payload: { reportDate: draft.date, changes } }));
