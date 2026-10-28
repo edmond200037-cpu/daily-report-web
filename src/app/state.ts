@@ -30,6 +30,7 @@ class AppState {
   dailyVendors: NamedMemory[] = [];
   dailyTasks: NamedMemory[] = [];
   dailySites: NamedMemory[] = [];
+  dailyLocations: NamedMemory[] = [];
   siteSearchOpen = false;
   siteSearchQuery = '';
   siteSearchComposing = false;

@@ -16,3 +16,7 @@
 - 記憶備份的 schema 為 `memories@2`，並相容讀取 `memories@1`；匯入採合併去重，絕不覆蓋草稿、定稿或水位資料。
 - schema 變更必須提高 `DB_VERSION`，並由 `runMigration()` 開啟資料庫以執行唯一的 `onupgradeneeded` 路徑。無法安全轉換的資料不得靜默刪除。
 - `daily_memory_commits/current` 保存最近一次成功定稿的 SHA-256 指紋與快照 ID；即使七日快照清理後也不得刪除，以避免保留草稿再次複製時重複計次。
+
+## 位置記憶的選填樓層（ADR-016）
+
+`location_memories` 列可帶選填 `startFloorRaw`／`endFloorRaw`（正規化樓層字串，缺省或空字串＝未設定）。只由設定頁手動寫入，自動學習不寫入也不覆蓋；日報選定位置時，僅在工項樓層皆空白時帶入。不改 DB_VERSION，備份格式不變。

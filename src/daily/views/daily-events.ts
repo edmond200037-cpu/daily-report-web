@@ -1,3 +1,5 @@
+import { applyLocationMemory } from '../floor';
+import { normalizeName } from '../../format/normalization';
 import { editContactEntry, appendContactTask, applyContactPlannedDate } from '../entry-workflow';
 import { bindWorkGestures } from '../work-gestures';
 import { workDetailFields, snapshotDetails, workUndoScope, canRestoreDetails } from '../work-detail-undo';
@@ -271,6 +273,10 @@ export function bindDailyInputEvents(): void {
         if (target.value) await selectSharedSiteFromWorkspace(target.value);
         else if (appState.accountAuth.user) { await switchActiveDataPartition(() => selectActiveSharedSite(appState.accountAuth.user!.id, null).then(() => undefined)); await refreshAccount(); await renderApp(); }
       } catch (error) { alert(error instanceof Error ? error.message : '切換失敗，請稍後重試。'); await renderApp(); }
+    }
+    if (target instanceof HTMLInputElement && target.matches('[data-daily-field="locationTextSnapshot"]') && !isReadOnlySite()) {
+      const work = appState.daily.report.tradeSections.flatMap((trade) => trade.workItems).find((item) => item.id === target.closest<HTMLElement>('[data-work]')?.dataset.work);
+      const memory = appState.dailyLocations.find((row) => row.normalizedName === normalizeName(target.value)); if (work && (memory || work.locationId)) { appState.daily.update(() => applyLocationMemory(work, memory)); if (memory) { await appState.daily.flush(); await renderApp(); return; } }
     }
     if (target.matches('[data-inline-work], [data-daily-field="vendorNameSnapshot"], [data-daily-field="locationTextSnapshot"]')) {
       try { if (!isReadOnlySite()) await appState.daily.flush(); } catch { appState.dailySaveState = 'error'; updateDailySaveStatus(); }

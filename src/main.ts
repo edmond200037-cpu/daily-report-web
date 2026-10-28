@@ -73,6 +73,8 @@ export async function renderApp(): Promise<void> {
     if (!appState.accountAuth.enabled) await refreshAccount();
     if (token !== appState.renderToken) return;
     if (route.page === 'main') {
+      // 設定頁改過主檔後回到日報，建議清單要讀到最新記憶
+      if (previousRoute && !(previousRoute.module === 'daily' && previousRoute.page === 'main')) { await refreshActiveMemoryCache(); if (token !== appState.renderToken) return; }
       const site = appState.accountAuth.user ? appState.accountSites.find((item) => item.id === appState.accountActiveSiteId) : undefined;
       const aligned = withActiveSharedSite(appState.daily.report, site);
       if (aligned !== appState.daily.report) {

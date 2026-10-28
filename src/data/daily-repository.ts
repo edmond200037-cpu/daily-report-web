@@ -1,3 +1,4 @@
+import { normalizeFloor, comparableFloor } from '../daily/floor';
 import { assertSafePayload } from '../sync/payload-safety';
 import type { SharedScope } from '../domain/shared';
 import { contactTaskMemoryText } from '../daily/entry-workflow';
@@ -11,7 +12,7 @@ import { buildFieldMutations } from '../sync/field-mutations';
 import { APP_VERSION } from '../version';
 
 export type MemoryStatus = 'candidate' | 'confirmed';
-export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; }
+export interface NamedMemory { id: string; name: string; normalizedName: string; usageCount: number; finalizedUsageCount: number; lastUsedAt: string | null; createdAt: string; updatedAt: string; status: MemoryStatus; manuallyCreated?: boolean; manuallyConfirmed?: boolean; firstUsedAt?: string | null; tradeTypeId?: string; startFloorRaw?: string; endFloorRaw?: string; }
 export type DailySettingsSection = 'sites' | 'trade-tasks' | 'trades' | 'tasks' | 'vendors' | 'locations' | 'materials' | 'templates' | 'backup';
 export interface SpecialTemplate { id: string; text: string; normalizedName: string; createdAt: string; updatedAt: string; }
 const TEMPLATE_KEY = 'daily_special_templates_v1';
@@ -170,12 +171,19 @@ async function mutateActiveDraft(tx: IDBTransaction, scope: SharedScope | null, 
   }
   return draft;
 }
-export async function saveMemory(kind: 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations', value: string, tradeTypeId?: string, editingId?: string): Promise<void> {
+export async function saveMemory(kind: 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations', value: string, tradeTypeId?: string, editingId?: string, floors?: Pick<NamedMemory, 'startFloorRaw' | 'endFloorRaw'>): Promise<void> {
   const error = validateText(value, 50); if (error) throw new Error(error); const store = ({ sites: 'sites', trades: 'trade_types', vendors: 'trade_vendors', tasks: 'trade_tasks', locations: 'location_memories' } as const)[kind]; const normalizedName = normalizeName(value); const scope = await loadActiveSharedScope(); const database = await db();
-  try { const tx = database.transaction([store, 'live_report_draft', 'draft_partitions', 'sync_outbox'], 'readwrite'); const records = await request(tx.objectStore(store).getAll()) as NamedMemory[]; if (records.some((row) => row.id !== editingId && row.normalizedName === normalizedName && (!tradeTypeId || row.tradeTypeId === tradeTypeId))) throw new Error('此名稱已存在。'); const current = editingId ? records.find((row) => row.id === editingId) : undefined; const stamp = now(); const row: NamedMemory = current ? { ...current, status: 'confirmed', name: cleanName(value), normalizedName, manuallyConfirmed: true, updatedAt: stamp } : { id: crypto.randomUUID(), name: cleanName(value), normalizedName, usageCount: 0, finalizedUsageCount: 0, lastUsedAt: null, createdAt: stamp, updatedAt: stamp, status: 'confirmed', manuallyCreated: true, manuallyConfirmed: true, firstUsedAt: null, ...(tradeTypeId ? { tradeTypeId } : {}) }; tx.objectStore(store).put(row);
+  try { const tx = database.transaction([store, 'live_report_draft', 'draft_partitions', 'sync_outbox'], 'readwrite'); const records = await request(tx.objectStore(store).getAll()) as NamedMemory[]; if (records.some((row) => row.id !== editingId && row.normalizedName === normalizedName && (!tradeTypeId || row.tradeTypeId === tradeTypeId))) throw new Error('此名稱已存在。'); const current = editingId ? records.find((row) => row.id === editingId) : undefined; const stamp = now(); const row: NamedMemory = current ? { ...current, status: 'confirmed', name: cleanName(value), normalizedName, manuallyConfirmed: true, updatedAt: stamp, ...floors } : { id: crypto.randomUUID(), name: cleanName(value), normalizedName, usageCount: 0, finalizedUsageCount: 0, lastUsedAt: null, createdAt: stamp, updatedAt: stamp, status: 'confirmed', manuallyCreated: true, manuallyConfirmed: true, firstUsedAt: null, ...(tradeTypeId ? { tradeTypeId } : {}), ...floors }; tx.objectStore(store).put(row);
     if (current) await mutateActiveDraft(tx, scope, draft => syncRename(draft, kind, current.id, row.name));
     await txDone(tx);
   } finally { database.close(); }
+}
+/** 位置記憶可手動附帶起訖樓層（正規化字串，空字串＝未設定）；自動學習路徑不會寫入樓層。 */
+export async function saveLocationMemory(name: string, startFloorRaw: string, endFloorRaw: string, editingId?: string): Promise<void> {
+  let start = normalizeFloor(startFloorRaw); let end = normalizeFloor(endFloorRaw);
+  if (start === null || end === null) throw new Error('樓層格式不正確，請輸入數字、B格式，或 RF／PH／MF／R1～R9。');
+  const a = comparableFloor(start || null); const b = comparableFloor(end || null); if (a !== null && b !== null && a > b) [start, end] = [end, start];
+  await saveMemory('locations', name, undefined, editingId, { startFloorRaw: start, endFloorRaw: end });
 }
 /** Selects a confirmed site when available; free daily input remains a draft snapshot. */
 export async function selectSiteMemory(report: DailyReportV3, value: string): Promise<{ report: DailyReportV3; site: NamedMemory }> {
