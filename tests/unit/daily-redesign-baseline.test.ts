@@ -1,5 +1,6 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DailyController } from '../../src/daily/daily-controller';
 import { formatDailyReport } from '../../src/daily/daily-formatter';
@@ -64,10 +65,10 @@ describe('日報紙本表單重整前功能基線', () => {
   it('預覽保存連續輸入的尾端文字，但不觸發記憶套用計數', () => {
     // The event handler has no exported seam; keep this source contract until the
     // Phase 5 Bottom Sheet controller exposes a behaviour-level test seam.
-    const source = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+    const source = appSource();
     const branch = source.match(/if \(action === 'toggle-preview'\) \{([^}]+)\}/)?.[1] ?? '';
 
-    expect(branch).toContain('dailyPreviewOpen = !dailyPreviewOpen');
+    expect(branch).toContain('appState.dailyPreviewOpen = !appState.dailyPreviewOpen');
     expect(branch).toContain('await renderApp()');
     expect(branch).toContain('return');
     expect(branch).not.toContain('daily.update');

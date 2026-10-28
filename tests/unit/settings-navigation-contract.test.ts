@@ -1,8 +1,9 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 
-const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+const main = appSource();
 const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
 
 describe('設定端直達導覽契約', () => {
@@ -16,7 +17,7 @@ describe('設定端直達導覽契約', () => {
   });
 
   it('設定頁保留來源返回操作與六區導覽', () => {
-    expect(main).toContain('let settingsReturnModule: SettingsReturnModule = \'daily\';');
+    expect(main).toContain('settingsReturnModule: SettingsReturnModule = \'daily\';');
     expect(main).toContain('function settingsReturnLink(): string');
     expect(main).toContain('class="settings-context-tabs"');
     expect(css).toContain('.settings-context-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));');

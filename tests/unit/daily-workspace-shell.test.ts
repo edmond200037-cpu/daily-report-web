@@ -1,8 +1,9 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 
-const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+const main = appSource();
 const dailyCss = readFileSync(new URL('../../src/daily/daily.css', import.meta.url), 'utf8');
 
 describe('日報共用工作區骨架', () => {
@@ -17,7 +18,7 @@ describe('日報共用工作區骨架', () => {
     expect(main).toContain('class="module-page__tabs"');
     expect(main).toContain('<section class="daily-workspace" aria-label="日報內容">');
     expect(main).toContain('role="tabpanel"');
-    expect(main).toContain('aria-labelledby="daily-tab-${daily.report.activeTab}"');
+    expect(main).toContain('aria-labelledby="daily-tab-${appState.daily.report.activeTab}"');
     expect(main).toContain('aria-controls="daily-panel-${id}"');
   });
 
