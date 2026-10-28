@@ -24,8 +24,10 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain("trade.status === 'complete' ? '資料齊全'");
   });
 
-  it('保留原有拖曳與展開按鈕的分離語意', () => {
-    expect(daily).toContain('class="drag-handle" data-drag-trade=');
+  it('移除握把按鈕，整列同時承擔展開與長按排序', () => {
+    expect(daily).not.toContain('data-drag-trade');
+    expect(daily).not.toContain('class="drag-handle"');
+    expect(daily).toContain("${sortableAttrs('trade', trade.id)}");
     expect(daily).toContain('data-daily-action="toggle-trade"');
     expect(daily).toContain('aria-controls="trade-content-');
     expect(daily).toContain("${expanded ? '收合' : '展開'}工程條目");

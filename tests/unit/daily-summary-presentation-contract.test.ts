@@ -34,11 +34,12 @@ describe('日報收合摘要高度契約', () => {
     expect(dialog).not.toContain('min-height: 62px');
   });
 
-  it('讓所有日報摘要使用相同的四欄資訊骨架，不能排序的列不留握把欄', () => {
+  it('讓所有日報摘要使用相同的四欄資訊骨架，四類資料列都不留握把欄', () => {
     expect(daily).toContain("${cell('trade', row.meta)}${cell('task', row.primary)}${cell('vendor', row.detail)}");
     expect(daily).toContain('trade-row-summary__status entry-status--${row.statusTone}');
-    expect(daily).toContain("${row.handle ? '' : ' trade-row-summary--plain'}");
-    expect(daily).not.toContain('<span class="drag-handle" aria-hidden="true">▸</span>');
+    expect(daily).toContain('collapsed-summary trade-row-summary--plain">${control}</div>');
+    expect(daily).not.toContain('row.handle');
+    expect(daily).not.toContain('drag-handle" aria-hidden');
     expect(inputCss).toContain('.daily-page .trade-row-summary.trade-row-summary--plain { grid-template-columns:minmax(0,1fr); }');
     expect(inputCss).toContain('.daily-page .trade-row-summary__mobile-vendor:empty { display:none; }');
   });
@@ -55,18 +56,47 @@ describe('日報收合摘要高度契約', () => {
 
   it('讓工程拖曳佔位與預覽完整沿用收合工程列骨架', () => {
     expect(daily).toContain('trade-card--drag-placeholder');
-    expect(daily).toContain('aria-hidden="true">${tradeRowSummary(trade, false');
-    expect(daily).toContain('function tradeDragPreview(id: string): string');
-    expect(daily).toContain('class="daily-page trade-drag-preview__surface"');
+    expect(daily).toContain('aria-hidden="true">${tradeRowSummary(trade, false, false)}');
+    expect(daily).toContain('function entryDragPreview(root: HTMLElement): HTMLElement');
+    expect(daily).toContain("surface.className = 'daily-page trade-drag-preview__surface'");
+    expect(daily).toContain("removeAttribute('id')");
     expect(daily).toContain("const summaryHeight = card.querySelector<HTMLElement>('.trade-row-summary')?.getBoundingClientRect().height ?? rect.height");
     expect(daily).toContain('preview.style.height = `${summaryHeight + 2}px`');
-    expect(daily).toContain('preview.innerHTML = tradeDragPreview(id)');
+    expect(daily).toContain('preview.append(entryDragPreview(card))');
     expect(daily).toContain('function positionTradeDragPreview(preview: HTMLElement, pointerX: number, pointerY: number): void');
     expect(daily).toContain('const maxTop = Math.max(edge, window.innerHeight - rect.height - edge)');
     expect(dailyCss).toContain('height: calc(var(--summary-height) + 2px)');
     expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder { height: 74px; }');
     expect(dailyCss).toContain('.trade-drag-preview { position: fixed; z-index: 1000; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }');
     expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder');
+  });
+
+  it('四類資料列改為整列長按 400ms 排序，且不與點擊、捲動、左滑刪除衝突', () => {
+    expect(daily).not.toContain('[data-drag-trade]');
+    for (const kind of ['trade', 'material', 'contact', 'special']) expect(daily).toContain(`sortableAttrs('${kind}'`);
+    expect(daily).toContain('data-sortable-entry=\"${kind}\" data-entry-id=');
+    expect(daily).toContain(".closest<HTMLElement>('.trade-row-summary__toggle')");
+    expect(daily).toContain("toggle.getAttribute('aria-expanded') !== 'false'");
+    expect(daily).toContain('isReadOnlySite()');
+    expect(daily).toContain('}, 400);');
+    expect(daily).toContain('if (moved >= 8) clearTradeDrag(); return;');
+    expect(daily).toContain('if (Math.abs(dy) <= Math.abs(dx)) { clearTradeDrag(); return; }');
+    expect(daily).toContain('navigator.vibrate?.(10)');
+    expect(daily).toContain('clearTradeSwipe(); navigator.vibrate');
+    expect(daily).toContain("document.addEventListener('touchmove', guardTouchScroll, { passive: false })");
+    expect(daily).toContain('if (tradeDrag.active && event.cancelable) event.preventDefault()');
+    expect(dailyCss).toContain('-webkit-touch-callout: none; user-select: none;');
+    expect(dailyCss).toContain('.swipe-item, .trade-swipe { position: relative; overflow: hidden; border-radius: var(--radius-md); touch-action: pan-y; }');
+  });
+
+  it('排序後重排對應集合、重寫 sortOrder，只有工程列退回草稿，失敗時還原', () => {
+    expect(daily).toContain("trade: 'tradeSections', material: 'standaloneMaterialEntries', contact: 'contacts', special: 'specialItems'");
+    expect(daily).toContain("item.sortOrder = index; if (draft && kind === 'trade') item.status = 'draft';");
+    expect(daily).toContain("apply(original, false); alert('排序儲存失敗，已恢復原順序。')");
+    expect(daily).toContain("entryDropIndicator('material'");
+    expect(daily).toContain("entryDropIndicator('contact'");
+    expect(daily).toContain("entryDropIndicator('special'");
+    expect(daily).toContain("sortable = entry.id.startsWith('draft:') || placeholder ? '' : sortableAttrs('material', entry.id)");
   });
 
   it('以獨立工項輸入元件組成施工紀錄，保留進料與預覽入口', () => {
