@@ -99,7 +99,7 @@
 .daily-page .continuous-work .work-token--item { grid-template-columns:48px minmax(0,1fr); }
 .daily-page .work-gesture { min-width:48px; }
 .work-item-context[hidden] { display:none; }
-.work-add-feedback { display:flex; align-items:center; gap:8px; font-size:.8rem; color:var(--daily-ink-soft); min-width:0; }
+.work-add-feedback { display:flex; align-items:center; gap:8px; font-size:.8rem; color:var(--daily-ink-soft); min-width:0; contain:inline-size; }
 .work-add-feedback > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .work-add-feedback button { flex-shrink:0; min-height:48px; padding:6px 10px; background:transparent; border:0; text-decoration:underline; text-underline-offset:3px; }
 .daily-page .trade-card__content > .action-row, .daily-page .contact-card__content > .form-actions--submit { position:sticky; bottom:0; z-index:25; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr); padding:8px 0 calc(8px + env(safe-area-inset-bottom)); background:var(--daily-paper, #faf7f1); }

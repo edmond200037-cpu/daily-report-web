@@ -13,6 +13,17 @@ describe('日報收合摘要高度契約', () => {
   const dailyCss = source('src/daily/daily.css');
   const inputCss = source('src/daily/input-workflow.css');
 
+  it('工項加入提示不依內容撐寬版面，長文字以省略號截斷', () => {
+    // 500 字工項加入後，nowrap 提示會把格線欄位撐到數千 px，窄螢幕出現水平捲動。
+    expect(inputCss).toMatch(/\.work-add-feedback \{[^}]*contain:inline-size;/);
+    expect(inputCss).toContain('.work-add-feedback > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }');
+  });
+
+  it('底部人數摘要只加總通過驗證的人數，-3、1e3、1.5 不計入', () => {
+    expect(daily).toContain('validateWorkerCount(trade.workerCount) ? Number(trade.workerCount) : 0');
+    expect(daily).not.toContain('Number(trade.workerCount) || 0');
+  });
+
   it('以單一 60px token 固定收合摘要列高度', () => {
     expect(presentation).toContain('--summary-height: 60px');
     expect(presentation).toContain('.collapsed-summary { height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }');
