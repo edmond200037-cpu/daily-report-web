@@ -1,12 +1,13 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 
 const source = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 
 describe('日報收合摘要高度契約', () => {
   const presentation = source('src/presentation.css');
-  const daily = source('src/main.ts');
+  const daily = appSource();
   const styles = source('src/styles.css');
   const dialog = source('src/daily/dialog.css');
   const dailyCss = source('src/daily/daily.css');
@@ -75,5 +76,5 @@ describe('日報收合摘要高度契約', () => {
   });
   it('新工項輸入由可獨立驗證的連續編輯器負責', () => {
     expect(daily).toContain('bindWorkInput(app');
-    expect(daily).toContain("from './daily/work-input'");
+    expect(daily).toContain("from '../work-input'");
   });});

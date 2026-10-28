@@ -1,11 +1,12 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 import { renderAccountPage } from '../../src/account/account-view';
 import { oauthRedirectUrl } from '../../src/auth/auth-service';
 import type { SyncOperation } from '../../src/sync/types';
 
-const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+const main = appSource();
 const styles = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
 const accountCss = readFileSync(new URL('../../src/account/account.css', import.meta.url), 'utf8');
 
@@ -110,12 +111,12 @@ describe('共用工地帳號頁', () => {
   });
 
   it('點共用工地先渲染載入骨架，背景讀取完成才替換資料', () => {
-    expect(main).toContain("if (route.module === 'account') { if (route.page === 'debug') settingsDebug = await databaseSummary(); if (token !== renderToken) return; renderAccountLoading(); void refreshAccount(() =>");
+    expect(main).toContain("if (route.module === 'account') { if (route.page === 'debug') appState.settingsDebug = await databaseSummary(); if (token !== appState.renderToken) return; renderAccountLoading(); void refreshAccount(() =>");
     expect(main).toContain('正在載入共用工地…');
-    expect(main).toContain('token !== renderToken || parseRoute(location.hash).module !== \'account\'');
+    expect(main).toContain('token !== appState.renderToken || parseRoute(location.hash).module !== \'account\'');
     expect(main).toContain("button.dataset.accountAction === 'retry-load-account'");
-    expect(main).toContain('15_000 - (started - accountLoadStartedAt)');
-    expect(main).toContain('accountLoadCoreReady = true;');
+    expect(main).toContain('15_000 - (started - appState.accountLoadStartedAt)');
+    expect(main).toContain('appState.accountLoadCoreReady = true;');
   });
 
   it('頁首與明細使用同一批全部狀態的八筆待同步操作', () => {

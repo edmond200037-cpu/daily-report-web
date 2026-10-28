@@ -1,5 +1,6 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it, vi } from 'vitest';
 import { listAccessibleSites, listSiteMembers, mapAccessibleSiteMembershipRows } from '../../src/data/remote/site-repository';
 import { getSupabaseClient } from '../../src/data/remote/supabase-client';
@@ -69,7 +70,7 @@ describe('我的工地與成員管理的查詢邊界', () => {
   });
 
   it('重新整理帳號以目前登入使用者查詢工地', () => {
-    const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+    const main = appSource();
     expect(main).toContain('listAccessibleSites(auth.user.id)');
   });
 });

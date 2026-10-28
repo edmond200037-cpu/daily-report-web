@@ -1,5 +1,6 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 import { confirmationSelection, groupMemoryCandidates, memoryCandidateImpact, rejectionSelection } from '../../src/settings/memory-review';
 import { createDailyDraft, createMaterialEntry, createTrade, createWorkItem } from '../../src/domain/daily';
@@ -54,7 +55,7 @@ describe('記憶例外收件匣 workflow', () => {
 });
 
 describe('記憶審核呈現契約', () => {
-  const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+  const main = appSource();
   const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
   it('沿用設定中心工作區骨架，提供全選全部、區內全選與條件式批次操作列', () => {
     expect(main).toContain('data-memory-group-toggle');

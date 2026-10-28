@@ -1,9 +1,10 @@
 // @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('../../src/daily/material.css', import.meta.url), 'utf8');
-const main = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
+const main = appSource();
 
 describe('進料接線盤呈現契約', () => {
   it('桌面以兩側 280px 節點欄夾中間可伸展接線區', () => {

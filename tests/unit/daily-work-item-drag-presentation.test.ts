@@ -1,11 +1,12 @@
 // @ts-expect-error Vitest runs this source-contract test with Node types.
 import { readFileSync } from 'node:fs';
+import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 
 const source = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 
 describe('工項拖曳呈現契約', () => {
-  const daily = source('src/main.ts');
+  const daily = appSource();
   const styles = source('src/daily/daily.css');
 
   it('保留完整 transient 拖曳狀態與 6px pending 門檻', () => {
