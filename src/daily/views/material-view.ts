@@ -5,7 +5,7 @@ import { escapeHtml } from '../../shared/html';
 import { renderApp } from '../../main';
 import { appState, app, type MaterialConnectionUndoNotice } from '../../app/state';
 import { normalizeSearch } from '../../app/shell';
-import { dailyEntrySummary } from './daily-view';
+import { entryRowSummary } from './daily-view';
 const MATERIAL_CONNECTION_NODE_HEIGHT_PX = 68;
 const MATERIAL_CONNECTION_NODE_GAP_PX = 8;
 export const materialDirty = () => Boolean(appState.materialEditor && (!appState.materialEditor.originalId || JSON.stringify(appState.materialEditor.value) !== JSON.stringify(appState.daily.materialEntry(appState.materialEditor.originalId))));
@@ -17,8 +17,8 @@ export const materialChoices = (fieldName: MaterialSuggestField, value: string):
 };
 function materialInput(label: string, name: 'materialTypeSnapshot' | 'itemName' | 'specification' | 'quantity' | 'unit' | 'supplierNameSnapshot', value: string): string { const suggest = name === 'quantity' ? '' : ' autocomplete="off" role="combobox" aria-autocomplete="list"'; const error = appState.materialEditor?.errors.find((item) => item.startsWith(`${name}:`))?.slice(name.length + 1) ?? ''; return `<label>${label}<input data-material-field="${name}" value="${escapeHtml(value)}"${suggest} aria-invalid="${Boolean(error)}">${error ? `<span class="field-error">${escapeHtml(error)}</span>` : ''}</label>`; }
 export function materialEntryView(entry: MaterialEntry): string {
-  const editing = appState.materialEditor?.id === entry.id; const trade = entry.connectedTradeSectionId ? appState.daily.trade(entry.connectedTradeSectionId) : undefined; const connectionLabel = entry.entryType === 'independent' ? (trade ? '已連接' : '未連接') : '普通'; const connectionTone = materialStatusTone(entry.entryType, Boolean(trade)); const details = [entry.materialTypeSnapshot, entry.quantity && entry.unit ? `${entry.quantity} ${entry.unit}` : entry.quantity || entry.unit, entry.supplierNameSnapshot].filter(Boolean).join('｜') || '尚未填寫';
-  const summary = `<header class="daily-entry-summary collapsed-summary material-entry__summary" data-material-standalone="true" data-daily-action="toggle-material" data-material-id="${escapeHtml(entry.id)}">${dailyEntrySummary({ kind: 'material', primary: entry.itemName || '尚未命名', secondary: details, status: connectionLabel, statusTone: connectionTone })}</header>`;
+  const editing = appState.materialEditor?.id === entry.id; const trade = entry.connectedTradeSectionId ? appState.daily.trade(entry.connectedTradeSectionId) : undefined; const connectionLabel = entry.entryType === 'independent' ? (trade ? '已連接' : '未連接') : '普通'; const connectionTone = materialStatusTone(entry.entryType, Boolean(trade)); const details = [entry.quantity && entry.unit ? `${entry.quantity} ${entry.unit}` : entry.quantity || entry.unit || '數量未填', entry.supplierNameSnapshot || '未填供應商'].join('・');
+  const summary = entryRowSummary({ meta: entry.materialTypeSnapshot || '未填類型', primary: entry.itemName || '尚未命名', detail: details, status: connectionLabel, statusTone: connectionTone, control: `data-daily-action="toggle-material" data-material-id="${escapeHtml(entry.id)}" aria-expanded="${editing}" aria-label="${escapeHtml(`${editing ? '收合' : '展開'}進料：${entry.itemName || '尚未命名'}`)}"` });
   // 尚未儲存的表單草稿不屬於日報資料，不能讓它進入刪除／復原流程。
   const swipe = (content: string) => entry.id.startsWith('draft:') ? content : `<div class="swipe-item material-swipe" data-swipe-item="true" data-swipe-kind="material" data-swipe-id="${escapeHtml(entry.id)}"><div class="swipe-item__delete" aria-hidden="true">🗑</div>${content}</div>`;
   if (!editing) return swipe(`<article class="daily-entry material-entry material-entry--summary" data-material="${escapeHtml(entry.id)}" data-material-standalone="true">${summary}</article>`);

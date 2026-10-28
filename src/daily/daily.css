@@ -73,12 +73,10 @@
 .work-item-drop-indicator { height: 4px; margin: calc(var(--work-item-stack-gap) * -.5) 0; margin-inline: calc(var(--work-item-leading-column) + var(--work-item-column-gap)) 0; border-radius: 2px; background: var(--daily-orange); pointer-events: none; }
 .work-item-drop-indicator--trailing { margin-top: calc(var(--work-item-stack-gap) * -.5); }
 
-.material-entry__summary { width: 100%; cursor: pointer; }
 .material-tag { font-size: .75rem; }
 .material-entry__divider { height: 0; margin: 0; }
-.material-entry--editing .material-entry__summary { cursor: default; }
 
-.contact-card__summary, .contact-card__header, .special-card__summary { cursor: pointer; }
+.contact-card__header { cursor: pointer; }
 .contact-card__header .entry-copy { padding-block: .5rem; }
 .contact-card__content { padding-top: .25rem; }
 .contact-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }

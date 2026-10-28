@@ -14,9 +14,10 @@ describe('工程資料列呈現契約', () => {
 
   it('以工程專用摘要列呈現工種、代表工項、廠商人數與狀態', () => {
     expect(daily).toContain('function tradeRowSummary');
-    expect(daily).toContain('trade-row-summary__trade');
-    expect(daily).toContain('trade-row-summary__task');
-    expect(daily).toContain('trade-row-summary__vendor');
+    expect(daily).toContain('`<div class="trade-row-summary__${name}"');
+    expect(daily).toContain("cell('trade', row.meta)");
+    expect(daily).toContain("cell('task', row.primary)");
+    expect(daily).toContain("cell('vendor', row.detail)");
     expect(daily).toContain('trade-row-summary__status');
     expect(daily).toContain('const nonEmptyWorkItems = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).filter');
     expect(daily).toContain('另 ${nonEmptyWorkItems.length - 1} 項');
@@ -28,7 +29,8 @@ describe('工程資料列呈現契約', () => {
     expect(daily).toContain('data-daily-action="toggle-trade"');
     expect(daily).toContain('aria-controls="trade-content-');
     expect(daily).toContain("${expanded ? '收合' : '展開'}工程條目");
-    expect(daily).toContain('title="${escapeHtml(taskSummary)}"');
+    expect(daily).toContain('title="${escapeHtml(value)}"');
+    expect(daily).toContain('primary: taskSummary');
   });
 
   it('工項附加資料可返回文字輸入，位置與備註維持獨立欄位', () => {

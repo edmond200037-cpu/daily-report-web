@@ -5,7 +5,7 @@ import type { DailyReportV3, TradeSection, ContactItem } from '../../domain/dail
 import { validateTrade } from '../daily-validator';
 import { normalizeName } from '../../format/normalization';
 import { duplicateVendorTradeIds, groupOutputTrades } from '../daily-output-model';
-import { contentStatusTone, tradeStatusTone } from '../entry-presentation';
+import { tradeStatusTone, type EntryStatusTone } from '../entry-presentation';
 import { workInputView } from '../work-input';
 import { refreshCompleteness } from '../input-workflow';
 import { escapeHtml } from '../../shared/html';
@@ -17,15 +17,7 @@ import { materialConnectionPanel, materialEntryView } from './material-view';
 import { contactCard } from './contact-view';
 import { specialCard } from './special-view';
 import { pruneTradeUndoQueue } from './daily-gestures';
-type DailyEntrySummary = {
-  kind: 'engineering' | 'material' | 'contact' | 'special';
-  primary: string;
-  secondary: string;
-  status: string;
-  statusTone: ReturnType<typeof contentStatusTone>;
-  leadingControl?: string;
-  contentButtonAttributes?: string;
-};
+type EntryRow = { meta: string; primary: string; detail: string; status: string; statusTone: EntryStatusTone; handle?: string; control?: string };
 const field = (label: string, name: string, value: string, type = 'text') => `<label>${label}<input data-daily-field="${name}" type="${type}" value="${escapeHtml(value)}"></label>`;
 function sitePickerField(): string {
   if (appState.accountAuth.user) {
@@ -41,11 +33,12 @@ function sitePickerField(): string {
   return `<div class="site-search-field"><label><span class="site-search-field__label">工地<a href="#settings/daily">管理工地</a></span><input data-site-search type="text" role="combobox" aria-autocomplete="list" aria-expanded="${appState.siteSearchOpen}" aria-controls="site-search-suggestions" autocomplete="off" placeholder="搜尋或新增工地" value="${escapeHtml(query)}"></label>${suggestions}</div>`;
 }
 const tabs: Array<[DailyReportV3['activeTab'], string]> = [['engineering', '施工紀錄'], ['supplies', '進料'], ['contacts', '聯絡事項'], ['special', '特殊事項']];
-const summaryLabels: Record<DailyEntrySummary['kind'], string> = { engineering: '工程', material: '進料', contact: '聯絡', special: '特殊' };
-export function dailyEntrySummary(summary: DailyEntrySummary): string {
-  const leading = summary.leadingControl ?? `<span class="daily-entry-summary__leading">${summaryLabels[summary.kind]}</span>`;
-  const content = `<span class="daily-entry-summary__copy"><strong class="daily-entry-summary__primary">${escapeHtml(summary.primary)}</strong><span class="daily-entry-summary__secondary">${escapeHtml(summary.secondary)}</span></span><span class="daily-entry-summary__status entry-status--${summary.statusTone}">${escapeHtml(summary.status)}</span>`;
-  return `${leading}${summary.contentButtonAttributes ? `<button type="button" class="daily-entry-summary__toggle" ${summary.contentButtonAttributes}>${content}</button>` : content}`;
+// 四類條目共用施工列骨架：分類／主內容／補充／狀態；不能排序的列不留握把欄。
+export function entryRowSummary(row: EntryRow): string {
+  const cell = (name: string, value: string) => `<div class="trade-row-summary__${name}" title="${escapeHtml(value)}">${escapeHtml(value)}</div>`;
+  const content = `${cell('trade', row.meta)}${cell('task', row.primary)}${cell('vendor', row.detail)}<div class="trade-row-summary__status entry-status--${row.statusTone}">${escapeHtml(row.status)}</div><div class="trade-row-summary__mobile-meta"><span class="trade-row-summary__mobile-trade" title="${escapeHtml(row.meta)}">${escapeHtml(row.meta)}</span><span class="trade-row-summary__mobile-vendor" title="${escapeHtml(row.detail)}">${escapeHtml(row.detail)}</span></div>`;
+  const control = row.control ? `<button type="button" class="trade-row-summary__toggle" ${row.control}>${content}</button>` : `<div class="trade-row-summary__toggle">${content}</div>`;
+  return `<div class="trade-row-summary collapsed-summary${row.handle ? '' : ' trade-row-summary--plain'}">${row.handle ?? ''}${control}</div>`;
 }
 export function tradeRowSummary(trade: TradeSection, expanded: boolean, handle: string, interactive = true): string {
   const nonEmptyWorkItems = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).filter((work) => work.taskTextSnapshot.trim());
@@ -56,9 +49,8 @@ export function tradeRowSummary(trade: TradeSection, expanded: boolean, handle: 
   const vendor = [trade.vendorNameSnapshot || '未填廠商', trade.workerCount ? `${trade.workerCount} 人` : '人數未填'].join('・');
   const missing = validateTrade(trade, appState.daily.linkedMaterialEntries(trade.id));
   const status = trade.status === 'complete' ? '資料齊全' : missing[0]?.message.replace('請輸入施工', '缺').replace('請選擇', '缺').replace('。', '') ?? '需檢查';
-  const content = `<div class="trade-row-summary__trade" title="${escapeHtml(tradeName)}">${escapeHtml(tradeName)}</div><div class="trade-row-summary__task" title="${escapeHtml(taskSummary)}">${escapeHtml(taskSummary)}</div><div class="trade-row-summary__vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</div><div class="trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}">${status}</div><div class="trade-row-summary__mobile-meta"><span class="trade-row-summary__mobile-trade" title="${escapeHtml(tradeName)}">${escapeHtml(tradeName)}</span><span class="trade-row-summary__mobile-vendor" title="${escapeHtml(vendor)}">${escapeHtml(vendor)}</span></div>`;
-  const control = interactive ? `<button type="button" class="trade-row-summary__toggle" data-daily-action="toggle-trade" data-id="${escapeHtml(trade.id)}" aria-expanded="${expanded}" aria-controls="trade-content-${escapeHtml(trade.id)}" aria-label="${escapeHtml(`${expanded ? '收合' : '展開'}工程條目：${trade.tradeNameSnapshot}`)}">${content}</button>` : `<div class="trade-row-summary__toggle">${content}</div>`;
-  return `<div class="trade-row-summary collapsed-summary">${handle}${control}</div>`;
+  const control = interactive ? `data-daily-action="toggle-trade" data-id="${escapeHtml(trade.id)}" aria-expanded="${expanded}" aria-controls="trade-content-${escapeHtml(trade.id)}" aria-label="${escapeHtml(`${expanded ? '收合' : '展開'}工程條目：${trade.tradeNameSnapshot}`)}"` : undefined;
+  return entryRowSummary({ meta: tradeName, primary: taskSummary, detail: vendor, status, statusTone: tradeStatusTone(trade.status), handle, control });
 }
 function tabCount(tab: DailyReportV3['activeTab']): number { if (tab === 'engineering') return appState.daily.report.tradeSections.length; if (tab === 'supplies') return appState.daily.report.standaloneMaterialEntries.length + (appState.materialEditor && !appState.materialEditor.originalId ? 1 : 0); if (tab === 'contacts') return appState.daily.report.contacts.length + (appState.contactEditor && !appState.contactEditor.originalId ? 1 : 0); return appState.daily.report.specialItems.length; }
 function dailyTabs(): string { return `<section class="daily-tabs" role="tablist" aria-label="施工日報分類">${tabs.map(([id, label]) => { const count = tabCount(id); return `<button type="button" role="tab" data-daily-tab="${id}" id="daily-tab-${id}" aria-controls="daily-panel-${id}" tabindex="${appState.daily.report.activeTab === id ? 0 : -1}" aria-selected="${appState.daily.report.activeTab === id}" class="${appState.daily.report.activeTab === id ? 'active' : ''}">${label}${count ? `<span class="daily-tab__count" aria-label="${count} 個項目">${count}</span>` : ''}</button>`; }).join('')}</section>`; }

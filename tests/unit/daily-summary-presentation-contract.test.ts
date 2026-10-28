@@ -11,6 +11,7 @@ describe('日報收合摘要高度契約', () => {
   const styles = source('src/styles.css');
   const dialog = source('src/daily/dialog.css');
   const dailyCss = source('src/daily/daily.css');
+  const inputCss = source('src/daily/input-workflow.css');
 
   it('以單一 60px token 固定收合摘要列高度', () => {
     expect(presentation).toContain('--summary-height: 60px');
@@ -18,29 +19,28 @@ describe('日報收合摘要高度契約', () => {
   });
 
   it('將四類條目與日報預覽接到共同摘要列', () => {
-    // Editors use a plain title and return action; collapsed records retain the shared summary.
-    expect(daily.match(/collapsed-summary/g)).toHaveLength(5);
+    // Editors use a plain title and return action; collapsed records share the trade-row summary.
+    expect(daily.match(/collapsed-summary/g)).toHaveLength(2);
     expect(daily).toContain('class="entry-editor-header"');
-    expect(daily).toContain('type DailyEntrySummary');
-    expect(daily).toContain('function dailyEntrySummary');
-    expect(daily).toContain("kind: 'engineering'");
-    expect(daily).toContain("kind: 'material'");
-    expect(daily).toContain('trade-row-summary collapsed-summary contact-row-summary');
-    expect(daily).toContain("kind: 'special'");
+    expect(daily).toContain('function entryRowSummary(row: EntryRow)');
+    expect(daily).not.toContain('dailyEntrySummary');
+    expect(daily).toContain("return entryRowSummary({ meta: tradeName, primary: taskSummary");
+    expect(daily).toContain('entryRowSummary({ meta: entry.materialTypeSnapshot');
+    expect(daily).toContain('entryRowSummary({ meta: title, primary: summary, detail: vendor');
+    expect(daily).toContain("entryRowSummary({ meta: '現場提醒'");
     expect(styles).toContain('min-height: var(--summary-height)');
     expect(dialog).toContain('min-height: var(--summary-height)');
     expect(dialog).not.toContain('min-height: 58px');
     expect(dialog).not.toContain('min-height: 62px');
   });
 
-  it('讓所有日報摘要使用相同的四欄資訊骨架', () => {
-    expect(daily).toContain('summary__leading');
-    expect(daily).toContain('summary__primary');
-    expect(daily).toContain('summary__secondary');
-    expect(daily).toContain('summary__status');
-    expect(dailyCss).toContain('.daily-entry-summary');
-    expect(dailyCss).toContain('.daily-entry-summary__primary');
-    expect(dailyCss).toContain('.daily-entry-summary__secondary');
+  it('讓所有日報摘要使用相同的四欄資訊骨架，不能排序的列不留握把欄', () => {
+    expect(daily).toContain("${cell('trade', row.meta)}${cell('task', row.primary)}${cell('vendor', row.detail)}");
+    expect(daily).toContain('trade-row-summary__status entry-status--${row.statusTone}');
+    expect(daily).toContain("${row.handle ? '' : ' trade-row-summary--plain'}");
+    expect(daily).not.toContain('<span class="drag-handle" aria-hidden="true">▸</span>');
+    expect(inputCss).toContain('.daily-page .trade-row-summary.trade-row-summary--plain { grid-template-columns:minmax(0,1fr); }');
+    expect(inputCss).toContain('.daily-page .trade-row-summary__mobile-vendor:empty { display:none; }');
   });
 
   it('以共用字體 token 隔離按鈕預設字重與行高', () => {

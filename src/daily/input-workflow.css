@@ -140,6 +140,11 @@
 .daily-page .contact-work > .contact-add input { width:100%; }
 .daily-page .contact-tasks { position:relative; display:grid; gap:6px; margin:0; }
 .daily-page .contact-work-item > .work-gesture { touch-action:none; }
-.daily-page .contact-row-summary > .drag-handle { font-size:1rem; }
+/* Rows without a sort handle (material, contact, special) keep the trade-row skeleton minus the handle column. */
+.daily-page .trade-row-summary.trade-row-summary--plain { grid-template-columns:minmax(0,1fr); }
+.daily-page .trade-row-summary--plain > .trade-row-summary__toggle { grid-column:1; }
+.daily-page .trade-row-summary--plain .trade-row-summary__trade { border-left:0; }
+.daily-page .trade-row-summary__mobile-vendor:empty { display:none; }
+@media (max-width:639px) { .daily-page .trade-row-summary--plain > .trade-row-summary__toggle { padding-left:12px; } }
 .daily-page .contact-discard { margin-top:8px; border-top:1px solid var(--line); font-size:.8rem; }
 .daily-page .contact-discard summary, .daily-page .contact-task-details summary { min-height:44px; box-sizing:border-box; padding:12px 4px; cursor:pointer; }
