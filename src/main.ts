@@ -23,6 +23,7 @@ import { dailyHistoryView, dailyView, applyDailyReadOnly, updateDailySaveStatus 
 import { bindMaterialConnectionResize, syncMaterialConnectionCurves, discardMaterialEditor, materialDirty } from './daily/views/material-view';
 import { contactDirty } from './daily/views/contact-view';
 import { restoreEntryScope, persistEntryDraft, savePendingDailyInput, showEntrySaveError } from './daily/views/daily-entry';
+import { bindMaterialSuggestionEvents } from './daily/views/material-suggestions';
 import { bindDailyInputEvents, bindContactInputEvents, bindSiteSearchEvents, handleDailyAction, bindBackgroundCollapseEvents, bindDailyKeyEvents } from './daily/views/daily-events';
 import { bindDailyGestureEvents } from './daily/views/daily-gestures';
 import { refreshSettings, dataSystemView, memoryReviewView, dailySettingsView, prepareNextMemoryGroup, performMemoryReviewWrite, memoryCandidateLabels, rejectMemoryCandidate, type DailySettingsArea, dailySettingsAreas } from './settings/views/settings-view';
@@ -96,6 +97,7 @@ bindWorkspaceEvents();
 bindAccountEvents();
 bindWaterInputEvents();
 bindContactInputEvents();
+bindMaterialSuggestionEvents();
 bindSettingsChangeEvents();
 bindSiteSearchEvents();
 app.addEventListener('click', async (event) => {

@@ -23,6 +23,16 @@ describe('叫料格式與驗證', () => {
     expect(output).toContain('2.混凝土-天誠：泵送混凝土5方，140kgf/cm²。');
     expect(output.match(/泵送混凝土/g)).toHaveLength(1);
   });
+  it('普通進料連接工程條目時轉為獨立進料，解除連接後回到普通進料', () => {
+    const controller = new DailyController(report());
+    controller.report.standaloneMaterialEntries = [material({ id: 'm9', entryType: 'normal' })];
+    controller.connectMaterial('t1', 'm9');
+    expect(controller.materialEntry('m9')).toMatchObject({ entryType: 'independent', connectedTradeSectionId: 't1' });
+    const undo = controller.disconnectMaterial('m9')!;
+    expect(controller.materialEntry('m9')).toMatchObject({ entryType: 'normal', connectedTradeSectionId: null });
+    controller.undoDisconnectMaterial(undo);
+    expect(controller.materialEntry('m9')).toMatchObject({ entryType: 'independent', connectedTradeSectionId: 't1' });
+  });
   it('聯絡事項依施工項目排序使用全形分號輸出', () => {
     const draft = report();
     draft.contacts = [{ id: 'c1', tradeTypeId: 't1', tradeNameSnapshot: '鋼筋工程', vendorId: 'v1', vendorNameSnapshot: '萬大禾', items: [{ id: 'i2', content: '門窗開口補強', sortOrder: 1, createdAt: '', updatedAt: '' }, { id: 'i1', content: '1FL～3FL門窗角隅補強', sortOrder: 0, createdAt: '', updatedAt: '' }], sortOrder: 0, createdAt: '', updatedAt: '' }];
