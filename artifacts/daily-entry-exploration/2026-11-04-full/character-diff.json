@@ -1,0 +1,272 @@
+[
+  {
+    "operation": "insert",
+    "expectedRange": [
+      0,
+      0
+    ],
+    "actualRange": [
+      0,
+      15
+    ],
+    "expected": "",
+    "actual": "鑫天地六期：11/4（三）\n\n",
+    "expectedUnicode": [],
+    "actualUnicode": [
+      "U+946B",
+      "U+5929",
+      "U+5730",
+      "U+516D",
+      "U+671F",
+      "U+FF1A",
+      "U+0031",
+      "U+0031",
+      "U+002F",
+      "U+0034",
+      "U+FF08",
+      "U+4E09",
+      "U+FF09",
+      "U+000A",
+      "U+000A"
+    ]
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      51,
+      52
+    ],
+    "actualRange": [
+      66,
+      77
+    ],
+    "expected": "、",
+    "actual": "。\n3.鋼筋-萬大禾：",
+    "expectedUnicode": [
+      "U+3001"
+    ],
+    "actualUnicode": [
+      "U+3002",
+      "U+000A",
+      "U+0033",
+      "U+002E",
+      "U+92FC",
+      "U+7B4B",
+      "U+002D",
+      "U+842C",
+      "U+5927",
+      "U+79BE",
+      "U+FF1A"
+    ]
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      62,
+      63
+    ],
+    "actualRange": [
+      87,
+      98
+    ],
+    "expected": "、",
+    "actual": "。\n4.鋼筋-萬大禾：",
+    "expectedUnicode": [
+      "U+3001"
+    ],
+    "actualUnicode": [
+      "U+3002",
+      "U+000A",
+      "U+0034",
+      "U+002E",
+      "U+92FC",
+      "U+7B4B",
+      "U+002D",
+      "U+842C",
+      "U+5927",
+      "U+79BE",
+      "U+FF1A"
+    ]
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      72,
+      73
+    ],
+    "actualRange": [
+      107,
+      118
+    ],
+    "expected": "、",
+    "actual": "。\n5.鋼筋-萬大禾：",
+    "expectedUnicode": [
+      "U+3001"
+    ],
+    "actualUnicode": [
+      "U+3002",
+      "U+000A",
+      "U+0035",
+      "U+002E",
+      "U+92FC",
+      "U+7B4B",
+      "U+002D",
+      "U+842C",
+      "U+5927",
+      "U+79BE",
+      "U+FF1A"
+    ]
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      82,
+      83
+    ],
+    "actualRange": [
+      127,
+      138
+    ],
+    "expected": "、",
+    "actual": "。\n6.鋼筋-萬大禾：",
+    "expectedUnicode": [
+      "U+3001"
+    ],
+    "actualUnicode": [
+      "U+3002",
+      "U+000A",
+      "U+0036",
+      "U+002E",
+      "U+92FC",
+      "U+7B4B",
+      "U+002D",
+      "U+842C",
+      "U+5927",
+      "U+79BE",
+      "U+FF1A"
+    ]
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      93,
+      94
+    ],
+    "actualRange": [
+      148,
+      159
+    ],
+    "expected": "、",
+    "actual": "。\n7.鋼筋-萬大禾：",
+    "expectedUnicode": [
+      "U+3001"
+    ],
+    "actualUnicode": [
+      "U+3002",
+      "U+000A",
+      "U+0037",
+      "U+002E",
+      "U+92FC",
+      "U+7B4B",
+      "U+002D",
+      "U+842C",
+      "U+5927",
+      "U+79BE",
+      "U+FF1A"
+    ]
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      103,
+      104
+    ],
+    "actualRange": [
+      168,
+      179
+    ],
+    "expected": "、",
+    "actual": "。\n8.鋼筋-萬大禾：",
+    "expectedUnicode": [
+      "U+3001"
+    ],
+    "actualUnicode": [
+      "U+3002",
+      "U+000A",
+      "U+0038",
+      "U+002E",
+      "U+92FC",
+      "U+7B4B",
+      "U+002D",
+      "U+842C",
+      "U+5927",
+      "U+79BE",
+      "U+FF1A"
+    ]
+  },
+  {
+    "operation": "delete",
+    "expectedRange": [
+      114,
+      124
+    ],
+    "actualRange": [
+      189,
+      189
+    ],
+    "expected": "噸，合計107.12",
+    "actual": "",
+    "expectedUnicode": [
+      "U+5678",
+      "U+FF0C",
+      "U+5408",
+      "U+8A08",
+      "U+0031",
+      "U+0030",
+      "U+0037",
+      "U+002E",
+      "U+0031",
+      "U+0032"
+    ],
+    "actualUnicode": []
+  },
+  {
+    "operation": "replace",
+    "expectedRange": [
+      263,
+      267
+    ],
+    "actualRange": [
+      328,
+      329
+    ],
+    "expected": "----",
+    "actual": "\n",
+    "expectedUnicode": [
+      "U+002D",
+      "U+002D",
+      "U+002D",
+      "U+002D"
+    ],
+    "actualUnicode": [
+      "U+000A"
+    ]
+  },
+  {
+    "operation": "delete",
+    "expectedRange": [
+      338,
+      339
+    ],
+    "actualRange": [
+      400,
+      400
+    ],
+    "expected": "\n",
+    "actual": "",
+    "expectedUnicode": [
+      "U+000A"
+    ],
+    "actualUnicode": []
+  }
+]

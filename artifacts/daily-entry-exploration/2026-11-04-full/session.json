@@ -1,0 +1,2525 @@
+{
+  "body": "已保存本機 下午04:41\n\n施工日報\n設定\n施工日報\n水位變化\n本機工作區\n登入並選擇工地\n日報日期\n工地\n管理工地\n施工紀錄5\n進料7\n聯絡事項2\n特殊事項\n聯絡事項\n\n已建立 2 筆聯絡事項\n\n新增聯絡事項\n🗑\n預定11/04(三)鋼筋進料\n資料齊全\n鋼筋\n萬大禾\n🗑\n預定11/04(三)地下室照明設備安裝\n資料齊全\n水電工程\n益永\n5 筆施工 · 53 人 · 2 筆聯絡\n5 筆資料齊全，可檢查日報\n收合預覽\n鑫天地六期：11/4（三）\n\n紮筋工程：\n1.順立40工-下層基礎版鋼筋及周邊樑工作筋綁紮。\n2.鋼筋-萬大禾：#4鋼筋19.99噸。\n3.鋼筋-萬大禾：#5鋼筋12.62噸。\n4.鋼筋-萬大禾：#6鋼筋0.19噸。\n5.鋼筋-萬大禾：#7鋼筋2.04噸。\n6.鋼筋-萬大禾：#8鋼筋14.89噸。\n7.鋼筋-萬大禾：#10鋼筋7.2噸。\n8.鋼筋-萬大禾：#11鋼筋50.19噸。\n\n鋼筋續接工程：萬大禾3工-正交樑鋼筋續接組接。\n\n安全支撐工程：安暉3工-中間樁止水條施作。\n\n植筋工程：冠嶺4工-連續壁公母接頭植筋施作。\n\n雜工工程：藝境3工-人員及車輛管制、環境整理、交通管制、工區內及周邊環境清掃、地下室垃圾撿拾、照明及通風設備調整、雜草清理。\n\n-----------\n聯絡事項：\n1.鋼筋-萬大禾預定11/04(三)鋼筋進料。\n2.水電工程-益永預定11/04(三)地下室照明設備安裝。\n僅複製\n定稿並複製\n查看近 7 天\n\n定稿會保留 7 天，之後自動清除；草稿保留供繼續編輯。\n\n已在本機定稿並複製；草稿已保留。 記憶與草稿同步於背景處理，定稿快照保存在此裝置。",
+  "clipboard": "鑫天地六期：11/4（三）\n\n紮筋工程：\n1.順立40工-下層基礎版鋼筋及周邊樑工作筋綁紮。\n2.鋼筋-萬大禾：#4鋼筋19.99噸。\n3.鋼筋-萬大禾：#5鋼筋12.62噸。\n4.鋼筋-萬大禾：#6鋼筋0.19噸。\n5.鋼筋-萬大禾：#7鋼筋2.04噸。\n6.鋼筋-萬大禾：#8鋼筋14.89噸。\n7.鋼筋-萬大禾：#10鋼筋7.2噸。\n8.鋼筋-萬大禾：#11鋼筋50.19噸。\n\n鋼筋續接工程：萬大禾3工-正交樑鋼筋續接組接。\n\n安全支撐工程：安暉3工-中間樁止水條施作。\n\n植筋工程：冠嶺4工-連續壁公母接頭植筋施作。\n\n雜工工程：藝境3工-人員及車輛管制、環境整理、交通管制、工區內及周邊環境清掃、地下室垃圾撿拾、照明及通風設備調整、雜草清理。\n\n-----------\n聯絡事項：\n1.鋼筋-萬大禾預定11/04(三)鋼筋進料。\n2.水電工程-益永預定11/04(三)地下室照明設備安裝。",
+  "audit": {
+    "actions": [
+      {
+        "kind": "fill",
+        "target": "工地",
+        "value": "鑫天地六期",
+        "result": "success",
+        "sequence": 1
+      },
+      {
+        "kind": "click",
+        "target": "新增並使用工地",
+        "result": "success",
+        "sequence": 2
+      },
+      {
+        "kind": "click",
+        "target": "新增施工紀錄",
+        "result": "success",
+        "sequence": 3
+      },
+      {
+        "kind": "fill",
+        "target": "搜尋工種名稱",
+        "value": "紮筋工程",
+        "result": "success",
+        "sequence": 4
+      },
+      {
+        "kind": "click",
+        "target": "立即新增紮筋工程",
+        "result": "success",
+        "sequence": 5
+      },
+      {
+        "kind": "fill",
+        "target": "紮筋廠商",
+        "value": "順立",
+        "result": "success",
+        "sequence": 6
+      },
+      {
+        "kind": "fill",
+        "target": "紮筋人數",
+        "value": "40",
+        "result": "success",
+        "sequence": 7
+      },
+      {
+        "kind": "fill",
+        "target": "紮筋工項",
+        "value": "下層基礎版鋼筋及周邊樑工作筋綁紮",
+        "result": "success",
+        "sequence": 8
+      },
+      {
+        "kind": "click",
+        "target": "紮筋加入工項",
+        "result": "success",
+        "sequence": 9
+      },
+      {
+        "kind": "click",
+        "target": "完成紮筋工程",
+        "result": "success",
+        "sequence": 10
+      },
+      {
+        "kind": "click",
+        "target": "新增施工紀錄",
+        "result": "success",
+        "sequence": 11
+      },
+      {
+        "kind": "fill",
+        "target": "搜尋工種名稱",
+        "value": "鋼筋續接工程",
+        "result": "success",
+        "sequence": 12
+      },
+      {
+        "kind": "click",
+        "target": "立即新增鋼筋續接工程",
+        "result": "success",
+        "sequence": 13
+      },
+      {
+        "kind": "fill",
+        "target": "鋼筋續接工程廠商",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 14
+      },
+      {
+        "kind": "fill",
+        "target": "鋼筋續接工程人數",
+        "value": "3",
+        "result": "success",
+        "sequence": 15
+      },
+      {
+        "kind": "fill",
+        "target": "鋼筋續接工程工項",
+        "value": "正交樑鋼筋續接組接",
+        "result": "success",
+        "sequence": 16
+      },
+      {
+        "kind": "click",
+        "target": "鋼筋續接工程加入工項",
+        "result": "success",
+        "sequence": 17
+      },
+      {
+        "kind": "click",
+        "target": "完成鋼筋續接工程",
+        "result": "success",
+        "sequence": 18
+      },
+      {
+        "kind": "click",
+        "target": "新增施工紀錄",
+        "result": "success",
+        "sequence": 19
+      },
+      {
+        "kind": "fill",
+        "target": "搜尋工種名稱",
+        "value": "安全支撐工程",
+        "result": "success",
+        "sequence": 20
+      },
+      {
+        "kind": "click",
+        "target": "立即新增安全支撐工程",
+        "result": "success",
+        "sequence": 21
+      },
+      {
+        "kind": "fill",
+        "target": "安全支撐工程廠商",
+        "value": "安暉",
+        "result": "success",
+        "sequence": 22
+      },
+      {
+        "kind": "fill",
+        "target": "安全支撐工程人數",
+        "value": "3",
+        "result": "success",
+        "sequence": 23
+      },
+      {
+        "kind": "fill",
+        "target": "安全支撐工程工項",
+        "value": "中間樁止水條施作",
+        "result": "success",
+        "sequence": 24
+      },
+      {
+        "kind": "click",
+        "target": "安全支撐工程加入工項",
+        "result": "success",
+        "sequence": 25
+      },
+      {
+        "kind": "click",
+        "target": "完成安全支撐工程",
+        "result": "success",
+        "sequence": 26
+      },
+      {
+        "kind": "click",
+        "target": "新增施工紀錄",
+        "result": "success",
+        "sequence": 27
+      },
+      {
+        "kind": "fill",
+        "target": "搜尋工種名稱",
+        "value": "植筋工程",
+        "result": "success",
+        "sequence": 28
+      },
+      {
+        "kind": "click",
+        "target": "立即新增植筋工程",
+        "result": "success",
+        "sequence": 29
+      },
+      {
+        "kind": "fill",
+        "target": "植筋工程廠商",
+        "value": "冠嶺",
+        "result": "success",
+        "sequence": 30
+      },
+      {
+        "kind": "fill",
+        "target": "植筋工程人數",
+        "value": "4",
+        "result": "success",
+        "sequence": 31
+      },
+      {
+        "kind": "fill",
+        "target": "植筋工程工項",
+        "value": "連續壁公母接頭植筋施作",
+        "result": "success",
+        "sequence": 32
+      },
+      {
+        "kind": "click",
+        "target": "植筋工程加入工項",
+        "result": "success",
+        "sequence": 33
+      },
+      {
+        "kind": "click",
+        "target": "完成植筋工程",
+        "result": "success",
+        "sequence": 34
+      },
+      {
+        "kind": "click",
+        "target": "新增施工紀錄",
+        "result": "success",
+        "sequence": 35
+      },
+      {
+        "kind": "fill",
+        "target": "搜尋工種名稱",
+        "value": "雜工工程",
+        "result": "success",
+        "sequence": 36
+      },
+      {
+        "kind": "click",
+        "target": "立即新增雜工工程",
+        "result": "success",
+        "sequence": 37
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程廠商",
+        "value": "藝境",
+        "result": "success",
+        "sequence": 38
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程人數",
+        "value": "3",
+        "result": "success",
+        "sequence": 39
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "人員及車輛管制",
+        "result": "success",
+        "sequence": 40
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 41
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "環境整理",
+        "result": "success",
+        "sequence": 42
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 43
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "交通管制",
+        "result": "success",
+        "sequence": 44
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 45
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "工區內及周邊環境清掃",
+        "result": "success",
+        "sequence": 46
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 47
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "地下室垃圾撿拾",
+        "result": "success",
+        "sequence": 48
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 49
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "照明及通風設備調整",
+        "result": "success",
+        "sequence": 50
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 51
+      },
+      {
+        "kind": "fill",
+        "target": "雜工工程工項",
+        "value": "雜草清理",
+        "result": "success",
+        "sequence": 52
+      },
+      {
+        "kind": "click",
+        "target": "雜工工程加入工項",
+        "result": "success",
+        "sequence": 53
+      },
+      {
+        "kind": "click",
+        "target": "完成雜工工程",
+        "result": "success",
+        "sequence": 54
+      },
+      {
+        "kind": "click",
+        "target": "進料頁籤",
+        "result": "success",
+        "sequence": 55
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 56
+      },
+      {
+        "kind": "fill",
+        "target": "#4鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 57
+      },
+      {
+        "kind": "fill",
+        "target": "#4鋼筋 itemName",
+        "value": "#4鋼筋",
+        "result": "success",
+        "sequence": 58
+      },
+      {
+        "kind": "fill",
+        "target": "#4鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 59
+      },
+      {
+        "kind": "fill",
+        "target": "#4鋼筋 quantity",
+        "value": "19.99",
+        "result": "success",
+        "sequence": 60
+      },
+      {
+        "kind": "fill",
+        "target": "#4鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 61
+      },
+      {
+        "kind": "click",
+        "target": "儲存#4鋼筋",
+        "result": "success",
+        "sequence": 62
+      },
+      {
+        "kind": "fill",
+        "target": "補填#4鋼筋品名",
+        "value": "#4鋼筋",
+        "result": "success",
+        "sequence": 63
+      },
+      {
+        "kind": "click",
+        "target": "重試儲存#4鋼筋",
+        "result": "success",
+        "sequence": 64
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 65
+      },
+      {
+        "kind": "fill",
+        "target": "#5鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 66
+      },
+      {
+        "kind": "fill",
+        "target": "#5鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 67
+      },
+      {
+        "kind": "fill",
+        "target": "#5鋼筋 quantity",
+        "value": "12.62",
+        "result": "success",
+        "sequence": 68
+      },
+      {
+        "kind": "fill",
+        "target": "#5鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 69
+      },
+      {
+        "kind": "fill",
+        "target": "#5鋼筋 itemName",
+        "value": "#5鋼筋",
+        "result": "success",
+        "sequence": 70
+      },
+      {
+        "kind": "click",
+        "target": "儲存#5鋼筋",
+        "result": "success",
+        "sequence": 71
+      },
+      {
+        "kind": "fill",
+        "target": "補填#5供應商",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 72
+      },
+      {
+        "kind": "click",
+        "target": "重試儲存#5鋼筋",
+        "result": "success",
+        "sequence": 73
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 74
+      },
+      {
+        "kind": "fill",
+        "target": "#6鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 75
+      },
+      {
+        "kind": "fill",
+        "target": "#6鋼筋 itemName",
+        "value": "#6鋼筋",
+        "result": "success",
+        "sequence": 76
+      },
+      {
+        "kind": "fill",
+        "target": "#6鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 77
+      },
+      {
+        "kind": "fill",
+        "target": "#6鋼筋 quantity",
+        "value": "0.19",
+        "result": "success",
+        "sequence": 78
+      },
+      {
+        "kind": "fill",
+        "target": "#6鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 79
+      },
+      {
+        "kind": "fill",
+        "target": "#6鋼筋 重填itemName",
+        "value": "#6鋼筋",
+        "result": "success",
+        "sequence": 80
+      },
+      {
+        "kind": "click",
+        "target": "儲存#6鋼筋",
+        "result": "success",
+        "sequence": 81
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 82
+      },
+      {
+        "kind": "fill",
+        "target": "#7鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 83
+      },
+      {
+        "kind": "fill",
+        "target": "#7鋼筋 itemName",
+        "value": "#7鋼筋",
+        "result": "success",
+        "sequence": 84
+      },
+      {
+        "kind": "fill",
+        "target": "#7鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 85
+      },
+      {
+        "kind": "fill",
+        "target": "#7鋼筋 quantity",
+        "value": "2.04",
+        "result": "success",
+        "sequence": 86
+      },
+      {
+        "kind": "fill",
+        "target": "#7鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 87
+      },
+      {
+        "kind": "fill",
+        "target": "#7鋼筋 重填itemName",
+        "value": "#7鋼筋",
+        "result": "success",
+        "sequence": 88
+      },
+      {
+        "kind": "click",
+        "target": "儲存#7鋼筋",
+        "result": "success",
+        "sequence": 89
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 90
+      },
+      {
+        "kind": "fill",
+        "target": "#8鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 91
+      },
+      {
+        "kind": "fill",
+        "target": "#8鋼筋 itemName",
+        "value": "#8鋼筋",
+        "result": "success",
+        "sequence": 92
+      },
+      {
+        "kind": "fill",
+        "target": "#8鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 93
+      },
+      {
+        "kind": "fill",
+        "target": "#8鋼筋 quantity",
+        "value": "14.89",
+        "result": "success",
+        "sequence": 94
+      },
+      {
+        "kind": "fill",
+        "target": "#8鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 95
+      },
+      {
+        "kind": "fill",
+        "target": "#8鋼筋 重填itemName",
+        "value": "#8鋼筋",
+        "result": "success",
+        "sequence": 96
+      },
+      {
+        "kind": "click",
+        "target": "儲存#8鋼筋",
+        "result": "success",
+        "sequence": 97
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 98
+      },
+      {
+        "kind": "fill",
+        "target": "#10鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 99
+      },
+      {
+        "kind": "fill",
+        "target": "#10鋼筋 itemName",
+        "value": "#10鋼筋",
+        "result": "success",
+        "sequence": 100
+      },
+      {
+        "kind": "fill",
+        "target": "#10鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 101
+      },
+      {
+        "kind": "fill",
+        "target": "#10鋼筋 quantity",
+        "value": "7.2",
+        "result": "success",
+        "sequence": 102
+      },
+      {
+        "kind": "fill",
+        "target": "#10鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 103
+      },
+      {
+        "kind": "fill",
+        "target": "#10鋼筋 重填itemName",
+        "value": "#10鋼筋",
+        "result": "success",
+        "sequence": 104
+      },
+      {
+        "kind": "click",
+        "target": "儲存#10鋼筋",
+        "result": "success",
+        "sequence": 105
+      },
+      {
+        "kind": "click",
+        "target": "新增進料",
+        "result": "success",
+        "sequence": 106
+      },
+      {
+        "kind": "fill",
+        "target": "#11鋼筋 materialTypeSnapshot",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 107
+      },
+      {
+        "kind": "fill",
+        "target": "#11鋼筋 itemName",
+        "value": "#11鋼筋",
+        "result": "success",
+        "sequence": 108
+      },
+      {
+        "kind": "fill",
+        "target": "#11鋼筋 supplierNameSnapshot",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 109
+      },
+      {
+        "kind": "fill",
+        "target": "#11鋼筋 quantity",
+        "value": "50.19",
+        "result": "success",
+        "sequence": 110
+      },
+      {
+        "kind": "fill",
+        "target": "#11鋼筋 unit",
+        "value": "噸",
+        "result": "success",
+        "sequence": 111
+      },
+      {
+        "kind": "fill",
+        "target": "#11鋼筋 重填itemName",
+        "value": "#11鋼筋",
+        "result": "success",
+        "sequence": 112
+      },
+      {
+        "kind": "click",
+        "target": "儲存#11鋼筋",
+        "result": "success",
+        "sequence": 113
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#4鋼筋",
+        "result": "success",
+        "sequence": 114
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 115
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#5鋼筋",
+        "result": "success",
+        "sequence": 116
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 117
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#6鋼筋",
+        "result": "success",
+        "sequence": 118
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 119
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#7鋼筋",
+        "result": "success",
+        "sequence": 120
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 121
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#8鋼筋",
+        "result": "success",
+        "sequence": 122
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 123
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#10鋼筋",
+        "result": "success",
+        "sequence": 124
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 125
+      },
+      {
+        "kind": "click",
+        "target": "接線盤選取#11鋼筋",
+        "result": "success",
+        "sequence": 126
+      },
+      {
+        "kind": "click",
+        "target": "連接紮筋工程",
+        "result": "success",
+        "sequence": 127
+      },
+      {
+        "kind": "click",
+        "target": "施工紀錄頁籤",
+        "result": "success",
+        "sequence": 128
+      },
+      {
+        "kind": "click",
+        "target": "重新完成已連接進料的紮筋工程",
+        "result": "success",
+        "sequence": 129
+      },
+      {
+        "kind": "click",
+        "target": "確認紮筋完成",
+        "result": "success",
+        "sequence": 130
+      },
+      {
+        "kind": "click",
+        "target": "聯絡事項頁籤",
+        "result": "success",
+        "sequence": 131
+      },
+      {
+        "kind": "click",
+        "target": "新增聯絡事項",
+        "result": "success",
+        "sequence": 132
+      },
+      {
+        "kind": "fill",
+        "target": "聯絡工種搜尋",
+        "value": "鋼筋",
+        "result": "success",
+        "sequence": 133
+      },
+      {
+        "kind": "click",
+        "target": "新增聯絡工種鋼筋",
+        "result": "success",
+        "sequence": 134
+      },
+      {
+        "kind": "fill",
+        "target": "鋼筋聯絡廠商",
+        "value": "萬大禾",
+        "result": "success",
+        "sequence": 135
+      },
+      {
+        "kind": "fill",
+        "target": "鋼筋預定日期",
+        "value": "2026-11-04",
+        "result": "success",
+        "sequence": 136
+      },
+      {
+        "kind": "fill",
+        "target": "鋼筋聯絡工項",
+        "value": "鋼筋進料",
+        "result": "success",
+        "sequence": 137
+      },
+      {
+        "kind": "click",
+        "target": "加入聯絡工項",
+        "result": "success",
+        "sequence": 138
+      },
+      {
+        "kind": "click",
+        "target": "完成聯絡鋼筋",
+        "result": "success",
+        "sequence": 139
+      },
+      {
+        "kind": "click",
+        "target": "新增聯絡事項",
+        "result": "success",
+        "sequence": 140
+      },
+      {
+        "kind": "fill",
+        "target": "聯絡工種搜尋",
+        "value": "水電工程",
+        "result": "success",
+        "sequence": 141
+      },
+      {
+        "kind": "click",
+        "target": "新增聯絡工種水電工程",
+        "result": "success",
+        "sequence": 142
+      },
+      {
+        "kind": "fill",
+        "target": "水電工程聯絡廠商",
+        "value": "益永",
+        "result": "success",
+        "sequence": 143
+      },
+      {
+        "kind": "fill",
+        "target": "水電工程預定日期",
+        "value": "2026-11-04",
+        "result": "success",
+        "sequence": 144
+      },
+      {
+        "kind": "fill",
+        "target": "水電工程聯絡工項",
+        "value": "地下室照明設備安裝",
+        "result": "success",
+        "sequence": 145
+      },
+      {
+        "kind": "click",
+        "target": "加入聯絡工項",
+        "result": "success",
+        "sequence": 146
+      },
+      {
+        "kind": "click",
+        "target": "完成聯絡水電工程",
+        "result": "success",
+        "sequence": 147
+      },
+      {
+        "kind": "click",
+        "target": "檢查與預覽",
+        "result": "success",
+        "sequence": 148
+      },
+      {
+        "kind": "click",
+        "target": "定稿並複製",
+        "result": "success",
+        "sequence": 149
+      }
+    ],
+    "measurements": [
+      {
+        "state": "empty",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "empty",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "empty",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "engineering",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "SPAN",
+            "class": "",
+            "clientWidth": 231,
+            "scrollWidth": 269,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "INPUT",
+            "class": "work-token__text",
+            "clientWidth": 223,
+            "scrollWidth": 256,
+            "overflowX": "clip"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "engineering",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "SPAN",
+            "class": "",
+            "clientWidth": 261,
+            "scrollWidth": 269,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "INPUT",
+            "class": "work-token__text",
+            "clientWidth": 253,
+            "scrollWidth": 256,
+            "overflowX": "clip"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "engineering",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "long-work",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "long-work",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "long-work",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "material-editor",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "material-editor",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "material-editor",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "connection-board",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          },
+          {
+            "name": "#4鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"192c80d8-75e1-4aa4-90fc-952a65837486\" aria-pressed=\"false\" title=\"#4鋼筋\"><span class=\"connection-port\" ",
+            "x": 29,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          },
+          {
+            "name": "#5鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"9224716f-f25d-4782-96b1-b4c4d5cb6fea\" aria-pressed=\"false\" title=\"#5鋼筋\"><span class=\"connection-port\" ",
+            "x": 70,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          },
+          {
+            "name": "#6鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"637207b5-8d24-42c1-8952-6f31ee70b987\" aria-pressed=\"false\" title=\"#6鋼筋\"><span class=\"connection-port\" ",
+            "x": 111,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          },
+          {
+            "name": "#7鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"ad61583b-79e2-46f0-b036-0c8c49fdd8db\" aria-pressed=\"false\" title=\"#7鋼筋\"><span class=\"connection-port\" ",
+            "x": 152,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          },
+          {
+            "name": "#8鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"2c93de21-e6ac-4f65-a415-4ba7410e2e9d\" aria-pressed=\"false\" title=\"#8鋼筋\"><span class=\"connection-port\" ",
+            "x": 193,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          },
+          {
+            "name": "#10鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"0d2ee0a3-8b96-4ecb-9b68-2cda7b23a118\" aria-pressed=\"false\" title=\"#10鋼筋\"><span class=\"connection-port\"",
+            "x": 234,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          },
+          {
+            "name": "#11鋼筋已接至 紮筋工程",
+            "selector": "<button type=\"button\" class=\"connection-node connection-node--material \" data-daily-action=\"select-connection-material\" data-material-id=\"1cadb6e5-d41f-4f1c-8a84-d731918847c6\" aria-pressed=\"false\" title=\"#11鋼筋\"><span class=\"connection-port\"",
+            "x": 275,
+            "y": 809.515625,
+            "width": 41,
+            "height": 68
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 59,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 59,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 7,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 112,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 23,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "connection-board",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 59,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 59,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 11,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 112,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 29,
+            "scrollWidth": 36,
+            "overflowX": "hidden"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "connection-board",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 49,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 59,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 59,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 17,
+            "scrollWidth": 88,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "SMALL",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 112,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 84,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          },
+          {
+            "tag": "STRONG",
+            "class": "",
+            "clientWidth": 37,
+            "scrollWidth": 56,
+            "overflowX": "hidden"
+          }
+        ],
+        "outside": []
+      },
+      {
+        "state": "contact-editor",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "contact-editor",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "contact-editor",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "preview",
+        "width": 360,
+        "height": 844,
+        "clientWidth": 360,
+        "scrollWidth": 345,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 272.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 267,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          },
+          {
+            "name": "查看近 7 天",
+            "selector": "<a class=\"daily-output__history-link\" href=\"#daily/history\">查看近 7 天</a>",
+            "x": 33,
+            "y": 1369.640625,
+            "width": 279,
+            "height": 21
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "preview",
+        "width": 390,
+        "height": 844,
+        "clientWidth": 390,
+        "scrollWidth": 375,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 302.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 297,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          },
+          {
+            "name": "查看近 7 天",
+            "selector": "<a class=\"daily-output__history-link\" href=\"#daily/history\">查看近 7 天</a>",
+            "x": 33,
+            "y": 1357.640625,
+            "width": 309,
+            "height": 21
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      },
+      {
+        "state": "preview",
+        "width": 430,
+        "height": 844,
+        "clientWidth": 430,
+        "scrollWidth": 415,
+        "horizontalDisplacement": 0,
+        "scale": 1,
+        "smallTargets": [
+          {
+            "name": "開啟設定",
+            "selector": "<a class=\"settings-button\" href=\"#settings\" aria-label=\"開啟設定\">設定</a>",
+            "x": 342.625,
+            "y": 32.703125,
+            "width": 56.375,
+            "height": 43.59375
+          },
+          {
+            "name": "登入並選擇工地",
+            "selector": "<a href=\"#settings/account\">登入並選擇工地</a>",
+            "x": 30,
+            "y": 201.484375,
+            "width": 84,
+            "height": 38
+          },
+          {
+            "name": "管理工地",
+            "selector": "<a href=\"#settings/daily/sites\">管理工地</a>",
+            "x": 337,
+            "y": 257.484375,
+            "width": 48,
+            "height": 38
+          },
+          {
+            "name": "查看近 7 天",
+            "selector": "<a class=\"daily-output__history-link\" href=\"#daily/history\">查看近 7 天</a>",
+            "x": 33,
+            "y": 1297.640625,
+            "width": 349,
+            "height": 21
+          }
+        ],
+        "overflow": [],
+        "outside": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,984 @@
+[
+  {
+    "kind": "fill",
+    "target": "工地",
+    "value": "鑫天地六期",
+    "result": "success",
+    "sequence": 1
+  },
+  {
+    "kind": "click",
+    "target": "新增並使用工地",
+    "result": "success",
+    "sequence": 2
+  },
+  {
+    "kind": "click",
+    "target": "新增施工紀錄",
+    "result": "success",
+    "sequence": 3
+  },
+  {
+    "kind": "fill",
+    "target": "搜尋工種名稱",
+    "value": "紮筋工程",
+    "result": "success",
+    "sequence": 4
+  },
+  {
+    "kind": "click",
+    "target": "立即新增紮筋工程",
+    "result": "success",
+    "sequence": 5
+  },
+  {
+    "kind": "fill",
+    "target": "紮筋廠商",
+    "value": "順立",
+    "result": "success",
+    "sequence": 6
+  },
+  {
+    "kind": "fill",
+    "target": "紮筋人數",
+    "value": "40",
+    "result": "success",
+    "sequence": 7
+  },
+  {
+    "kind": "fill",
+    "target": "紮筋工項",
+    "value": "下層基礎版鋼筋及周邊樑工作筋綁紮",
+    "result": "success",
+    "sequence": 8
+  },
+  {
+    "kind": "click",
+    "target": "紮筋加入工項",
+    "result": "success",
+    "sequence": 9
+  },
+  {
+    "kind": "click",
+    "target": "完成紮筋工程",
+    "result": "success",
+    "sequence": 10
+  },
+  {
+    "kind": "click",
+    "target": "新增施工紀錄",
+    "result": "success",
+    "sequence": 11
+  },
+  {
+    "kind": "fill",
+    "target": "搜尋工種名稱",
+    "value": "鋼筋續接工程",
+    "result": "success",
+    "sequence": 12
+  },
+  {
+    "kind": "click",
+    "target": "立即新增鋼筋續接工程",
+    "result": "success",
+    "sequence": 13
+  },
+  {
+    "kind": "fill",
+    "target": "鋼筋續接工程廠商",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 14
+  },
+  {
+    "kind": "fill",
+    "target": "鋼筋續接工程人數",
+    "value": "3",
+    "result": "success",
+    "sequence": 15
+  },
+  {
+    "kind": "fill",
+    "target": "鋼筋續接工程工項",
+    "value": "正交樑鋼筋續接組接",
+    "result": "success",
+    "sequence": 16
+  },
+  {
+    "kind": "click",
+    "target": "鋼筋續接工程加入工項",
+    "result": "success",
+    "sequence": 17
+  },
+  {
+    "kind": "click",
+    "target": "完成鋼筋續接工程",
+    "result": "success",
+    "sequence": 18
+  },
+  {
+    "kind": "click",
+    "target": "新增施工紀錄",
+    "result": "success",
+    "sequence": 19
+  },
+  {
+    "kind": "fill",
+    "target": "搜尋工種名稱",
+    "value": "安全支撐工程",
+    "result": "success",
+    "sequence": 20
+  },
+  {
+    "kind": "click",
+    "target": "立即新增安全支撐工程",
+    "result": "success",
+    "sequence": 21
+  },
+  {
+    "kind": "fill",
+    "target": "安全支撐工程廠商",
+    "value": "安暉",
+    "result": "success",
+    "sequence": 22
+  },
+  {
+    "kind": "fill",
+    "target": "安全支撐工程人數",
+    "value": "3",
+    "result": "success",
+    "sequence": 23
+  },
+  {
+    "kind": "fill",
+    "target": "安全支撐工程工項",
+    "value": "中間樁止水條施作",
+    "result": "success",
+    "sequence": 24
+  },
+  {
+    "kind": "click",
+    "target": "安全支撐工程加入工項",
+    "result": "success",
+    "sequence": 25
+  },
+  {
+    "kind": "click",
+    "target": "完成安全支撐工程",
+    "result": "success",
+    "sequence": 26
+  },
+  {
+    "kind": "click",
+    "target": "新增施工紀錄",
+    "result": "success",
+    "sequence": 27
+  },
+  {
+    "kind": "fill",
+    "target": "搜尋工種名稱",
+    "value": "植筋工程",
+    "result": "success",
+    "sequence": 28
+  },
+  {
+    "kind": "click",
+    "target": "立即新增植筋工程",
+    "result": "success",
+    "sequence": 29
+  },
+  {
+    "kind": "fill",
+    "target": "植筋工程廠商",
+    "value": "冠嶺",
+    "result": "success",
+    "sequence": 30
+  },
+  {
+    "kind": "fill",
+    "target": "植筋工程人數",
+    "value": "4",
+    "result": "success",
+    "sequence": 31
+  },
+  {
+    "kind": "fill",
+    "target": "植筋工程工項",
+    "value": "連續壁公母接頭植筋施作",
+    "result": "success",
+    "sequence": 32
+  },
+  {
+    "kind": "click",
+    "target": "植筋工程加入工項",
+    "result": "success",
+    "sequence": 33
+  },
+  {
+    "kind": "click",
+    "target": "完成植筋工程",
+    "result": "success",
+    "sequence": 34
+  },
+  {
+    "kind": "click",
+    "target": "新增施工紀錄",
+    "result": "success",
+    "sequence": 35
+  },
+  {
+    "kind": "fill",
+    "target": "搜尋工種名稱",
+    "value": "雜工工程",
+    "result": "success",
+    "sequence": 36
+  },
+  {
+    "kind": "click",
+    "target": "立即新增雜工工程",
+    "result": "success",
+    "sequence": 37
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程廠商",
+    "value": "藝境",
+    "result": "success",
+    "sequence": 38
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程人數",
+    "value": "3",
+    "result": "success",
+    "sequence": 39
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "人員及車輛管制",
+    "result": "success",
+    "sequence": 40
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 41
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "環境整理",
+    "result": "success",
+    "sequence": 42
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 43
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "交通管制",
+    "result": "success",
+    "sequence": 44
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 45
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "工區內及周邊環境清掃",
+    "result": "success",
+    "sequence": 46
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 47
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "地下室垃圾撿拾",
+    "result": "success",
+    "sequence": 48
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 49
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "照明及通風設備調整",
+    "result": "success",
+    "sequence": 50
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 51
+  },
+  {
+    "kind": "fill",
+    "target": "雜工工程工項",
+    "value": "雜草清理",
+    "result": "success",
+    "sequence": 52
+  },
+  {
+    "kind": "click",
+    "target": "雜工工程加入工項",
+    "result": "success",
+    "sequence": 53
+  },
+  {
+    "kind": "click",
+    "target": "完成雜工工程",
+    "result": "success",
+    "sequence": 54
+  },
+  {
+    "kind": "click",
+    "target": "進料頁籤",
+    "result": "success",
+    "sequence": 55
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 56
+  },
+  {
+    "kind": "fill",
+    "target": "#4鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 57
+  },
+  {
+    "kind": "fill",
+    "target": "#4鋼筋 itemName",
+    "value": "#4鋼筋",
+    "result": "success",
+    "sequence": 58
+  },
+  {
+    "kind": "fill",
+    "target": "#4鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 59
+  },
+  {
+    "kind": "fill",
+    "target": "#4鋼筋 quantity",
+    "value": "19.99",
+    "result": "success",
+    "sequence": 60
+  },
+  {
+    "kind": "fill",
+    "target": "#4鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 61
+  },
+  {
+    "kind": "click",
+    "target": "儲存#4鋼筋",
+    "result": "success",
+    "sequence": 62
+  },
+  {
+    "kind": "fill",
+    "target": "補填#4鋼筋品名",
+    "value": "#4鋼筋",
+    "result": "success",
+    "sequence": 63
+  },
+  {
+    "kind": "click",
+    "target": "重試儲存#4鋼筋",
+    "result": "success",
+    "sequence": 64
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 65
+  },
+  {
+    "kind": "fill",
+    "target": "#5鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 66
+  },
+  {
+    "kind": "fill",
+    "target": "#5鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 67
+  },
+  {
+    "kind": "fill",
+    "target": "#5鋼筋 quantity",
+    "value": "12.62",
+    "result": "success",
+    "sequence": 68
+  },
+  {
+    "kind": "fill",
+    "target": "#5鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 69
+  },
+  {
+    "kind": "fill",
+    "target": "#5鋼筋 itemName",
+    "value": "#5鋼筋",
+    "result": "success",
+    "sequence": 70
+  },
+  {
+    "kind": "click",
+    "target": "儲存#5鋼筋",
+    "result": "success",
+    "sequence": 71
+  },
+  {
+    "kind": "fill",
+    "target": "補填#5供應商",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 72
+  },
+  {
+    "kind": "click",
+    "target": "重試儲存#5鋼筋",
+    "result": "success",
+    "sequence": 73
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 74
+  },
+  {
+    "kind": "fill",
+    "target": "#6鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 75
+  },
+  {
+    "kind": "fill",
+    "target": "#6鋼筋 itemName",
+    "value": "#6鋼筋",
+    "result": "success",
+    "sequence": 76
+  },
+  {
+    "kind": "fill",
+    "target": "#6鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 77
+  },
+  {
+    "kind": "fill",
+    "target": "#6鋼筋 quantity",
+    "value": "0.19",
+    "result": "success",
+    "sequence": 78
+  },
+  {
+    "kind": "fill",
+    "target": "#6鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 79
+  },
+  {
+    "kind": "fill",
+    "target": "#6鋼筋 重填itemName",
+    "value": "#6鋼筋",
+    "result": "success",
+    "sequence": 80
+  },
+  {
+    "kind": "click",
+    "target": "儲存#6鋼筋",
+    "result": "success",
+    "sequence": 81
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 82
+  },
+  {
+    "kind": "fill",
+    "target": "#7鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 83
+  },
+  {
+    "kind": "fill",
+    "target": "#7鋼筋 itemName",
+    "value": "#7鋼筋",
+    "result": "success",
+    "sequence": 84
+  },
+  {
+    "kind": "fill",
+    "target": "#7鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 85
+  },
+  {
+    "kind": "fill",
+    "target": "#7鋼筋 quantity",
+    "value": "2.04",
+    "result": "success",
+    "sequence": 86
+  },
+  {
+    "kind": "fill",
+    "target": "#7鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 87
+  },
+  {
+    "kind": "fill",
+    "target": "#7鋼筋 重填itemName",
+    "value": "#7鋼筋",
+    "result": "success",
+    "sequence": 88
+  },
+  {
+    "kind": "click",
+    "target": "儲存#7鋼筋",
+    "result": "success",
+    "sequence": 89
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 90
+  },
+  {
+    "kind": "fill",
+    "target": "#8鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 91
+  },
+  {
+    "kind": "fill",
+    "target": "#8鋼筋 itemName",
+    "value": "#8鋼筋",
+    "result": "success",
+    "sequence": 92
+  },
+  {
+    "kind": "fill",
+    "target": "#8鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 93
+  },
+  {
+    "kind": "fill",
+    "target": "#8鋼筋 quantity",
+    "value": "14.89",
+    "result": "success",
+    "sequence": 94
+  },
+  {
+    "kind": "fill",
+    "target": "#8鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 95
+  },
+  {
+    "kind": "fill",
+    "target": "#8鋼筋 重填itemName",
+    "value": "#8鋼筋",
+    "result": "success",
+    "sequence": 96
+  },
+  {
+    "kind": "click",
+    "target": "儲存#8鋼筋",
+    "result": "success",
+    "sequence": 97
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 98
+  },
+  {
+    "kind": "fill",
+    "target": "#10鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 99
+  },
+  {
+    "kind": "fill",
+    "target": "#10鋼筋 itemName",
+    "value": "#10鋼筋",
+    "result": "success",
+    "sequence": 100
+  },
+  {
+    "kind": "fill",
+    "target": "#10鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 101
+  },
+  {
+    "kind": "fill",
+    "target": "#10鋼筋 quantity",
+    "value": "7.2",
+    "result": "success",
+    "sequence": 102
+  },
+  {
+    "kind": "fill",
+    "target": "#10鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 103
+  },
+  {
+    "kind": "fill",
+    "target": "#10鋼筋 重填itemName",
+    "value": "#10鋼筋",
+    "result": "success",
+    "sequence": 104
+  },
+  {
+    "kind": "click",
+    "target": "儲存#10鋼筋",
+    "result": "success",
+    "sequence": 105
+  },
+  {
+    "kind": "click",
+    "target": "新增進料",
+    "result": "success",
+    "sequence": 106
+  },
+  {
+    "kind": "fill",
+    "target": "#11鋼筋 materialTypeSnapshot",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 107
+  },
+  {
+    "kind": "fill",
+    "target": "#11鋼筋 itemName",
+    "value": "#11鋼筋",
+    "result": "success",
+    "sequence": 108
+  },
+  {
+    "kind": "fill",
+    "target": "#11鋼筋 supplierNameSnapshot",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 109
+  },
+  {
+    "kind": "fill",
+    "target": "#11鋼筋 quantity",
+    "value": "50.19",
+    "result": "success",
+    "sequence": 110
+  },
+  {
+    "kind": "fill",
+    "target": "#11鋼筋 unit",
+    "value": "噸",
+    "result": "success",
+    "sequence": 111
+  },
+  {
+    "kind": "fill",
+    "target": "#11鋼筋 重填itemName",
+    "value": "#11鋼筋",
+    "result": "success",
+    "sequence": 112
+  },
+  {
+    "kind": "click",
+    "target": "儲存#11鋼筋",
+    "result": "success",
+    "sequence": 113
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#4鋼筋",
+    "result": "success",
+    "sequence": 114
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 115
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#5鋼筋",
+    "result": "success",
+    "sequence": 116
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 117
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#6鋼筋",
+    "result": "success",
+    "sequence": 118
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 119
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#7鋼筋",
+    "result": "success",
+    "sequence": 120
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 121
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#8鋼筋",
+    "result": "success",
+    "sequence": 122
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 123
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#10鋼筋",
+    "result": "success",
+    "sequence": 124
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 125
+  },
+  {
+    "kind": "click",
+    "target": "接線盤選取#11鋼筋",
+    "result": "success",
+    "sequence": 126
+  },
+  {
+    "kind": "click",
+    "target": "連接紮筋工程",
+    "result": "success",
+    "sequence": 127
+  },
+  {
+    "kind": "click",
+    "target": "施工紀錄頁籤",
+    "result": "success",
+    "sequence": 128
+  },
+  {
+    "kind": "click",
+    "target": "重新完成已連接進料的紮筋工程",
+    "result": "success",
+    "sequence": 129
+  },
+  {
+    "kind": "click",
+    "target": "確認紮筋完成",
+    "result": "success",
+    "sequence": 130
+  },
+  {
+    "kind": "click",
+    "target": "聯絡事項頁籤",
+    "result": "success",
+    "sequence": 131
+  },
+  {
+    "kind": "click",
+    "target": "新增聯絡事項",
+    "result": "success",
+    "sequence": 132
+  },
+  {
+    "kind": "fill",
+    "target": "聯絡工種搜尋",
+    "value": "鋼筋",
+    "result": "success",
+    "sequence": 133
+  },
+  {
+    "kind": "click",
+    "target": "新增聯絡工種鋼筋",
+    "result": "success",
+    "sequence": 134
+  },
+  {
+    "kind": "fill",
+    "target": "鋼筋聯絡廠商",
+    "value": "萬大禾",
+    "result": "success",
+    "sequence": 135
+  },
+  {
+    "kind": "fill",
+    "target": "鋼筋預定日期",
+    "value": "2026-11-04",
+    "result": "success",
+    "sequence": 136
+  },
+  {
+    "kind": "fill",
+    "target": "鋼筋聯絡工項",
+    "value": "鋼筋進料",
+    "result": "success",
+    "sequence": 137
+  },
+  {
+    "kind": "click",
+    "target": "加入聯絡工項",
+    "result": "success",
+    "sequence": 138
+  },
+  {
+    "kind": "click",
+    "target": "完成聯絡鋼筋",
+    "result": "success",
+    "sequence": 139
+  },
+  {
+    "kind": "click",
+    "target": "新增聯絡事項",
+    "result": "success",
+    "sequence": 140
+  },
+  {
+    "kind": "fill",
+    "target": "聯絡工種搜尋",
+    "value": "水電工程",
+    "result": "success",
+    "sequence": 141
+  },
+  {
+    "kind": "click",
+    "target": "新增聯絡工種水電工程",
+    "result": "success",
+    "sequence": 142
+  },
+  {
+    "kind": "fill",
+    "target": "水電工程聯絡廠商",
+    "value": "益永",
+    "result": "success",
+    "sequence": 143
+  },
+  {
+    "kind": "fill",
+    "target": "水電工程預定日期",
+    "value": "2026-11-04",
+    "result": "success",
+    "sequence": 144
+  },
+  {
+    "kind": "fill",
+    "target": "水電工程聯絡工項",
+    "value": "地下室照明設備安裝",
+    "result": "success",
+    "sequence": 145
+  },
+  {
+    "kind": "click",
+    "target": "加入聯絡工項",
+    "result": "success",
+    "sequence": 146
+  },
+  {
+    "kind": "click",
+    "target": "完成聯絡水電工程",
+    "result": "success",
+    "sequence": 147
+  },
+  {
+    "kind": "click",
+    "target": "檢查與預覽",
+    "result": "success",
+    "sequence": 148
+  },
+  {
+    "kind": "click",
+    "target": "定稿並複製",
+    "result": "success",
+    "sequence": 149
+  },
+  {
+    "kind": "marker",
+    "target": "完成路徑結束；之後為歷史驗證與探索",
+    "sequence": 150
+  },
+  {
+    "kind": "click",
+    "target": "查看近7天",
+    "result": "success",
+    "sequence": 151
+  }
+]
