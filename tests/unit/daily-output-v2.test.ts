@@ -16,11 +16,11 @@ describe('日報輸出模板 v2', () => {
     expect(formatDailyReport(draft)).toContain('安全支撐工程：安暉2工-B2F～B1FA區第五層支撐施作；夜間施工。');
   });
 
-  it('相同工種多廠商合併成一個標題，進料以施工卡順序編號', () => {
+  it('相同工種多廠商合併成一個標題，同類供應商進料依施工卡順序合併', () => {
     const draft = report([trade('t1', '安暉', 0), trade('t2', '永盛', 2), trade('t3', '土方', 1, { tradeTypeId: 'earth', tradeNameSnapshot: '土方工程' })]);
     draft.standaloneMaterialEntries = [material('鋼筋', 't2', 0), material('混凝土', 't1', 9)];
     const output = formatDailyReport(draft);
-    expect(output).toContain('安全支撐工程：\n1.安暉2工-支撐施作。\n  永盛2工-支撐施作。\n2.混凝土-天誠：混凝土2.5方。\n3.混凝土-天誠：鋼筋2.5方。');
+    expect(output).toContain('安全支撐工程：\n1.安暉2工-支撐施作。\n  永盛2工-支撐施作。\n2.混凝土-天誠：混凝土2.5方、鋼筋2.5方，合計5方。');
     expect(output.indexOf('安全支撐工程：')).toBeLessThan(output.indexOf('土方工程：'));
   });
 
