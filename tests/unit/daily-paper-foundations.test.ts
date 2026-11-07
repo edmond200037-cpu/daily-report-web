@@ -1,4 +1,3 @@
-// @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 

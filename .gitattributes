@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# E2E answer templates compare literal LF and punctuation.
+tests/e2e/fixtures/expected/*.txt text eol=lf

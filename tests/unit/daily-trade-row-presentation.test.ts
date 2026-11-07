@@ -1,4 +1,3 @@
-// @ts-expect-error Vitest runs this source-contract test with Node types.
 import { readFileSync } from 'node:fs';
 import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';

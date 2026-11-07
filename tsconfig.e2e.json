@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"], "allowImportingTsExtensions": true },
+  "include": ["playwright.config.ts", "scripts/start-e2e-server.ts", "tests/e2e/**/*.ts"],
+  "exclude": []
+}

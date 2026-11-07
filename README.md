@@ -40,3 +40,7 @@
 ## 已知限制
 
 搜尋、候選確認與記憶重新命名已有實作。舊資料升級採保留原始備份的自動修復；完整 migration 管理 UI 尚未提供。本機測試不代表實機手勢、正式 Supabase OAuth／Realtime 或部署快取已驗收。此次稽核修復與驗證邊界見 `docs/full-repository-audit-fixes-2026-10-05.md`。
+
+## 本機手動 E2E 驗收
+
+安裝依賴後執行 `npx playwright install chromium`、`npm run test:e2e`。腳本由空白本機資料逐字填報，讀取「定稿並複製」的真實剪貼簿，與人工答案逐字比對；報告及首次量測基準存入 `artifacts/daily-e2e/`。此指令不接 CI、pre-push 或 `check:release`。安裝、答案維護、已知格式差異與日期邊界用法見[日報 E2E 驗收說明](docs/daily-e2e.md)。

@@ -1,4 +1,3 @@
-// @ts-expect-error Vitest 於 Node 執行，但 production tsconfig 未納入 Node 型別。
 import { readFileSync } from 'node:fs';
 
 // main.ts 拆分後，UI 契約測試要檢查的原始碼分散在這些檔案；斷言內容不變，只改為讀取整組檔案。
