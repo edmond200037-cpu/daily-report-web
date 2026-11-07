@@ -15,6 +15,32 @@ function sumQuantities(quantities: string[]): string {
   return scale ? `${total.slice(0, -scale)}.${total.slice(-scale)}`.replace(/\.?0+$/, '') : total;
 }
 
+function materialDetails(entries: MaterialEntry[]): string {
+  const items = new Map<string, MaterialEntry[]>();
+  for (const entry of entries) {
+    const key = JSON.stringify([entry.itemName.trim(), entry.specification.trim(), entry.unit.trim()]);
+    // Invalid drafts remain visible and never participate in arithmetic.
+    const identity = isPositiveDecimal(entry.quantity) ? key : `${key}:${items.size}`;
+    const rows = items.get(identity) ?? [];
+    rows.push(entry);
+    items.set(identity, rows);
+  }
+  const specifications = new Intl.Collator('zh-Hant', { numeric: true });
+  return [...items.values()].sort((a, b) => {
+    const left = a[0].specification.trim() || a[0].itemName.trim();
+    const right = b[0].specification.trim() || b[0].itemName.trim();
+    const leftHasNumber = /\d/.test(left);
+    const rightHasNumber = /\d/.test(right);
+    if (leftHasNumber !== rightHasNumber) return leftHasNumber ? -1 : 1;
+    return leftHasNumber ? specifications.compare(left, right) : 0;
+  }).map((rows) => {
+    const first = rows[0];
+    const quantity = rows.length > 1 ? sumQuantities(rows.map((entry) => entry.quantity.trim())) : first.quantity.trim();
+    const notes = [...new Set(rows.map((entry) => entry.note.trim()).filter(Boolean))];
+    return `${first.itemName.trim()}${quantity}${first.unit.trim()}${first.specification.trim() ? `，${first.specification.trim()}` : ''}${notes.length ? `；${notes.join('；')}` : ''}`;
+  }).join('、');
+}
+
 function materialLines(entries: MaterialEntry[]): string[] {
   const groups = new Map<string, MaterialEntry[]>();
   for (const entry of entries) {
@@ -26,7 +52,7 @@ function materialLines(entries: MaterialEntry[]): string[] {
   }
   return [...groups.values()].map((group) => {
     const first = group[0];
-    const details = group.map((entry) => `${entry.itemName.trim()}${entry.quantity.trim()}${entry.unit.trim()}${entry.specification.trim() ? `，${entry.specification.trim()}` : ''}${entry.note.trim() ? `；${entry.note.trim()}` : ''}`).join('、');
+    const details = materialDetails(group);
     const units = new Map<string, string[]>();
     for (const entry of group) {
       const unit = entry.unit.trim();
@@ -34,7 +60,7 @@ function materialLines(entries: MaterialEntry[]): string[] {
       quantities.push(entry.quantity.trim());
       units.set(unit, quantities);
     }
-    const totals = group.length > 1 ? [...units].flatMap(([unit, quantities]) => quantities.every(isPositiveDecimal) ? [`${sumQuantities(quantities)}${unit}`] : []) : [];
+    const totals = [...units].flatMap(([unit, quantities]) => quantities.length > 1 && quantities.every(isPositiveDecimal) ? [`${sumQuantities(quantities)}${unit}`] : []);
     return `${first.materialTypeSnapshot.trim()}-${first.supplierNameSnapshot.trim()}：${details}${totals.length ? `，合計${totals.join('、')}` : ''}。`;
   });
 }

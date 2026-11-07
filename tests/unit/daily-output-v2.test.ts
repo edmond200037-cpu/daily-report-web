@@ -24,6 +24,38 @@ describe('日報輸出模板 v2', () => {
     expect(output.indexOf('安全支撐工程：')).toBeLessThan(output.indexOf('土方工程：'));
   });
 
+  it('鋼筋依號數排序、同規格先加總，基準案例合計107.12噸', () => {
+    const draft = report();
+    const steel = (id: string, name: string, quantity: string): MaterialEntry => ({ ...material(id, 't1', 0), materialTypeSnapshot: '鋼筋', supplierNameSnapshot: '萬大禾', itemName: name, quantity, unit: '噸' });
+    draft.standaloneMaterialEntries = [
+      steel('s11', '#11鋼筋', '44.51'), steel('plain', '續接器', '20'), steel('s4a', '#4鋼筋', '7.37'),
+      steel('s10', '#10鋼筋', '30'), steel('s5', '#5鋼筋', '12.62'), steel('s4b', '#4鋼筋', '12.62'),
+    ];
+    draft.standaloneMaterialEntries[1].unit = '支';
+    const before = structuredClone(draft);
+    // 人工核算：7.37 + 12.62 = 19.99；19.99 + 12.62 + 30 + 44.51 = 107.12。
+    expect(formatDailyReport(draft)).toContain('2.鋼筋-萬大禾：#4鋼筋19.99噸、#5鋼筋12.62噸、#10鋼筋30噸、#11鋼筋44.51噸、續接器20支，合計107.12噸。');
+    expect(draft).toEqual(before);
+  });
+
+  it('規格欄數值排序，合併後保留各筆備註並隔離不同供應商與工種', () => {
+    const draft = report([trade('t1', '安暉', 0), trade('t2', '土方', 1, { tradeTypeId: 'earth', tradeNameSnapshot: '土方工程' })]);
+    const row = (id: string, specification: string, quantity: string, note = ''): MaterialEntry => ({ ...material(id, 't1', 0), itemName: '鋼筋', materialTypeSnapshot: '鋼筋', supplierNameSnapshot: '萬大禾', specification, quantity, unit: '噸', note });
+    draft.standaloneMaterialEntries = [row('s10', '#10', '10'), row('s4a', '#4', '0.1', '上午'), row('s4b', '#4', '0.2', '下午'), { ...row('other', '#4', '5'), supplierNameSnapshot: '其他' }, { ...row('earth', '#4', '7'), connectedTradeSectionId: 't2' }];
+    const output = formatDailyReport(draft);
+    expect(output).toContain('2.鋼筋-萬大禾：鋼筋0.3噸，#4；上午；下午、鋼筋10噸，#10，合計10.3噸。\n3.鋼筋-其他：鋼筋5噸，#4。');
+    expect(output).toContain('土方工程：\n1.土方2工-支撐施作。\n2.鋼筋-萬大禾：鋼筋7噸，#4。');
+  });
+
+  it('混合單位各自合計，同單位只有一筆時不重複列合計', () => {
+    const draft = report();
+    const row = (id: string, unit: string, quantity: string): MaterialEntry => ({ ...material(id, 't1', 0), itemName: '材料', unit, quantity });
+    draft.standaloneMaterialEntries = [row('a', '噸', '1.10'), row('b', '支', '20')];
+    expect(formatDailyReport(draft)).toContain('混凝土-天誠：材料1.10噸、材料20支。');
+    draft.standaloneMaterialEntries.push(row('c', '噸', '2.20'), row('d', '支', '30'));
+    expect(formatDailyReport(draft)).toContain('混凝土-天誠：材料3.3噸、材料50支，合計3.3噸、50支。');
+  });
+
   it('未連結獨立進料不輸出且阻止定稿，普通進料仍可輸出', () => {
     const draft = report();
     draft.standaloneMaterialEntries = [material('未連結', null, 0), { ...material('普通', null, 1), entryType: 'normal' }];

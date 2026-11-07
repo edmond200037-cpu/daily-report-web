@@ -31,14 +31,14 @@ describe('叫料格式與驗證', () => {
       material({ id: 'm4', supplierNameSnapshot: '其他供應商', sortOrder: 3 }),
     ];
     const output = formatDailyReport(draft);
-    expect(output).toContain('混凝土-天誠：一般混凝土0.1方，140kgf/cm²；上午、一般混凝土0.2方，350kgf/cm²、一般混凝土10噸，140kgf/cm²，合計0.3方、10噸。');
+    expect(output).toContain('混凝土-天誠：一般混凝土0.1方，140kgf/cm²；上午、一般混凝土10噸，140kgf/cm²、一般混凝土0.2方，350kgf/cm²，合計0.3方。');
     expect(output).toContain('混凝土-其他供應商：一般混凝土5方，140kgf/cm²。');
   });
   it('工種內連接進料合併，普通進料仍各自在所屬區塊輸出', () => {
     const draft = report();
     draft.standaloneMaterialEntries.push(material({ id: 'm3', entryType: 'independent', connectedTradeSectionId: 't1', quantity: '15', sortOrder: 2 }));
     const output = formatDailyReport(draft);
-    expect(output).toContain('2.混凝土-天誠：一般混凝土5方，140kgf/cm²、一般混凝土15方，140kgf/cm²，合計20方。');
+    expect(output).toContain('2.混凝土-天誠：一般混凝土20方，140kgf/cm²，合計20方。');
     expect(output).toContain('\n\n混凝土-天誠：混凝土2.5方，350kgf/cm²。');
   });
   it('拒絕不合法的叫料數量與缺少供應商', () => {
