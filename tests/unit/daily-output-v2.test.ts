@@ -47,6 +47,20 @@ describe('日報輸出模板 v2', () => {
     expect(output).toContain('土方工程：\n1.土方2工-支撐施作。\n2.鋼筋-萬大禾：鋼筋7噸，#4。');
   });
 
+  it('規格欄同為SD420時仍按品名鋼筋號數排序', () => {
+    const draft = report();
+    draft.standaloneMaterialEntries = [11, 5, 10, 4].map((size) => ({ ...material(`s${size}`, 't1', 0), materialTypeSnapshot: '鋼筋', supplierNameSnapshot: '萬大禾', itemName: `#${size}鋼筋`, specification: 'SD420', quantity: '1', unit: '噸' }));
+    expect(formatDailyReport(draft)).toContain('鋼筋-萬大禾：#4鋼筋1噸，SD420、#5鋼筋1噸，SD420、#10鋼筋1噸，SD420、#11鋼筋1噸，SD420，合計4噸。');
+  });
+
+  it('無效數量可預覽、不併入有效同規格明細且不產生誤導合計', () => {
+    const draft = report();
+    draft.standaloneMaterialEntries = ['0.10', '錯誤', '0.20'].map((quantity, index) => ({ ...material(`m${index}`, 't1', index), itemName: '一般混凝土', quantity }));
+    const output = formatDailyReport(draft);
+    expect(output).toContain('混凝土-天誠：一般混凝土0.3方、一般混凝土錯誤方。');
+    expect(output).not.toContain('合計');
+  });
+
   it('混合單位各自合計，同單位只有一筆時不重複列合計', () => {
     const draft = report();
     const row = (id: string, unit: string, quantity: string): MaterialEntry => ({ ...material(id, 't1', 0), itemName: '材料', unit, quantity });

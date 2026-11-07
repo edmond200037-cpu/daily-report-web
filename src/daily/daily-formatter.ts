@@ -26,13 +26,16 @@ function materialDetails(entries: MaterialEntry[]): string {
     items.set(identity, rows);
   }
   const specifications = new Intl.Collator('zh-Hant', { numeric: true });
-  return [...items.values()].sort((a, b) => {
-    const left = a[0].specification.trim() || a[0].itemName.trim();
-    const right = b[0].specification.trim() || b[0].itemName.trim();
+  const compareNumericText = (left: string, right: string): number => {
     const leftHasNumber = /\d/.test(left);
     const rightHasNumber = /\d/.test(right);
     if (leftHasNumber !== rightHasNumber) return leftHasNumber ? -1 : 1;
     return leftHasNumber ? specifications.compare(left, right) : 0;
+  };
+  return [...items.values()].sort((a, b) => {
+    const left = a[0].specification.trim() || a[0].itemName.trim();
+    const right = b[0].specification.trim() || b[0].itemName.trim();
+    return compareNumericText(left, right) || compareNumericText(a[0].itemName.trim(), b[0].itemName.trim());
   }).map((rows) => {
     const first = rows[0];
     const quantity = rows.length > 1 ? sumQuantities(rows.map((entry) => entry.quantity.trim())) : first.quantity.trim();
