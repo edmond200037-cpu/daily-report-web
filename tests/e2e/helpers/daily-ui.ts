@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { contacts, trades, type Scenario } from '../fixtures/daily-scenarios';
-import type { datesFor } from './report-date';
+import type { Scenario } from '../fixtures/daily-scenarios';
+import { shiftISO, type datesFor } from './report-date';
 import { Metrics } from './metrics';
 
 export class DailyUI {
@@ -30,11 +30,17 @@ export class DailyUI {
       }
     });
   }
-  async chooseNewTrade(name: string) {
-    await expect(this.page.getByRole('dialog')).toBeVisible();
+  /** Picks the trade if it already exists (e.g. a second vendor of 雜工工程), otherwise creates it. */
+  async chooseTrade(name: string) {
+    const dialog = this.page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
     await this.type(this.page.locator('[data-trade-picker-search]'), name, '工種名稱');
-    await this.click(this.action('create-trade-from-search'), `新增工種：${name}`);
-    await expect(this.page.getByRole('dialog')).toHaveCount(0);
+    const create = this.action('create-trade-from-search');
+    const existing = dialog.locator('[data-daily-action="select-trade"]').filter({ has: this.page.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
+    await expect(create.or(existing).first()).toBeVisible();
+    if (await create.isVisible()) await this.click(create, `新增工種：${name}`);
+    else await this.click(existing.first(), `選用既有工種：${name}`);
+    await expect(dialog).toHaveCount(0);
   }
   async tab(name: string) {
     const tab = this.page.locator(`[data-daily-tab="${name}"]`);
@@ -53,84 +59,99 @@ export class DailyUI {
     await this.click(this.page.locator('[data-site-search-action="create"]'), '新增並使用工地');
     await expect(this.page.locator('#site-search-suggestions')).toHaveCount(0);
     const tradeIds: string[] = [];
-    for (const [index, trade] of trades.entries()) {
+    let longWorkSampled = false;
+    for (const [index, trade] of scenario.trades.entries()) {
+      const label = `${trade.name}（${trade.vendor}）`;
       await this.click(this.action('add-trade'), '新增施工紀錄');
-      await this.chooseNewTrade(trade.name);
+      await this.chooseTrade(trade.name);
       await expect(this.page.locator('[data-trade]')).toHaveCount(index + 1);
       const card = this.page.locator('[data-trade]').last();
       const id = await card.getAttribute('data-trade');
       if (!id) throw new Error('新增工程沒有識別碼');
       tradeIds.push(id);
-      await this.type(card.locator('[data-daily-field="vendorNameSnapshot"]'), trade.vendor, `${trade.name}廠商`);
-      await this.type(card.locator('[data-daily-field="workerCount"]'), trade.workers, `${trade.name}人數`);
+      await this.type(card.locator('[data-daily-field="vendorNameSnapshot"]'), trade.vendor, `${label}廠商`);
+      await this.type(card.locator('[data-daily-field="workerCount"]'), trade.workers, `${label}人數`);
       for (const [taskIndex, task] of trade.tasks.entries()) {
-        await this.type(card.locator('[data-continuous-work]'), task, `${trade.name}工項${taskIndex + 1}`);
+        await this.type(card.locator('[data-continuous-work]'), task, `${label}工項${taskIndex + 1}`);
         await this.click(card.locator('[data-work-commit]'), '加入施工工項');
         await expect(card.locator('[data-inline-work]')).toHaveCount(taskIndex + 1);
         await expect(card.locator('[data-inline-work]').last()).toHaveValue(task);
       }
       if (index === 0) await this.metrics.sample('engineering');
-      if (trade.tasks.length > 1) await this.metrics.sample('long-work');
-      await this.click(card.locator('[data-daily-action="finish-entry"]'), `完成：${trade.name}`);
+      if (trade.tasks.length > 1 && !longWorkSampled) { longWorkSampled = true; await this.metrics.sample('long-work'); }
+      await this.click(card.locator('[data-daily-action="finish-entry"]'), `完成：${label}`);
       await expect(card.locator('[data-daily-action="toggle-trade"]')).toBeVisible();
       await expect(card).toContainText('資料齊全');
     }
-    await this.tab('supplies');
-    const materialIds: string[] = [];
-    for (const [index, material] of scenario.materials.entries()) {
-      await this.click(this.action('add-normal-material'), '新增進料');
-      const field = (name: string) => this.page.locator(`[data-material-field="${name}"]`);
-      await this.type(field('materialTypeSnapshot'), '鋼筋', '材料類型');
-      // Tab commits the type and triggers a full render; wait for that exact old DOM to detach.
-      const oldType = await field('materialTypeSnapshot').elementHandle();
-      await this.key(field('materialTypeSnapshot'), 'Tab', '提交材料類型');
-      await expect.poll(() => oldType!.evaluate((element) => element.isConnected)).toBe(false);
-      await this.type(field('itemName'), material.name, '進料品名');
-      await this.key(field('itemName'), 'Tab', '提交品名');
-      await this.type(field('supplierNameSnapshot'), '萬大禾', '供應商');
-      await this.type(field('quantity'), material.quantity, '進料數量');
-      await this.type(field('unit'), '噸', '單位');
-      await expect(field('itemName')).toHaveValue(material.name);
-      await expect(field('supplierNameSnapshot')).toHaveValue('萬大禾');
-      await expect(field('quantity')).toHaveValue(material.quantity);
-      if (index === 0) await this.metrics.sample('material-editor');
-      await this.click(this.action('save-material'), '儲存進料');
-      await expect(this.page.locator('[data-material-editor]')).toHaveCount(0);
-      const cards = this.page.locator('.material-list [data-material]');
-      await expect(cards).toHaveCount(index + 1);
-      const saved = cards.last();
-      await expect(saved).toContainText(material.name);
-      await expect(saved).toContainText(`${material.quantity} 噸`);
-      const id = await saved.getAttribute('data-material');
-      if (!id) throw new Error('儲存進料沒有識別碼');
-      materialIds.push(id);
+    if (scenario.materials.length) {
+      await this.tab('supplies');
+      const materialIds: string[] = [];
+      for (const [index, material] of scenario.materials.entries()) {
+        await this.click(this.action('add-normal-material'), '新增進料');
+        const field = (name: string) => this.page.locator(`[data-material-field="${name}"]`);
+        await this.type(field('materialTypeSnapshot'), material.type, '材料類型');
+        // Tab commits the type and triggers a full render; wait for that exact old DOM to detach.
+        const oldType = await field('materialTypeSnapshot').elementHandle();
+        await this.key(field('materialTypeSnapshot'), 'Tab', '提交材料類型');
+        await expect.poll(() => oldType!.evaluate((element) => element.isConnected)).toBe(false);
+        await this.type(field('itemName'), material.name, '進料品名');
+        await this.key(field('itemName'), 'Tab', '提交品名');
+        await this.type(field('supplierNameSnapshot'), material.supplier, '供應商');
+        await this.type(field('quantity'), material.quantity, '進料數量');
+        await this.type(field('unit'), material.unit, '單位');
+        await expect(field('itemName')).toHaveValue(material.name);
+        await expect(field('supplierNameSnapshot')).toHaveValue(material.supplier);
+        await expect(field('quantity')).toHaveValue(material.quantity);
+        if (index === 0) await this.metrics.sample('material-editor');
+        await this.click(this.action('save-material'), '儲存進料');
+        await expect(this.page.locator('[data-material-editor]')).toHaveCount(0);
+        const cards = this.page.locator('.material-list [data-material]');
+        await expect(cards).toHaveCount(index + 1);
+        const saved = cards.last();
+        await expect(saved).toContainText(material.name);
+        await expect(saved).toContainText(`${material.quantity} ${material.unit}`);
+        const id = await saved.getAttribute('data-material');
+        if (!id) throw new Error('儲存進料沒有識別碼');
+        materialIds.push(id);
+      }
+      for (const [index, id] of materialIds.entries()) {
+        const target = scenario.trades[scenario.materials[index].trade];
+        const source = this.page.locator(`[data-daily-action="select-connection-material"][data-material-id="${id}"]`);
+        await this.click(source, '選取進料端口');
+        await expect(source).toHaveAttribute('aria-pressed', 'true');
+        await this.click(this.page.locator(`[data-daily-action="select-connection-trade"][data-trade-id="${tradeIds[scenario.materials[index].trade]}"]`), `連接${target.name}`);
+        await expect(source).toContainText(`已接至 ${target.name}`);
+      }
+      await this.metrics.sample('connection-board');
+      await this.tab('engineering');
+      // Connecting returns the receiving trade to draft; confirm each one again.
+      for (const tradeIndex of new Set(scenario.materials.map((material) => material.trade))) {
+        const trade = this.page.locator(`[data-trade="${tradeIds[tradeIndex]}"]`);
+        await this.click(trade.locator('[data-daily-action="toggle-trade"]'), `確認${scenario.trades[tradeIndex].name}`);
+        await this.click(trade.locator('[data-daily-action="finish-entry"]'), `完成已連接進料的${scenario.trades[tradeIndex].name}`);
+        await expect(trade).toContainText('資料齊全');
+      }
     }
-    for (const id of materialIds) {
-      const source = this.page.locator(`[data-daily-action="select-connection-material"][data-material-id="${id}"]`);
-      await this.click(source, '選取進料端口');
-      await expect(source).toHaveAttribute('aria-pressed', 'true');
-      await this.click(this.page.locator(`[data-daily-action="select-connection-trade"][data-trade-id="${tradeIds[0]}"]`), '連接紮筋工程');
-      await expect(source).toContainText('已接至 紮筋工程');
-    }
-    await this.metrics.sample('connection-board');
-    await this.tab('engineering');
-    const steel = this.page.locator(`[data-trade="${tradeIds[0]}"]`);
-    await this.click(steel.locator('[data-daily-action="toggle-trade"]'), '確認紮筋工程');
-    await this.click(steel.locator('[data-daily-action="finish-entry"]'), '完成已連接進料的紮筋工程');
-    await expect(steel).toContainText('資料齊全');
-    await this.tab('contacts');
-    for (const [index, contact] of contacts.entries()) {
-      await this.click(this.action('add-contact'), '新增聯絡事項');
-      await this.chooseNewTrade(contact.trade);
-      await this.type(this.page.locator('#contact-vendor'), contact.vendor, '聯絡廠商');
-      await this.metrics.action('input', '聯絡預定日期（原生 date）', dates.contactISO, () => this.page.locator('[data-contact-date]').fill(dates.contactISO));
-      await this.type(this.page.locator('#contact-task'), contact.task, '聯絡工項');
-      await this.click(this.action('contact-add-task'), '加入聯絡工項');
-      await expect(this.page.locator('[data-contact-task]')).toHaveCount(1);
-      if (index === 0) await this.metrics.sample('contact-editor');
-      await this.click(this.action('save-contact'), '完成聯絡事項');
-      await expect(this.page.locator('#contact-task')).toHaveCount(0);
-      await expect(this.page.locator('[data-contact-card]')).toHaveCount(index + 1);
+    if (scenario.contacts.length) {
+      await this.tab('contacts');
+      for (const [index, contact] of scenario.contacts.entries()) {
+        await this.click(this.action('add-contact'), '新增聯絡事項');
+        await this.chooseTrade(contact.trade);
+        await this.type(this.page.locator('#contact-vendor'), contact.vendor, '聯絡廠商');
+        if (contact.dateOffset !== undefined) {
+          const planned = shiftISO(dates.reportISO, contact.dateOffset);
+          await this.metrics.action('input', '聯絡預定日期（原生 date）', planned, () => this.page.locator('[data-contact-date]').fill(planned));
+        }
+        for (const [taskIndex, task] of contact.tasks.entries()) {
+          await this.type(this.page.locator('#contact-task'), task, `聯絡工項${taskIndex + 1}`);
+          await this.click(this.action('contact-add-task'), '加入聯絡工項');
+          await expect(this.page.locator('[data-contact-task]')).toHaveCount(taskIndex + 1);
+        }
+        if (index === 0) await this.metrics.sample('contact-editor');
+        await this.click(this.action('save-contact'), '完成聯絡事項');
+        await expect(this.page.locator('#contact-task')).toHaveCount(0);
+        await expect(this.page.locator('[data-contact-card]')).toHaveCount(index + 1);
+      }
     }
     await this.click(this.action('toggle-preview'), '檢查與預覽');
     await expect(this.action('finalize')).toBeEnabled();

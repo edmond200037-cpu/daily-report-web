@@ -21,6 +21,13 @@ export function datesFor(iso: string) {
   };
 }
 
+/** ISO date `days` calendar days after `iso` (UTC arithmetic, no DST effects). */
+export function shiftISO(iso: string, days: number): string {
+  const date = new Date(`${iso}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export function renderAnswer(template: string, dates: ReturnType<typeof datesFor>): string {
   const answer = template.replaceAll('{{REPORT_DATE}}', dates.reportText).replaceAll('{{CONTACT_DATE}}', dates.contactText);
   if (/\{\{[^}]+\}\}/.test(answer)) throw new Error('標準答案含未知佔位符');

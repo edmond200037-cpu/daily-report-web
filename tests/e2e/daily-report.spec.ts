@@ -8,7 +8,7 @@ import { Metrics } from './helpers/metrics';
 
 for (const scenario of scenarios) {
   test(`${scenario.id}：從零填報、定稿與標準答案逐字比對`, async ({ page, context, browser }, info) => {
-    const dates = datesFor(process.env.DAILY_E2E_DATE!);
+    const dates = datesFor(scenario.reportDate ?? process.env.DAILY_E2E_DATE!);
     const metrics = new Metrics(page, info);
     const ui = new DailyUI(page, metrics);
     const errors: string[] = [];
