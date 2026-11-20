@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="zh-Hant" data-type="software"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>施工日報｜工地手機填報</title>
+<meta name="description" content="離線也能填的施工日報與水位變化。資料先存在你的手機，需要時再與同工地的人共編，一鍵複製官方格式日報。">
+<meta name="page-type" content="software">
+<meta name="site-kind" content="software">
+<meta name="theme-color" content="#f6f1e7">
+<meta property="og:title" content="施工日報｜工地手機填報">
+<meta property="og:description" content="離線也能填的施工日報與水位變化。">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23b84e16'/%3E%3Cpath d='M8 10h16M8 16h16M8 22h10' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&amp;display=swap">
+<style>
+:root{
+  --paper:#f6f1e7; --paper-2:#efe8da; --raised:#fcfaf5; --ink:#2b2925; --muted:#5f594f;
+  --line:#d9d0bd; --line-strong:#a99f8a;
+  --fill:#b84e16; --fill-ink:#8f3a0d; --orange:#b84e16; --orange-ink:#8f3a0d; --orange-soft:#f3dccb;
+  --green:#1f6b4a; --green-soft:#d8e8df;
+  --dark:#2b2925; --dark-2:#1f1d1a; --dark-ink:#f6f3ec; --dark-muted:#cfc7b8;
+  --danger-bg:#f5deda; --danger-ink:#7a302b; --danger-line:#d7a29b;
+  --edge:clamp(16px,5.56vw,80px); --max:1280px;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#1c1a17; --paper-2:#242119; --raised:#2a2620; --ink:#f3ede0; --muted:#c6bdab;
+    --line:#443e33; --line-strong:#6b6353; --orange:#e0793f; --orange-ink:#f0a26f; --fill:#b84e16; --fill-ink:#8f3a0d; --orange-soft:#3d2a1d;
+    --green:#5fbf90; --green-soft:#1d3a2c;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.7 "Noto Sans TC",system-ui,"PingFang TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased}
+img,svg{display:block;max-width:100%}
+a{color:inherit}
+.skip{position:absolute;left:12px;top:-60px;z-index:100;background:var(--ink);color:var(--paper);padding:12px 16px;border-radius:6px;text-decoration:none;font-weight:700}
+.skip:focus{top:12px}
+:focus-visible{outline:3px solid var(--orange);outline-offset:3px;border-radius:4px}
+.wrap{width:100%;max-width:calc(var(--max) + var(--edge)*2);margin:0 auto;padding:0 var(--edge)}
+
+/* header */
+header.top{position:sticky;top:0;margin-bottom:-65px;z-index:50;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;min-height:64px}
+.mark{display:flex;align-items:center;gap:10px;font-weight:900;font-size:19px;text-decoration:none;letter-spacing:.02em}
+.mark i{width:28px;height:28px;border-radius:6px;background:var(--orange);display:grid;place-items:center}
+.mark i svg{width:16px;height:16px}
+nav.links{display:flex;gap:4px;align-items:center}
+nav.links a.l{padding:0 14px;min-height:44px;display:inline-flex;align-items:center;text-decoration:none;font-size:15px;font-weight:500;color:var(--muted);position:relative}
+nav.links a.l::after{content:"";position:absolute;left:14px;right:14px;bottom:8px;height:2px;background:var(--orange);transform:scaleX(0);transform-origin:left;transition:transform .25s var(--ease)}
+nav.links a.l:hover{color:var(--ink)}
+nav.links a.l:hover::after{transform:scaleX(1)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:8px;font:700 16px/1 "Noto Sans TC",sans-serif;text-decoration:none;border:2px solid var(--fill);background:var(--fill);color:#fff;cursor:pointer;transition:transform .15s var(--ease),background .15s,box-shadow .15s}
+.btn:hover{background:var(--fill-ink);border-color:var(--fill-ink);transform:translateY(-1px)}
+.btn:active{transform:translateY(1px) scale(.98)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+.btn.ghost:hover{background:var(--paper-2);border-color:var(--ink)}
+.btn.sm{min-height:44px;padding:0 18px;font-size:15px}
+.btn svg{width:18px;height:18px;transition:transform .2s var(--ease)}
+.btn:hover svg{transform:translateX(3px)}
+
+/* sections: one idea per screen */
+section{position:relative}
+.sec{padding:clamp(56px,7vw,96px) 0;min-height:100svh;padding-top:calc(65px + clamp(24px,4vw,64px));display:flex;align-items:center}.sec>.wrap{width:100%}.day.sec{display:block;min-height:0;padding-top:calc(65px + 24px)}.g12{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px}
+.eyebrow{font-weight:700;font-size:14px;letter-spacing:.14em;color:var(--orange-ink);margin:0 0 18px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:28px;height:2px;background:currentColor}
+h1,h2,h3{font-weight:900;line-height:1.18;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(30px,4.6vw,56px)}
+h3{font-size:20px}
+.lede{font-size:clamp(17px,1.6vw,20px);color:var(--muted);max-width:34em;margin:20px 0 0}
+
+/* ===== hero ===== */
+.hero{min-height:calc(100svh - 64px);display:flex;align-items:center;padding:clamp(32px,5vw,64px) 0;overflow:hidden}
+.hero .wrap{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;align-items:center}.hero .wrap>:first-child{grid-column:1/8}.hero .wrap>:last-child{grid-column:9/13}
+.hero h1{font-size:clamp(40px,6.4vw,84px);line-height:1.08}
+.hero h1 em{font-style:normal;color:var(--orange);position:relative;white-space:nowrap}
+.hero h1 em::after{content:"";position:absolute;left:0;right:0;bottom:-.04em;height:.1em;background:var(--orange);opacity:.25;transform-origin:left;animation:draw 1s .9s var(--ease) both}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.hero .fact{display:flex;gap:18px;flex-wrap:wrap;margin:28px 0 0;padding:0;list-style:none;font-size:15px;color:var(--muted)}
+.hero .fact li{display:flex;align-items:center;gap:8px}
+.hero .fact b{color:var(--ink)}
+.hero .fact li::before{content:"";width:8px;height:8px;background:var(--green);border-radius:50%}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:36px}
+[data-enter]>*{animation:rise .8s var(--ease) both}
+[data-enter]>*:nth-child(2){animation-delay:.08s}[data-enter]>*:nth-child(3){animation-delay:.16s}[data-enter]>*:nth-child(4){animation-delay:.24s}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+/* ===== phone (live HTML of the app) ===== */
+.phone{width:min(100%,320px);margin:0 auto;aspect-ratio:9/18.4;background:var(--ink);border-radius:38px;padding:10px;position:relative}
+.phone::before{content:"";position:absolute;top:18px;left:50%;width:64px;height:6px;border-radius:3px;background:#0006;transform:translateX(-50%);z-index:3}
+.screen{height:100%;background:#f6f1e7;border-radius:29px;overflow:hidden;display:flex;flex-direction:column;font-size:12.5px;line-height:1.5;color:#2b2925;--m:#5f594f;position:relative}
+.screen *{color:inherit}
+.s-head{padding:26px 14px 8px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #d9d0bd}
+.s-head small{display:block;font-size:11px;color:#5f594f}
+.s-head strong{font-size:19px;font-weight:900}
+.s-gear{border:1px solid #a99f8a;border-radius:6px;padding:4px 10px;font-weight:700;font-size:12px;background:#fcfaf5}
+.s-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid #d9d0bd;font-weight:700;font-size:12px}
+.s-tabs span{padding:9px 0;text-align:center;position:relative;color:#5f594f}
+.s-tabs span.on{color:#2b2925}.s-tabs span.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-2px;height:2px;background:#b84e16}
+.s-body{flex:1;overflow:hidden;padding:12px 14px;display:flex;flex-direction:column;gap:10px;position:relative}
+.s-field label{display:block;font-size:11px;font-weight:700;color:#5f594f;margin-bottom:3px}
+.s-input{border:1px solid #a99f8a;background:#fcfaf5;border-radius:6px;padding:7px 10px;font-weight:700;min-height:34px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
+.s-input.caret::after{content:"";width:2px;height:14px;background:#b84e16;margin-left:2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.s-row2{display:grid;grid-template-columns:1fr 76px;gap:8px}
+.s-btn{background:#b84e16;color:#fff!important;border-radius:6px;font-weight:700;text-align:center;padding:9px;font-size:13px}
+.s-btn *{color:#fff}
+.s-card{border:1px solid #d9d0bd;background:#fcfaf5;border-radius:6px;padding:9px 10px;display:grid;gap:2px}
+.s-card .t{font-size:11px;color:#5f594f}.s-card .n{font-weight:700;font-size:13.5px}
+.s-card .ok{justify-self:end;color:#1f6b4a;font-size:11px;font-weight:700;margin-top:-18px}
+.chips{display:flex;flex-direction:column;gap:0}
+.chip{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #d9d0bd;font-size:13.5px;animation:rise .5s var(--ease) both}
+.chip::before{content:"⠿";color:#a99f8a;font-size:15px}
+.s-hint{font-size:11px;color:#5f594f}
+.s-note{font-size:11px;color:#5f594f;border-top:1px solid #d9d0bd;padding-top:6px}
+.s-bar{margin:0 10px 10px;background:#2b2925;color:#f6f3ec;border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12.5px}
+.s-bar small{display:block;color:#cfc7b8;font-weight:400;font-size:11px}
+.s-bar b{color:#f2b84b;font-size:11.5px}
+.s-pre{background:#1f1d1a;color:#f6f3ec;border-radius:6px;padding:10px;white-space:pre-wrap;font-size:12px;line-height:1.7;min-height:96px}
+.s-two{display:grid;gap:7px}
+.s-two .a{background:#fcfaf5;color:#2b2925!important;border-radius:6px;text-align:center;font-weight:700;padding:9px}
+.mat{display:grid;grid-template-columns:1fr auto;gap:2px 8px;border:1px solid #d9d0bd;background:#fcfaf5;border-radius:6px;padding:9px 10px}
+.mat b{font-size:13.5px}.mat span{font-size:11px;color:#5f594f}.mat em{grid-row:1/3;grid-column:2;align-self:center;font-style:normal;font-weight:900;font-size:15px}
+.w{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #d9d0bd}
+.w b{color:#1f6b4a;font-size:13px}.w span{font-size:12px}.w em{font-style:normal;font-weight:900;color:#1f6b4a}
+.s-green .s-tabs span.on::after{background:#1f6b4a}
+.fade-swap{animation:swap .45s var(--ease) both}
+@keyframes swap{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ===== pinned day ===== */
+.day{background:var(--paper-2);border-block:1px solid var(--line)}
+.day .head{padding-bottom:clamp(24px,4vw,48px)}
+.day-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;align-items:start}.chapters{grid-column:1/8}.sticky{grid-column:9/13}
+.chapters{display:grid}
+.chap{min-height:68svh;display:flex;flex-direction:column;justify-content:center;padding:24px 0 24px 20px;border-top:1px solid var(--line);border-left:4px solid transparent}
+.chap.on{border-left-color:var(--orange)}
+.chap .time{font:900 15px/1 "Noto Sans TC";color:var(--orange-ink);letter-spacing:.08em;margin-bottom:14px}
+.chap h3{font-size:clamp(24px,3vw,36px);margin-bottom:12px}
+.chap p{margin:0;color:var(--muted);max-width:28em}
+.chap p b{color:var(--ink)}
+.sticky{position:sticky;top:96px;align-self:start;padding-bottom:24px}
+.sticky .phone{box-shadow:none}
+.progress{display:flex;gap:6px;justify-content:center;margin-top:18px}
+.progress i{width:26px;height:4px;border-radius:2px;background:var(--line-strong);transition:background .3s,width .3s}
+.progress i.on{background:var(--orange);width:40px}
+
+/* ===== offline ===== */
+.off{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;align-items:center}.off>:first-child{grid-column:1/6}.off>:last-child{grid-column:7/13}
+.panel{border:1px solid var(--line-strong);background:var(--raised);border-radius:12px;padding:clamp(18px,3vw,30px)}
+.sw-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.sw-row strong{font-size:18px}
+.sw{position:relative;width:64px;height:36px;border-radius:18px;border:2px solid var(--line-strong);background:var(--paper-2);cursor:pointer;flex:none;transition:background .25s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--ink);transition:transform .25s var(--ease),background .25s}
+.sw[aria-checked="true"]{background:var(--green-soft);border-color:var(--green)}
+.sw[aria-checked="true"]::after{transform:translateX(28px);background:var(--green)}
+.statline{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0}
+.statline div{padding:0 0 0 14px;border-left:3px solid var(--line-strong)}
+.statline div.good{border-color:var(--green)}.statline div.warn{border-color:var(--orange)}
+.statline small{display:block;color:var(--muted);font-size:13px}
+.statline b{font-size:20px}
+.queue{list-style:none;margin:0 0 18px;padding:0;min-height:96px}
+.queue li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px;animation:rise .35s var(--ease) both}
+.queue li span:last-child{font-weight:700;color:var(--orange-ink);white-space:nowrap}
+.queue li.done span:last-child{color:var(--green)}
+.queue .empty{color:var(--muted);border:0}
+.truth{margin:18px 0 0;font-size:15px;color:var(--muted);padding-left:14px;border-left:3px solid var(--orange)}
+
+/* ===== collab ===== */
+.collab{background:var(--dark);color:var(--dark-ink)}
+.collab .eyebrow{color:#f2b84b}
+.collab .lede{color:var(--dark-muted)}
+.cmp{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;row-gap:24px;margin-top:clamp(36px,5vw,64px)}
+.case:first-child{grid-column:1/7}.case:last-child{grid-column:7/13}.case{border:1px solid #5a5447;border-radius:12px;padding:clamp(18px,3vw,30px);background:var(--dark-2);transition:transform .25s var(--ease),border-color .25s}
+.case:hover{transform:translateY(-2px);border-color:#a99f8a}
+.case h3{font-size:22px;margin-bottom:6px}
+.case>p{margin:0 0 22px;color:var(--dark-muted);font-size:15px}
+.who{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px;padding:12px 0;border-top:1px solid #3a362e;align-items:baseline}
+.who i{font-style:normal;font-weight:900;font-size:13px;background:#3a362e;border-radius:4px;padding:3px 8px;color:var(--dark-ink)}
+.who s{color:#9a917f}
+.res{margin-top:6px;padding:12px 14px;border-radius:8px;font-weight:700;font-size:15px}
+.res.ok{background:#173326;color:#8fd9b3}
+.res.bad{background:#3a2218;color:#f5b793}
+.res small{display:block;font-weight:400;color:inherit;opacity:.85;margin-top:2px}
+
+/* ===== water ===== */
+.water{--accent:var(--green)}
+.water .eyebrow{color:var(--green)}
+.wgrid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;align-items:center}.wgrid>:first-child{grid-column:1/6}.wgrid>:last-child{grid-column:7/13}
+.wt{width:100%;border-collapse:collapse;font-size:16px}
+.wt th{font-size:13px;font-weight:700;color:var(--muted);text-align:left;padding:0 8px 10px 0;border-bottom:2px solid var(--green)}
+.wt td{padding:14px 8px 14px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.wt td:first-child{font-weight:900;color:var(--green)}
+.wt .d{font-weight:900}.wt .d.up{color:var(--green)}.wt .d.down{color:var(--orange-ink)}
+.wt input{width:92px;min-height:44px;font:700 16px "Noto Sans TC";border:1px solid var(--line-strong);background:var(--raised);color:var(--ink);border-radius:6px;padding:0 10px;font-variant-numeric:tabular-nums}
+.wt input:focus-visible{outline-color:var(--green)}
+.wnote{font-size:14px;color:var(--muted);margin:14px 0 0}
+
+/* ===== promises ===== */
+.prom{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;margin-top:clamp(28px,4vw,48px)}.p{grid-column:span 4;border-top:2px solid var(--ink)}
+.p{padding:20px 0 24px;transition:transform .25s var(--ease)}
+.p:hover{transform:translateY(-2px)}
+.p b{display:block;font-size:13px;letter-spacing:.12em;color:var(--orange-ink);margin-bottom:10px}
+.p h3{font-size:20px;margin-bottom:8px}
+.p p{margin:0;color:var(--muted);font-size:16px}
+
+/* ===== close ===== */
+.close{background:var(--fill);color:#fff;text-align:left;overflow:hidden}
+.close .wrap{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px;align-items:end}.close .wrap>:first-child{grid-column:1/9}.close .wrap>:last-child{grid-column:9/13}
+.close h2{font-size:clamp(40px,7.4vw,104px);line-height:1.02;color:#fff}
+.close p{margin:20px 0 0;max-width:26em;font-size:18px;opacity:.95}
+.close .btn{background:#fff;color:var(--orange-ink);border-color:#fff;min-height:56px;font-size:18px;padding:0 32px}
+.close .btn:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.close small{display:block;margin-top:16px;font-size:14px;opacity:.9}
+footer.f{background:var(--dark-2);color:var(--dark-muted);padding:36px 0;font-size:14px}
+footer.f .wrap{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:24px}footer.f .wrap>:first-child{grid-column:1/9}footer.f .wrap>:last-child{grid-column:9/13}
+footer.f a{display:inline-flex;min-height:44px;align-items:center}
+
+/* hover layer */
+@media (hover:hover){.panel{transition:transform .25s var(--ease)}.panel:hover{transform:translateY(-2px)}}
+
+/* responsive */
+@media (max-width:900px){
+  nav.links a.l{display:none}
+  .hero{min-height:auto}
+  .hero .wrap,.off,.wgrid,.cmp,.close .wrap,.day-grid,.prom,footer.f .wrap{grid-template-columns:1fr}
+  .hero .wrap>*,.off>*,.wgrid>*,.case,.close .wrap>*,.chapters,.sticky,.p,footer.f .wrap>*{grid-column:1/-1!important}
+  .hero{height:auto}
+  .sec{display:block;min-height:calc(100svh - 65px)}
+  .hero .phone{max-width:280px}
+  .sticky{order:-1;top:64px;z-index:5;background:var(--paper-2);padding:10px 0 8px;margin:0 calc(var(--edge)*-1);padding-inline:var(--edge)}
+  .sticky .phone{max-width:200px;aspect-ratio:9/12;border-radius:24px;padding:6px}
+  .sticky .screen{border-radius:18px;font-size:10px}
+  .sticky .s-bar{display:none}
+  .chap{min-height:54svh}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到主要內容</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#top" aria-label="施工日報 首頁"><i aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" fill="none"></path></svg></i>施工日報</a>
+    <nav class="links" aria-label="頁面導覽">
+      <a class="l" href="#day">一天的紀錄</a>
+      <a class="l" href="#offline">離線與同步</a>
+      <a class="l" href="#collab">共編</a>
+      <a class="l" href="#water">水位</a>
+      <a class="btn sm" href="../#daily">開啟日報</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <div data-enter="">
+      <p class="eyebrow">給工地現場的手機填報工具</p>
+      <h1>三分鐘，<br>寫完今天的<em>施工日報</em></h1>
+      <p class="lede">在工地站著就能填。沒有網路也能完整使用，資料先存在你的手機；填完一鍵複製成官方格式的繁體中文日報。</p>
+      <div class="cta">
+        <a class="btn" href="../#daily">開啟日報 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"></path></svg></a>
+        <a class="btn ghost" href="#day">看一天怎麼填</a>
+      </div>
+      <ul class="fact">
+        <li><b>離線可用</b>無帳號、無後端也能填</li>
+        <li><b>水位變化</b>同一個 App 量測</li>
+      </ul>
+    </div>
+    <div aria-label="日報填寫畫面示範" role="img" id="heroPhone"><div class="phone"><div class="screen fade-swap"><div class="s-head"><div><small>已保存本機</small><strong>施工日報</strong></div><span class="s-gear">設定</span></div><div class="s-tabs"><span class="on">施工紀錄</span><span>進料</span><span>聯絡事項</span><span>特殊事項</span></div><div class="s-body"><div class="s-row2"><div class="s-field"><label>工地</label><div class="s-input">示範大樓新建工程</div></div><div class="s-field"><label>日期</label><div class="s-input">11/20</div></div></div><div class="s-card"><span class="t">模板 · 大成營造 · 6 人</span><span class="n">牆體模板組立 · 另 2 項</span><span class="ok">資料齊全</span></div><div class="s-btn">新增施工紀錄</div></div><div class="s-bar"><div>1 筆施工 · 6 人<small>資料齊全，可檢查日報</small></div><b>檢查與預覽</b></div></div></div></div>
+  </div>
+</section>
+
+<!-- DAY: the pinned experience -->
+<section class="day sec" id="day">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">一天的紀錄</p>
+      <h2>跟著一天走一遍，<br>日報自己長出來</h2>
+      <p class="lede">往下捲，右邊手機會跟著每個時段填上資料。畫面是 App 本身的樣子。</p>
+    </div>
+    <div class="day-grid">
+      <div class="chapters" id="chapters">
+        <article class="chap" data-step="0">
+          <div class="time">07:10　進場</div>
+          <h3>先選工地與日期</h3>
+          <p>工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用工地。<b>打字搜尋，找不到就直接新增。</b></p>
+        </article>
+        <article class="chap" data-step="1">
+          <div class="time">08:30　開工</div>
+          <h3>工種、廠商、人數，同一列</h3>
+          <p>選工種、填廠商、填今天幾個人。<b>單日的人數不會被偷偷記成記憶</b>，只有工種、廠商這類可重複使用的名稱會被學起來。</p>
+        </article>
+        <article class="chap" data-step="2">
+          <div class="time">10:00　施工中</div>
+          <h3>工項用「、」連續輸入</h3>
+          <p>一行打下去，按 Enter 就加入。拖曳握把排序，左滑刪除，刪錯了還有六秒可以復原。<b>中文輸入法組字時，不會被重新渲染打斷。</b></p>
+        </article>
+        <article class="chap" data-step="3">
+          <div class="time">13:20　進料</div>
+          <h3>進料獨立記，也能接回工程</h3>
+          <p>混凝土、鋼筋進場，依材料類型、規格、數量記一筆。一筆進料最多連到<b>一個工程條目</b>，不會算兩次。</p>
+        </article>
+        <article class="chap" data-step="4">
+          <div class="time">15:40　量測</div>
+          <h3>水位變化，用量測綠分開</h3>
+          <p>每口井填今天的量測值，變化量自動算好。日報用施工橘、水位用量測綠，<b>兩件事不會混在一起看。</b></p>
+        </article>
+        <article class="chap on" data-step="5">
+          <div class="time">17:30　收工</div>
+          <h3>預覽、定稿、複製</h3>
+          <p>日報文字即時預覽。<b>定稿會留下 7 天的快照</b>，同樣內容再按只會再複製一次，不會重複計數。貼到群組就完成了。</p>
+        </article>
+      </div>
+      <div class="sticky">
+        <div class="phone" role="img" aria-label="手機畫面，依左側時段更新"><div class="screen" id="dayScreen"><div class="s-head"><div><small>已保存本機</small><strong>施工日報</strong></div><span class="s-gear">設定</span></div><div class="s-tabs"><span class="on">施工紀錄</span><span>進料</span><span>聯絡事項</span><span>特殊事項</span></div><div class="s-body fade-swap" style="padding-bottom:4px"><div class="s-pre">示範大樓新建工程：11/20（五）
+
+模板：大成營造6工-牆體模板組立、柱模板拆除、梁底支撐檢查。</div><div class="s-two"><div class="a">僅複製</div><div class="s-btn">定稿並複製</div></div><p class="s-note">定稿會保留 7 天；草稿保留供繼續編輯。</p></div></div></div>
+        <div class="progress" id="progress" aria-hidden="true"><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="on"></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OFFLINE -->
+<section class="sec" id="offline">
+  <div class="wrap off">
+    <div>
+      <h2>收訊差的地方，<br>也不會丟資料</h2>
+      <p class="lede">本機先存，連得上再同步。App 不會假裝你已經上傳：沒送出去的，會明明白白告訴你。</p>
+      <p class="truth">本機寫入成功，不等於雲端成功。每一筆待同步的操作都看得到。</p>
+    </div>
+    <div class="panel" aria-label="離線示範，可操作">
+      <div class="sw-row">
+        <strong id="netLabel">目前：有網路</strong>
+        <button class="sw" id="netSw" role="switch" aria-checked="false" aria-label="模擬沒有網路"></button>
+      </div>
+      <div class="statline">
+        <div class="good"><small>本機</small><b>已保存</b></div>
+        <div class="good" id="cloudBox"><small>雲端</small><b id="cloudTxt">已同步</b></div>
+      </div>
+      <ul class="queue" id="queue" aria-live="polite"><li class="empty">試著切到「沒有網路」，再新增一筆紀錄。</li></ul>
+      <button class="btn sm" id="addRec" type="button">新增一筆紀錄</button>
+    </div>
+  </div>
+</section>
+
+<!-- COLLAB -->
+<section class="collab sec" id="collab">
+  <div class="wrap">
+    <h2>同工地多人填，<br>不同欄位不打架</h2>
+    <p class="lede">登入並選擇共用工地後，成員可以同時編輯。每次修改只帶走自己改的那個欄位。</p>
+    <div class="cmp">
+      <div class="case">
+        <h3>改不同欄位</h3>
+        <p>王班長改人數，李主任改工項備註。</p>
+        <div class="who"><i>王</i><span>人數 <s>6</s> → <b>8</b></span></div>
+        <div class="who"><i>李</i><span>備註 → <b>3F 柱筋待檢</b></span></div>
+        <div class="res ok">兩個修改都保留<small>由穩定的項目 ID 對應，不靠陣列順序。</small></div>
+      </div>
+      <div class="case">
+        <h3>改同一個欄位</h3>
+        <p>兩人同時把同一筆人數改成不同的值。</p>
+        <div class="who"><i>王</i><span>人數 <s>6</s> → <b>8</b></span></div>
+        <div class="who"><i>李</i><span>人數 <s>6</s> → <b>7</b></span></div>
+        <div class="res bad">列為衝突審核項<small>原始操作先永久備份，你選擇要留哪一個，不會被靜默覆蓋。</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WATER -->
+<section class="sec water" id="water">
+  <div class="wrap wgrid">
+    <div>
+      <h2>填今天的值，<br>變化量自己算</h2>
+      <p class="lede">每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天，較舊的量測仍保留當作基準，只有你明確刪除才會刪。</p>
+    </div>
+    <div class="panel">
+      <table class="wt" aria-label="水位量測範例，可輸入今日值">
+        <thead><tr><th>井位</th><th>前次</th><th>今日</th><th>變化</th></tr></thead>
+        <tbody id="wbody"><tr><td>W-1</td><td>12.40</td><td><input inputmode="decimal" aria-label="W-1 今日水位" data-i="0" value="12.46"></td><td class="d up" id="d0">+0.06</td></tr><tr><td>W-2</td><td>8.15</td><td><input inputmode="decimal" aria-label="W-2 今日水位" data-i="1" value="8.09"></td><td class="d down" id="d1">−0.06</td></tr><tr><td>W-3</td><td>10.02</td><td><input inputmode="decimal" aria-label="W-3 今日水位" data-i="2" value="10.02"></td><td class="d " id="d2">0.00</td></tr></tbody>
+      </table>
+      <p class="wnote">示範資料。改上方「今日」欄位，變化量即時更新。</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROMISES -->
+<section class="sec" id="promises" style="background:var(--paper-2);border-top:1px solid var(--line)">
+  <div class="wrap">
+    <h2>你的紀錄，<br>不會因為更新而消失</h2>
+    <div class="prom">
+      <div class="p"><h3>更新不清資料</h3><p>App 更新前會先存好草稿；更新不會清除本機資料庫。</p></div>
+      <div class="p"><h3>定稿快照不回寫</h3><p>改名、刪除主檔、再改草稿，都不會動到已定稿的內容。保留 7 天後自動清除。</p></div>
+      <div class="p"><h3>記憶不亂學</h3><p>同一個名稱有效套用滿 4 次才自動確認；預覽、重試、自動保存都不計次。</p></div>
+      <div class="p"><h3>備份只含主檔</h3><p>匯出的記憶備份只有可重用的名稱，絕不夾帶草稿、定稿或水位資料。</p></div>
+      <div class="p"><h3>錯誤不無限重試</h3><p>權限或格式問題不是重試就會好，會標成受阻並保留資料與診斷。</p></div>
+      <div class="p"><h3>還沒做完的事</h3><p>定稿目前只在本機保留 7 天，跨裝置的定稿歷史尚未提供。我們直接說。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSE -->
+<section class="close sec">
+  <div class="wrap">
+    <div>
+      <h2>明天上工，<br>手機就夠了。</h2>
+      <p>不用註冊，打開就能填。需要共編時，再登入選共用工地。</p>
+    </div>
+    <div>
+      <a class="btn" href="../#daily">開啟日報 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5"></path></svg></a>
+      <small>可加到手機主畫面，像 App 一樣開啟。</small>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="f">
+  <div class="wrap">
+    <span>施工日報 · 離線優先的工地填報工具</span>
+    <a href="mailto:hello@daily-report.example">hello@daily-report.example</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function(s,r){return (r||document).querySelector(s)};
+  var $$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+
+  /* ---- shared phone pieces ---- */
+  function head(status,green){return '<div class="s-head"><div><small>'+status+'</small><strong>'+(green?'水位變化':'施工日報')+'</strong></div><span class="s-gear">設定</span></div><div class="s-tabs"><span class="'+(green?'':'on')+'">'+(green?'施工紀錄':'施工紀錄')+'</span><span>進料</span><span>聯絡事項</span><span>'+(green?'水位':'特殊事項')+'</span></div>';}
+  function bar(a,b,c){return '<div class="s-bar"><div>'+a+'<small>'+b+'</small></div><b>'+c+'</b></div>';}
+  var basics = '<div class="s-row2"><div class="s-field"><label>工地</label><div class="s-input">示範大樓新建工程</div></div><div class="s-field"><label>日期</label><div class="s-input">11/20</div></div></div>';
+
+  var steps = [
+    function(){return head('已保存本機')+'<div class="s-body fade-swap"><div class="s-field"><label>日報日期</label><div class="s-input">2026/11/20</div></div><div class="s-field"><label>工地</label><div class="s-input caret">示範大樓新建工</div></div><div class="s-card"><span class="t">建議</span><span class="n">新增並使用「示範大樓新建工程」</span></div><div class="s-btn">新增施工紀錄</div></div>'+bar('0 筆施工 · 0 人','填寫施工紀錄後即可預覽','檢查與預覽');},
+    function(){return head('已保存本機')+'<div class="s-body fade-swap">'+basics+'<div class="s-field"><label>工種</label><div class="s-input">模板</div></div><div class="s-row2"><div class="s-field"><label>廠商</label><div class="s-input">大成營造</div></div><div class="s-field"><label>人數</label><div class="s-input caret">6</div></div></div><p class="s-hint">請確認廠商，填寫今日人數。</p></div>'+bar('1 筆施工 · 6 人','還缺工項','檢查與預覽');},
+    function(){return head('已保存本機')+'<div class="s-body fade-swap"><div class="s-field"><label>施工工項</label><div class="s-row2"><div class="s-input caret">搜尋或輸入工項</div><div class="s-btn" style="padding:7px">加入</div></div></div><div class="chips"><div class="chip">牆體模板組立</div><div class="chip" style="animation-delay:.2s">柱模板拆除</div><div class="chip" style="animation-delay:.4s">梁底支撐檢查</div></div><p class="s-note">整列左滑刪除；握把長按排序。點文字可編輯。</p></div>'+bar('1 筆施工 · 6 人','資料齊全，可檢查日報','檢查與預覽');},
+    function(){return head('已保存本機').replace('class="on">施工紀錄</span><span>進料','>施工紀錄</span><span class="on">進料')+'<div class="s-body fade-swap"><div class="mat"><b>預拌混凝土</b><span>280 · 台泥</span><em>24 m³</em></div><div class="mat" style="animation-delay:.2s"><b>鋼筋</b><span>#4 · 同鋼</span><em>3.2 t</em></div><div class="s-card"><span class="t">已連接工程</span><span class="n">模板 · 牆體模板組立</span></div></div>'+bar('2 筆進料','1 筆已連接工程','檢查與預覽');},
+    function(){return '<div class="s-green" style="display:flex;flex-direction:column;height:100%">'+head('本機量測資料',true).replace('<span>水位</span>','<span class="on" style="color:#1f6b4a">水位</span>')+'<div class="s-body fade-swap"><div class="w"><b>W-1</b><span>12.40 → 12.46</span><em>+0.06</em></div><div class="w"><b>W-2</b><span>8.15 → 8.09</span><em style="color:#8f3a0d">−0.06</em></div><div class="w"><b>W-3</b><span>10.02 → 10.02</span><em>0.00</em></div><p class="s-note">近 3 天顯示；較舊量測保留為基準。</p></div></div>';},
+    function(){return head('已保存本機')+'<div class="s-body fade-swap" style="padding-bottom:4px"><div class="s-pre">示範大樓新建工程：11/20（五）\n\n模板：大成營造6工-牆體模板組立、柱模板拆除、梁底支撐檢查。</div><div class="s-two"><div class="a">僅複製</div><div class="s-btn">定稿並複製</div></div><p class="s-note">定稿會保留 7 天；草稿保留供繼續編輯。</p></div>';}
+  ];
+
+  /* ---- hero phone: enters once on load ---- */
+  var heroEl = $('#heroPhone');
+  function heroFrame(n){
+    var inner = '';
+    if(n===0) inner = head('已保存本機')+'<div class="s-body">'+basics+'<div class="s-btn">新增施工紀錄</div></div>'+bar('0 筆施工 · 0 人','填寫施工紀錄後即可預覽','檢查與預覽');
+    if(n===1) inner = head('已保存本機')+'<div class="s-body">'+basics+'<div class="s-field"><label>工種</label><div class="s-input">模板</div></div><div class="s-row2"><div class="s-field"><label>廠商</label><div class="s-input">大成營造</div></div><div class="s-field"><label>人數</label><div class="s-input caret">6</div></div></div></div>'+bar('1 筆施工 · 6 人','還缺工項','檢查與預覽');
+    if(n===2) inner = head('已保存本機')+'<div class="s-body">'+basics+'<div class="s-card"><span class="t">模板 · 大成營造 · 6 人</span><span class="n">牆體模板組立 · 另 2 項</span><span class="ok">資料齊全</span></div><div class="s-btn">新增施工紀錄</div></div>'+bar('1 筆施工 · 6 人','資料齊全，可檢查日報','檢查與預覽');
+    heroEl.innerHTML = '<div class="phone"><div class="screen fade-swap">'+inner+'</div></div>';
+  }
+  heroFrame(reduce?2:0);
+  if(!reduce){setTimeout(function(){heroFrame(1)},1500);setTimeout(function(){heroFrame(2)},3600);}
+
+  /* ---- pinned day ---- */
+  var screen = $('#dayScreen'), chaps = $$('.chap'), dots = $$('#progress i'), cur = -1;
+  function setStep(i){
+    if(i===cur) return; cur=i;
+    screen.innerHTML = steps[i]();
+    chaps.forEach(function(c,k){c.classList.toggle('on',k===i)});
+    dots.forEach(function(d,k){d.classList.toggle('on',k===i)});
+  }
+  setStep(0);
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){if(e.isIntersecting) setStep(+e.target.dataset.step)});
+    },{rootMargin:'-42% 0px -42% 0px'});
+    chaps.forEach(function(c){io.observe(c)});
+  }
+  chaps.forEach(function(c){c.addEventListener('click',function(){setStep(+c.dataset.step)})});
+
+  /* ---- offline demo ---- */
+  var sw=$('#netSw'), netLabel=$('#netLabel'), cloudTxt=$('#cloudTxt'), cloudBox=$('#cloudBox'), q=$('#queue'), pend=[], n=0;
+  var names=['牆體模板組立','柱鋼筋綁紮','樓板澆置','梁底支撐檢查','鷹架拆除'];
+  function offline(){return sw.getAttribute('aria-checked')==='true'}
+  function render(){
+    var off=offline();
+    netLabel.textContent = off?'目前：沒有網路':'目前：有網路';
+    cloudBox.className = (off||pend.length)?'warn':'good';
+    cloudTxt.textContent = pend.length? '未同步 · '+pend.length+' 筆待同步' : (off?'離線中':'已同步');
+    if(!pend.length && !q.children.length) return;
+    q.innerHTML = pend.length ? pend.map(function(p){return '<li><span>'+p+'</span><span>待同步</span></li>'}).join('') : '<li class="done"><span>所有紀錄已送出</span><span>已同步</span></li>';
+  }
+  sw.addEventListener('click',function(){
+    sw.setAttribute('aria-checked',String(!offline()));
+    if(!offline() && pend.length){ pend=[]; }
+    render();
+  });
+  $('#addRec').addEventListener('click',function(){
+    var t='11/20　'+names[n++%names.length];
+    if(offline()){pend.push(t)} else {q.innerHTML='<li class="done"><span>'+t+'</span><span>已同步</span></li>'}
+    render();
+  });
+  q.innerHTML='<li class="empty">試著切到「沒有網路」，再新增一筆紀錄。</li>';
+
+  /* ---- water demo ---- */
+  var wells=[['W-1',12.40,12.46],['W-2',8.15,8.09],['W-3',10.02,10.02]];
+  var wb=$('#wbody');
+  function fmt(d){var r=Math.round(d*100)/100;return (r>0?'+':r<0?'−':'')+Math.abs(r).toFixed(2)}
+  wb.innerHTML = wells.map(function(w,i){return '<tr><td>'+w[0]+'</td><td>'+w[1].toFixed(2)+'</td><td><input inputmode="decimal" aria-label="'+w[0]+' 今日水位" data-i="'+i+'" value="'+w[2].toFixed(2)+'"></td><td class="d" id="d'+i+'"></td></tr>'}).join('');
+  function upd(i,v){
+    var el=$('#d'+i), x=parseFloat(v);
+    if(!/^-?\d+(\.\d+)?$/.test(String(v).trim())||isNaN(x)){el.textContent='—';el.className='d';return}
+    var d=x-wells[i][1];
+    el.textContent=fmt(d); el.className='d '+(d>0.004?'up':d<-0.004?'down':'');
+  }
+  $$('input',wb).forEach(function(inp){upd(+inp.dataset.i,inp.value);inp.addEventListener('input',function(){upd(+inp.dataset.i,inp.value)})});
+})();
+</script>
+
+
+</body></html>

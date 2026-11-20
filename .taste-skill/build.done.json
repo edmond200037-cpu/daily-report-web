@@ -1,0 +1,11 @@
+{
+ "page": "landing/index.html",
+ "url": null,
+ "root": null,
+ "kind": "software",
+ "category": "施工日報手機填報 App",
+ "primary": "開啟日報",
+ "rounds": 3,
+ "start": "2026-11-20T09:55:20.630Z",
+ "by": "gate.mjs --start"
+}

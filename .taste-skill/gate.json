@@ -1,0 +1,3167 @@
+{
+ "start": "2026-11-20T09:55:20.630Z",
+ "round": 3,
+ "idle": 0,
+ "errors": 0,
+ "status": "open",
+ "history": [
+  {
+   "at": "2026-11-20T09:57:52.849Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 80,
+   "round": 1,
+   "reused": false,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:00:54.081Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 78,
+   "round": 2,
+   "reused": false,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:01:00.920Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 78,
+   "round": 2,
+   "reused": true,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:03:45.204Z",
+   "mode": "manual",
+   "status": "open",
+   "fails": 84,
+   "round": 3,
+   "reused": false,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:03:58.199Z",
+   "mode": "hook",
+   "host": "claude",
+   "decision": "allow",
+   "reason": "no build is active here",
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T15:10:52.325Z",
+   "mode": "hook",
+   "host": "claude",
+   "decision": "allow",
+   "reason": "no build is active here",
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T15:13:03.553Z",
+   "mode": "hook",
+   "host": "claude",
+   "decision": "allow",
+   "reason": "no build is active here",
+   "stopHookActive": false
+  }
+ ],
+ "max": 3,
+ "marker": {
+  "page": "landing/index.html",
+  "url": null,
+  "root": null,
+  "kind": "software",
+  "category": "施工日報手機填報 App",
+  "primary": "開啟日報",
+  "rounds": 3,
+  "start": "2026-11-20T09:55:20.630Z",
+  "by": "gate.mjs --start"
+ },
+ "manual": true,
+ "roundKey": "5f7ce06697e95943:da39a3ee",
+ "roundFree": false,
+ "idleFree": false,
+ "blockKey": null,
+ "fp": "5f7ce06697e95943",
+ "page": "landing/index.html",
+ "found": {
+  "fails": [
+   {
+    "check": "hero-fill",
+    "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+    "msg": "the next section shows on the first screen: it starts at 836px on a 900px screen (the hero ends at 836px)",
+    "fix": "let the hero fill the first screen alone (min-height: 100svh, less above it): nothing of the next section on load",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "hero-fill"
+    ],
+    "wheres": [
+     "section#day \"跟著一天走一遍， 日報自己長出來\""
+    ]
+   },
+   {
+    "check": "no-visual",
+    "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+    "msg": "pictures, effects and mocks cover 5% of this section; a feature section needs a visual (about 25% or more)",
+    "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "no-visual"
+    ],
+    "wheres": [
+     "section#day \"跟著一天走一遍， 日報自己長出來\""
+    ]
+   },
+   {
+    "check": "no-visual",
+    "where": "section#offline \"收訊差的地方， 也不會丟資料\"",
+    "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+    "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "no-visual"
+    ],
+    "wheres": [
+     "section#offline \"收訊差的地方， 也不會丟資料\""
+    ]
+   },
+   {
+    "check": "no-visual",
+    "where": "section#collab \"同工地多人填， 不同欄位不打架\"",
+    "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+    "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "no-visual"
+    ],
+    "wheres": [
+     "section#collab \"同工地多人填， 不同欄位不打架\""
+    ]
+   },
+   {
+    "check": "no-visual",
+    "where": "section#water \"填今天的值， 變化量自己算\"",
+    "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+    "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "no-visual"
+    ],
+    "wheres": [
+     "section#water \"填今天的值， 變化量自己算\""
+    ]
+   },
+   {
+    "check": "no-visual",
+    "where": "section#promises \"你的紀錄， 不會因為更新而消失\"",
+    "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+    "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "no-visual"
+    ],
+    "wheres": [
+     "section#promises \"你的紀錄， 不會因為更新而消失\""
+    ]
+   },
+   {
+    "check": "text-only",
+    "where": "main#main > section.close.sec \"明天上工， 手機就夠了。\"",
+    "msg": "the closing section is only text: no picture, icon, mock or effect in it",
+    "fix": "give the section a visual: a photograph that fits, the real icons, or a UI fragment on a ground",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "text-only"
+    ],
+    "wheres": [
+     "main#main > section.close.sec \"明天上工， 手機就夠了。\""
+    ]
+   },
+   {
+    "check": "button-styles",
+    "where": "(one screen)",
+    "msg": "3 button styles on one screen: soft, fill #b84e16, outline #b84e16 (\"開啟日報\"); soft, outline #6b6353 (\"看一天怎麼填\"); soft, fill #2b2925 (\"1 筆施工 · 6 人 資料齊全，可檢查日報 檢查與預覽\", in a mock); the odd one out: \"1 筆施工 · 6 人 資料齊全，可檢查日報 檢查與預覽\"",
+    "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "button-styles"
+    ],
+    "wheres": [
+     "(one screen)"
+    ]
+   },
+   {
+    "check": "button-styles",
+    "where": "(the page)",
+    "msg": "3 button styles on the page: soft, fill #b84e16, outline #b84e16 x3 (\"開啟日報\"); soft, outline #6b6353 x1 (\"看一天怎麼填\"); soft, fill #ffffff, outline #ffffff x1 (\"開啟日報\")",
+    "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "button-styles"
+    ],
+    "wheres": [
+     "(the page)"
+    ]
+   },
+   {
+    "check": "copy-headline",
+    "where": "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\"",
+    "msg": "\"三分鐘， 寫完今天的施工日報\" does not name what is sold (app, from flags)",
+    "fix": "put the category noun in the h1 (and who it is for, or where), in 2 to 8 words",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "copy-headline"
+    ],
+    "wheres": [
+     "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\""
+    ]
+   },
+   {
+    "check": "copy-fact",
+    "where": "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\"",
+    "msg": "the first screen holds no number, price, date, place, platform or genre",
+    "fix": "put one hard fact from the brief on the first screen: a number, a price, a date, the place, the platforms it runs on or a game's genre; take it from the brief or remove the claim",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "copy-fact"
+    ],
+    "wheres": [
+     "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\""
+    ]
+   },
+   {
+    "check": "heading-scale",
+    "where": "section.close.sec > div.wrap > div:nth-of-type(1) > h2 \"明天上工， 手機就夠了。\"",
+    "msg": "an h2 at 104px, as large as the h1 (84px) or larger",
+    "fix": "size headings by level: the h1 largest, one size per level, each level below the one above",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "heading-scale"
+    ],
+    "wheres": [
+     "section.close.sec > div.wrap > div:nth-of-type(1) > h2 \"明天上工， 手機就夠了。\""
+    ]
+   },
+   {
+    "check": "heading-scale",
+    "where": "div#chapters > article.chap:nth-of-type(1) > h3 \"先選工地與日期\"",
+    "msg": "h3 headings in 2 sizes, 20px (\"更新不清資料\") to 36px (x1.80)",
+    "fix": "size headings by level: the h1 largest, one size per level, each level below the one above",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "heading-scale"
+    ],
+    "wheres": [
+     "div#chapters > article.chap:nth-of-type(1) > h3 \"先選工地與日期\""
+    ]
+   },
+   {
+    "check": "top-stagger",
+    "where": "section#top > div.wrap \"給工地現場的手機填報工具 三分鐘， 寫完今天的施工日報 在工地站著就能填。沒有網\"",
+    "msg": "2 boxes side by side start at different heights (+57, +0px)",
+    "fix": "align the tops of the boxes in the row (one floor, one ceiling)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "top-stagger"
+    ],
+    "wheres": [
+     "section#top > div.wrap \"給工地現場的手機填報工具 三分鐘， 寫完今天的施工日報 在工地站著就能填。沒有網\""
+    ]
+   },
+   {
+    "check": "top-stagger",
+    "where": "main#main > section.close.sec > div.wrap \"明天上工， 手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 \"",
+    "msg": "2 boxes side by side start at different heights (+0, +167px)",
+    "fix": "align the tops of the boxes in the row (one floor, one ceiling)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "top-stagger"
+    ],
+    "wheres": [
+     "main#main > section.close.sec > div.wrap \"明天上工， 手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 \""
+    ]
+   },
+   {
+    "check": "off-grid",
+    "where": "div:nth-of-type(1) > ul.fact > li:nth-of-type(1) > b \"離線可用\"",
+    "msg": "left edge at 96px, 16px off the page margin at 80px (23 elements, like li:nth-of-type(1))",
+    "fix": "move it onto the page margin, or the column edge its section uses",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "off-grid"
+    ],
+    "wheres": [
+     "div:nth-of-type(1) > ul.fact > li:nth-of-type(1) > b \"離線可用\""
+    ]
+   },
+   {
+    "check": "off-grid",
+    "where": "div#chapters > article.chap.on > div.time \"07:10 進場\"",
+    "msg": "left edge at 104px, 24px off the page margin at 80px (23 elements, like p.lede); 9 more in this section off the grid too (h3 at 104px, p at 104px, div.time at 104px, h3 at 104px, ...)",
+    "fix": "move it onto the page margin, or the column edge its section uses",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "off-grid"
+    ],
+    "wheres": [
+     "div#chapters > article.chap.on > div.time \"07:10 進場\""
+    ]
+   },
+   {
+    "check": "off-grid",
+    "where": "section#offline > div.wrap.off > div:nth-of-type(1) > p.truth \"本機寫入成功，不等於雲端成功。每一筆待同步的操作都看得到。\"",
+    "msg": "left edge at 97px, 17px off the page margin at 80px (23 elements, like p.lede)",
+    "fix": "move it onto the page margin, or the column edge its section uses",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "off-grid"
+    ],
+    "wheres": [
+     "section#offline > div.wrap.off > div:nth-of-type(1) > p.truth \"本機寫入成功，不等於雲端成功。每一筆待同步的操作都看得到。\""
+    ]
+   },
+   {
+    "check": "text-contrast",
+    "where": "section.close.sec > div.wrap > div:nth-of-type(2) > a.btn \"開啟日報\"",
+    "msg": "a caption, label or muted line in #f0a26f on #ffffff reads 2.08:1 (needs 4.5:1)",
+    "fix": "body text in the ink at 7:1 or more; grey (4.5:1 or more) only for captions and labels",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "text-contrast"
+    ],
+    "wheres": [
+     "section.close.sec > div.wrap > div:nth-of-type(2) > a.btn \"開啟日報\""
+    ]
+   },
+   {
+    "check": "text-contrast",
+    "where": "section.close.sec > div.wrap > div:nth-of-type(2) > small \"可加到手機主畫面，像 App 一樣開啟。\"",
+    "msg": "a caption, label or muted line in #f8ede8 on #b84e16 reads 4.42:1 (needs 4.5:1)",
+    "fix": "body text in the ink at 7:1 or more; grey (4.5:1 or more) only for captions and labels",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "text-contrast"
+    ],
+    "wheres": [
+     "section.close.sec > div.wrap > div:nth-of-type(2) > small \"可加到手機主畫面，像 App 一樣開啟。\""
+    ]
+   },
+   {
+    "check": "empty-area",
+    "where": "main#main > section.close.sec \"明天上工， 手機就夠了。\"",
+    "msg": "52% of the section is empty: 176px above its first content, 192px under its last (p), in its 696px of rows (WARN over 35%, FAIL over 50%)",
+    "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "empty-area"
+    ],
+    "wheres": [
+     "main#main > section.close.sec \"明天上工， 手機就夠了。\""
+    ]
+   },
+   {
+    "check": "field-label",
+    "where": "tbody#wbody > tr:nth-of-type(1) > td:nth-of-type(3) > input",
+    "msg": "a input[type=text] without a label you can see: only an aria-label names it",
+    "fix": "put a <label for> with the field's name above it (references/system.md, Forms); a placeholder is no label",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "field-label"
+    ],
+    "wheres": [
+     "tbody#wbody > tr:nth-of-type(1) > td:nth-of-type(3) > input"
+    ]
+   },
+   {
+    "check": "field-label",
+    "where": "tbody#wbody > tr:nth-of-type(2) > td:nth-of-type(3) > input",
+    "msg": "a input[type=text] without a label you can see: only an aria-label names it",
+    "fix": "put a <label for> with the field's name above it (references/system.md, Forms); a placeholder is no label",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "field-label"
+    ],
+    "wheres": [
+     "tbody#wbody > tr:nth-of-type(2) > td:nth-of-type(3) > input"
+    ]
+   },
+   {
+    "check": "field-label",
+    "where": "tbody#wbody > tr:nth-of-type(3) > td:nth-of-type(3) > input",
+    "msg": "a input[type=text] without a label you can see: only an aria-label names it",
+    "fix": "put a <label for> with the field's name above it (references/system.md, Forms); a placeholder is no label",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "field-label"
+    ],
+    "wheres": [
+     "tbody#wbody > tr:nth-of-type(3) > td:nth-of-type(3) > input"
+    ]
+   },
+   {
+    "check": "focus-visible",
+    "where": "button#netSw \"模擬沒有網路\"",
+    "msg": "Tab stop 10, button \"模擬沒有網路\": the focus lands on something you cannot see",
+    "fix": "keep the kit's ring (system.css :focus-visible, 2px in --action, there at once); a control that hides itself shows on focus",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "focus-visible"
+    ],
+    "wheres": [
+     "button#netSw \"模擬沒有網路\""
+    ]
+   },
+   {
+    "check": "hero-enter",
+    "where": "section#top",
+    "msg": "the hero does not enter on load: no data-enter on the hero and no head line setting html.m-enter (motion.md, The hero's entrance)",
+    "fix": "put data-enter on the hero <section> and keep the head line from starter.html that sets html.m-enter",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "hero-enter"
+    ],
+    "wheres": [
+     "section#top"
+    ]
+   },
+   {
+    "check": "moment-none",
+    "where": "(the page)",
+    "msg": "a software page (--type) deals no moment: every kind carries one, two on a long page (moments.md)",
+    "fix": "deal one (moments.mjs pick --page software) and mount it in its own section",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "moment-none"
+    ],
+    "wheres": [
+     "(the page)"
+    ]
+   },
+   {
+    "check": "hero-screen",
+    "where": "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\"",
+    "msg": "the hero ends at 836px on a 900px screen, 64px above the fold: it ends at the fold, 1px either way (SR-1)",
+    "fix": "make the hero exactly one screen (height: 100svh, its content fitted inside), never taller or shorter",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "hero-screen"
+    ],
+    "wheres": [
+     "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\""
+    ]
+   },
+   {
+    "check": "hero-screen",
+    "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+    "msg": "64px of the next section shows on the first screen (from 836px on a 900px screen): nothing below the hero shows at load (SR-1)",
+    "fix": "end the hero at the fold so nothing of the next section shows at load (hero height: 100svh)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "hero-screen"
+    ],
+    "wheres": [
+     "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\""
+    ]
+   },
+   {
+    "check": "section-height",
+    "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+    "msg": "the section is 4135px tall (4.6 screens), 2335px over two screens (1800px): every section after the hero is one screen or two, 2px either way (SR-2)",
+    "fix": "set the section to one screen or two (height: calc(var(--h,1) * 100vh), --h 1 or 2) and cut or split its content to fit",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-height",
+     "screen-height"
+    ],
+    "wheres": [
+     "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+     "#day section.day.sec \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟\""
+    ]
+   },
+   {
+    "check": "section-height",
+    "where": "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\"",
+    "msg": "the section is 116px tall (0.1 screens), 784px short of one screen (900px): every section after the hero is one screen or two, 2px either way (SR-2)",
+    "fix": "set the section to one screen or two (height: calc(var(--h,1) * 100vh), --h 1 or 2) and cut or split its content to fit",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-height"
+    ],
+    "wheres": [
+     "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\""
+    ]
+   },
+   {
+    "check": "section-height",
+    "where": "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+    "msg": "the section starts at 4971px, 429px above the screen grid (6 x 900px): sections start on whole screens (SR-2)",
+    "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-height",
+     "screen-short",
+     "screen-height"
+    ],
+    "wheres": [
+     "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+     "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\""
+    ]
+   },
+   {
+    "check": "section-height",
+    "where": "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\"",
+    "msg": "the section starts at 5871px, 429px above the screen grid (7 x 900px): sections start on whole screens (SR-2)",
+    "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-height"
+    ],
+    "wheres": [
+     "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\""
+    ]
+   },
+   {
+    "check": "section-height",
+    "where": "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+    "msg": "the section starts at 6771px, 429px above the screen grid (8 x 900px): sections start on whole screens (and 4 more like it: \"你的紀錄，不會因為更新而消失 更新不清資料App\", \"明天上工，手機就夠了。 不用註冊，打開就能填。需\", \"施工日報 · 離線優先的工地填報工具 hello\") (SR-2)",
+    "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-height",
+     "screen-short",
+     "screen-height"
+    ],
+    "wheres": [
+     "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+     "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\""
+    ]
+   },
+   {
+    "check": "section-air",
+    "where": "section#day / section#offline",
+    "msg": "646px of air between the content of these two sections: 128-480px (64-600px WARN) (every gap out of the band at 1440px, top to bottom: 646px after \"一天的紀錄 跟著一天走一遍，日報自己長出\", 495px after \"同工地多人填，不同欄位不打架 登入並選擇\", 528px after \"填今天的值，變化量自己算 每口井拿今天的\", 549px after \"你的紀錄，不會因為更新而消失 更新不清資\") (SR-3)",
+    "fix": "keep 128-480px of air between the content of neighbouring sections (112-420px on a phone): the sections' padding (--padt, --padb)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-air"
+    ],
+    "wheres": [
+     "section#day / section#offline"
+    ]
+   },
+   {
+    "check": "section-air",
+    "where": "main#main > section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 開\"",
+    "msg": "the content fills 31.4% of the section's height (283 of 900px): 55% or more (40% WARN) (SR-3)",
+    "fix": "fill the section to 55%: more content, a picture or a background layer, or merge it into the section above as its last block",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-air"
+    ],
+    "wheres": [
+     "main#main > section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 開\""
+    ]
+   },
+   {
+    "check": "section-air",
+    "where": "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+    "msg": "the content fills 39.2% of the section's height (353 of 900px): 55% or more (40% WARN) (SR-3)",
+    "fix": "fill the section to 55%: more content, a picture or a background layer, or merge it into the section above as its last block",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-air"
+    ],
+    "wheres": [
+     "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\""
+    ]
+   },
+   {
+    "check": "one-section",
+    "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+    "msg": "the screen at scroll 4500px (stride 5) shows 406px of section 2 and the content of 2 sections, over 24px each beside section 3: a screen shows one section (another may peek 8px, 24px WARN) (SR-4)",
+    "fix": "make each section exactly one screen or two, so a screen shows one section and no neighbour peeks",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "one-section"
+    ],
+    "wheres": [
+     "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\""
+    ]
+   },
+   {
+    "check": "one-section",
+    "where": "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+    "msg": "the screen at scroll 5400px (stride 6) shows 406px of section 3 and the content of 2 sections, over 24px each beside section 4: a screen shows one section (another may peek 8px, 24px WARN) (SR-4)",
+    "fix": "make each section exactly one screen or two, so a screen shows one section and no neighbour peeks",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "one-section"
+    ],
+    "wheres": [
+     "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\""
+    ]
+   },
+   {
+    "check": "one-section",
+    "where": "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\"",
+    "msg": "the screen at scroll 6300px (stride 7) shows 406px of section 4 and the content of 2 sections, over 24px each beside section 5: a screen shows one section (another may peek 8px, 24px WARN) (and 4 more like it: scroll 7200px, scroll 8100px, scroll 8687px) (SR-4)",
+    "fix": "make each section exactly one screen or two, so a screen shows one section and no neighbour peeks",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "one-section"
+    ],
+    "wheres": [
+     "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "header.top \"施工日報 一天的紀錄 離線與同步 共編 水位 開啟日報\"",
+    "msg": "the nav's content runs 0px from the left and 0px from the right: the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+    "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "header.top \"施工日報 一天的紀錄 離線與同步 共編 水位 開啟日報\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\"",
+    "msg": "the content of section 1 runs 0px from the left and 0px from the right: the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+    "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+    "msg": "the content of section 2 runs 0px from the left and 0px from the right: the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (and 7 more like it: \"收訊差的地方，也不會丟資料 本機先存，連得上再同\", \"同工地多人填，不同欄位不打架 登入並選擇共用工地\", \"填今天的值，變化量自己算 每口井拿今天的量測值與\") (SR-6)",
+    "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "a.skip \"跳到主要內容\"",
+    "msg": "a <a> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (SR-6)",
+    "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "a.skip \"跳到主要內容\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\"",
+    "msg": "a <footer> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (and 1 more like it: \"給工地現場的手機填報工具 三分鐘，寫完今天的施工\") (SR-6)",
+    "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "section#top > div.wrap > div:nth-of-type(1) > p.eyebrow \"給工地現場的手機填報工具\"",
+    "msg": "2 text blocks start on a left line at x 118, 118px from the container's left: text starts on the container's left, or on one split line (x 610, 732, 854) (also \"一天的紀錄\") (SR-6)",
+    "fix": "start the text on the container's left, or on the one split line every split shares",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "section#top > div.wrap > div:nth-of-type(1) > p.eyebrow \"給工地現場的手機填報工具\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "div#chapters > article.chap:nth-of-type(1) > div.time \"07:10 進場\"",
+    "msg": "18 text blocks start on a left line at x 104, 104px from the container's left: text starts on the container's left, or on one split line (x 610, 732, 854) (also \"先選工地與日期\", \"工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用\", \"08:30 開工\") (and 9 more like it: x 97, x 80, \"三分鐘，寫完今天的施工日報\") (SR-6)",
+    "fix": "start the text on the container's left, or on the one split line every split shares",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "div#chapters > article.chap:nth-of-type(1) > div.time \"07:10 進場\""
+    ]
+   },
+   {
+    "check": "row-lines",
+    "where": "section#promises > div.wrap > div.prom \"更新不清資料App 更新前會先存好草稿；更新不會清除本機資料庫。 定稿快照不回寫\"",
+    "msg": "a row of 3 items: its first item starts at 80px, the container's left line at 0px; its last item ends at 1360px, the container's right line at 1440px (2px either way) (SR-7)",
+    "fix": "start the row's first item on the container's left line and end its last on the right line, every item one height",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "row-lines"
+    ],
+    "wheres": [
+     "section#promises > div.wrap > div.prom \"更新不清資料App 更新前會先存好草稿；更新不會清除本機資料庫。 定稿快照不回寫\""
+    ]
+   },
+   {
+    "check": "row-lines",
+    "where": "section#collab > div.wrap > div.cmp \"改不同欄位 王班長改人數，李主任改工項備註。 王人數 6 → 8 李備註 → 3\"",
+    "msg": "a row of 2 items: its first item starts at 80px, the container's left line at 0px; its last item ends at 1360px, the container's right line at 1440px (2px either way) (SR-7)",
+    "fix": "start the row's first item on the container's left line and end its last on the right line, every item one height",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "row-lines"
+    ],
+    "wheres": [
+     "section#collab > div.wrap > div.cmp \"改不同欄位 王班長改人數，李主任改工項備註。 王人數 6 → 8 李備註 → 3\""
+    ]
+   },
+   {
+    "check": "split-pair",
+    "where": "section#offline > div.wrap.off \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+    "msg": "the two columns of the split start 52px apart at the top (centred on each other): a split's columns are top-aligned, 8px either way (SR-8)",
+    "fix": "top-align both columns of the split (align-items: start)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "split-pair"
+    ],
+    "wheres": [
+     "section#offline > div.wrap.off \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\""
+    ]
+   },
+   {
+    "check": "split-pair",
+    "where": "section#water > div.wrap.wgrid \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+    "msg": "the two columns of the split start 49px apart at the top (centred on each other): a split's columns are top-aligned, 8px either way (SR-8)",
+    "fix": "top-align both columns of the split (align-items: start)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "split-pair"
+    ],
+    "wheres": [
+     "section#water > div.wrap.wgrid \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\""
+    ]
+   },
+   {
+    "check": "split-pair",
+    "where": "section#day > div.wrap > div.day-grid \"07:10 進場 先選工地與日期 工地與日期固定顯示在最上面。日報與水位各有獨立\"",
+    "msg": "the split's columns are off the page's one pair of lines: its right column starts at x 949, on none of the split lines 610 (k=5), 732 (k=6), 854 (k=7) (SR-8)",
+    "fix": "start every split's right column on one shared line (wrap.left + k x (width + 24) / 12, k 5, 6 or 7; 6 on a place page) and end the left one 24px before it",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "split-pair"
+    ],
+    "wheres": [
+     "section#day > div.wrap > div.day-grid \"07:10 進場 先選工地與日期 工地與日期固定顯示在最上面。日報與水位各有獨立\""
+    ]
+   },
+   {
+    "check": "collide",
+    "where": "header.top \"施工日報 開啟日報\"",
+    "msg": "at the top of the page the fixed bar covers \"給工地現場的手機填報工具\": nothing scrolls it out from under the bar",
+    "fix": "on a phone nothing lies on anything else: let the section grow with its content (min-height for its screens, never a fixed height; --hm: 2 when it needs two) or cut what it holds; keep pictures and cards off the buttons; pad the page under a fixed bar by the bar's height (top: the first section; end: the footer)",
+    "widths": [
+     390,
+     320
+    ],
+    "from": "consistency",
+    "ids": [
+     "collide"
+    ],
+    "wheres": [
+     "header.top \"施工日報 開啟日報\""
+    ]
+   },
+   {
+    "check": "cut-text",
+    "where": "div.s-body.fade-swap > div.s-field > div.s-row2 > div.s-input.caret \"搜尋或輸入工項\"",
+    "msg": "cut 6px at the right by the overflow of div.s-body.fade-swap > div.s-field > div.s-row2 > div.s-input.caret",
+    "fix": "give the text room: no overflow clipping a line, no line past its box",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "cut-text"
+    ],
+    "wheres": [
+     "div.s-body.fade-swap > div.s-field > div.s-row2 > div.s-input.caret \"搜尋或輸入工項\""
+    ]
+   },
+   {
+    "check": "cut-text",
+    "where": "div#dayScreen > div.s-body.fade-swap > div.mat:nth-of-type(2) > span \"#4 · 同鋼\"",
+    "msg": "cut 10px at the bottom by the overflow of div#dayScreen",
+    "fix": "give the text room: no overflow clipping a line, no line past its box",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "cut-text"
+    ],
+    "wheres": [
+     "div#dayScreen > div.s-body.fade-swap > div.mat:nth-of-type(2) > span \"#4 · 同鋼\""
+    ]
+   },
+   {
+    "check": "cut-text",
+    "where": "div#dayScreen > div.s-body.fade-swap > div.s-pre \"示範大樓新建工程：11/20（五） 模板：大成營造6工-牆體模板組立、柱模板拆除\"",
+    "msg": "cut 3px at the bottom by the overflow of div#dayScreen > div.s-body.fade-swap",
+    "fix": "give the text room: no overflow clipping a line, no line past its box",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "cut-text"
+    ],
+    "wheres": [
+     "div#dayScreen > div.s-body.fade-swap > div.s-pre \"示範大樓新建工程：11/20（五） 模板：大成營造6工-牆體模板組立、柱模板拆除\""
+    ]
+   },
+   {
+    "check": "pinned",
+    "where": "section#day > div.wrap > div.day-grid > div.sticky \"已保存本機 施工日報 設定 施工紀錄 進料 聯絡事項 特殊事項 示範大樓新建工程\"",
+    "msg": "held on screen for 3.2 screens of scroll (position: sticky) while the page moves on",
+    "fix": "let the section scroll with the page",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "pinned"
+    ],
+    "wheres": [
+     "section#day > div.wrap > div.day-grid > div.sticky \"已保存本機 施工日報 設定 施工紀錄 進料 聯絡事項 特殊事項 示範大樓新建工程\""
+    ]
+   },
+   {
+    "check": "section-gaps",
+    "where": "section#water / section#promises",
+    "msg": "245px between these sections, +64% against the median 149px",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-gaps"
+    ],
+    "wheres": [
+     "section#water / section#promises"
+    ]
+   },
+   {
+    "check": "section-gaps",
+    "where": "main#main > section.close.sec / footer.f",
+    "msg": "471px between these sections, +151% against the median 188px of gaps at a change of ground",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-gaps"
+    ],
+    "wheres": [
+     "main#main > section.close.sec / footer.f"
+    ]
+   },
+   {
+    "check": "empty-area",
+    "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+    "msg": "52% of the section is empty: 1632px of empty rows between its content, 2% beside content that covers under half the container, in its 3258px of rows (WARN over 35%, FAIL over 50%)",
+    "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "empty-area"
+    ],
+    "wheres": [
+     "section#day \"跟著一天走一遍， 日報自己長出來\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day h3 \"先選工地與日期\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day h3 \"先選工地與日期\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day p \"工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day p \"工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day h3 \"工種、廠商、人數，同一列\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day h3 \"工種、廠商、人數，同一列\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day p \"選工種、填廠商、填今天幾個人。單日的人數不會被偷偷記成記憶，只有\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day p \"選工種、填廠商、填今天幾個人。單日的人數不會被偷偷記成記憶，只有\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day h3 \"工項用「、」連續輸入\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day h3 \"工項用「、」連續輸入\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day p \"一行打下去，按 Enter 就加入。拖曳握把排序，左滑刪除，刪錯\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day p \"一行打下去，按 Enter 就加入。拖曳握把排序，左滑刪除，刪錯\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day h3 \"進料獨立記，也能接回工程\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day h3 \"進料獨立記，也能接回工程\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day p \"混凝土、鋼筋進場，依材料類型、規格、數量記一筆。一筆進料最多連到\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day p \"混凝土、鋼筋進場，依材料類型、規格、數量記一筆。一筆進料最多連到\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day h3 \"水位變化，用量測綠分開\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day h3 \"水位變化，用量測綠分開\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day p \"每口井填今天的量測值，變化量自動算好。日報用施工橘、水位用量測綠\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day p \"每口井填今天的量測值，變化量自動算好。日報用施工橘、水位用量測綠\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day h3 \"預覽、定稿、複製\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day h3 \"預覽、定稿、複製\""
+    ]
+   },
+   {
+    "check": "edge-left",
+    "where": "#day p \"日報文字即時預覽。定稿會留下 7 天的快照，同樣內容再按只會再複\"",
+    "msg": "starts at x 104; the lines are 80 and the column starts",
+    "fix": "start it on the .wrap left line",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "edge-left"
+    ],
+    "wheres": [
+     "#day p \"日報文字即時預覽。定稿會留下 7 天的快照，同樣內容再按只會再複\""
+    ]
+   },
+   {
+    "check": "screen-short",
+    "where": "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\"",
+    "msg": "836px tall; one screen under the nav is 900px",
+    "fix": "make the section one full screen (--h: 1, layout-v4.md section 2)",
+    "widths": [
+     1440
+    ],
+    "from": "layout",
+    "ids": [
+     "screen-short"
+    ],
+    "wheres": [
+     "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\""
+    ]
+   },
+   {
+    "check": "neighbour-ground",
+    "where": "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\"",
+    "msg": "framed, 64px of #day section.day.sec \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟\"'s ground shows",
+    "fix": "end the ground with the section",
+    "widths": [
+     1440
+    ],
+    "from": "layout",
+    "ids": [
+     "neighbour-ground"
+    ],
+    "wheres": [
+     "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\""
+    ]
+   },
+   {
+    "check": "sparse",
+    "where": "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\"",
+    "msg": "its content fills 41% of its screen; merge it or give it its visual (0.55 is the aim)",
+    "fix": "fill the section or make it a screen shorter",
+    "widths": [
+     1440
+    ],
+    "from": "layout",
+    "ids": [
+     "sparse"
+    ],
+    "wheres": [
+     "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\""
+    ]
+   },
+   {
+    "check": "sparse",
+    "where": "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\"",
+    "msg": "its content fills 39% of its screen; merge it or give it its visual (0.55 is the aim)",
+    "fix": "fill the section or make it a screen shorter",
+    "widths": [
+     1440
+    ],
+    "from": "layout",
+    "ids": [
+     "sparse"
+    ],
+    "wheres": [
+     "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\""
+    ]
+   },
+   {
+    "check": "sparse",
+    "where": "#promises section.sec \"你的紀錄，不會因為更新而消失 更新不清資料App 更新前會先存好\"",
+    "msg": "its content fills 47% of its screen; merge it or give it its visual (0.55 is the aim)",
+    "fix": "fill the section or make it a screen shorter",
+    "widths": [
+     1440
+    ],
+    "from": "layout",
+    "ids": [
+     "sparse"
+    ],
+    "wheres": [
+     "#promises section.sec \"你的紀錄，不會因為更新而消失 更新不清資料App 更新前會先存好\""
+    ]
+   },
+   {
+    "check": "sparse",
+    "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+    "msg": "its content fills 29% of its screen; merge it or give it its visual (0.55 is the aim)",
+    "fix": "fill the section or make it a screen shorter",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "sparse"
+    ],
+    "wheres": [
+     "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+    ]
+   },
+   {
+    "check": "hero-fold",
+    "where": "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\"",
+    "msg": "ends at y 836, above the fold (900)",
+    "fix": "the hero fills the first screen alone, its button inside it",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "hero-fold"
+    ],
+    "wheres": [
+     "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\""
+    ]
+   },
+   {
+    "check": "neighbour-ground",
+    "where": "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\"",
+    "msg": "framed, 65px of #collab section.collab.sec \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時\"'s ground shows",
+    "fix": "end the ground with the section",
+    "widths": [
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "neighbour-ground"
+    ],
+    "wheres": [
+     "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\""
+    ]
+   },
+   {
+    "check": "neighbour-ground",
+    "where": "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\"",
+    "msg": "framed, 65px of #promises section.sec \"你的紀錄，不會因為更新而消失 更新不清資料App 更新前會先存好\"'s ground shows",
+    "fix": "end the ground with the section",
+    "widths": [
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "neighbour-ground"
+    ],
+    "wheres": [
+     "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\""
+    ]
+   },
+   {
+    "check": "screen-short",
+    "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+    "msg": "779px tall; one screen under the nav is 844px",
+    "fix": "make the section one full screen (--h: 1, layout-v4.md section 2)",
+    "widths": [
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "screen-short"
+    ],
+    "wheres": [
+     "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+    ]
+   },
+   {
+    "check": "screen-height",
+    "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+    "msg": "779px, 0.92 screens; a section is exactly one or two (--h), or on a phone at least one that its content fills",
+    "fix": "make the section exactly one or two screens (--h: 1 or 2)",
+    "widths": [
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "screen-height"
+    ],
+    "wheres": [
+     "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+    ]
+   },
+   {
+    "check": "neighbour",
+    "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+    "msg": "framed, 65px of the footer shows",
+    "fix": "keep the next section's heading and picture out of this screen",
+    "widths": [
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "neighbour"
+    ],
+    "wheres": [
+     "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+    ]
+   }
+  ],
+  "warns": [
+   {
+    "check": "nav",
+    "where": "header.top > div.wrap > a.mark \"施工日報\"",
+    "msg": "the nav is lopsided: its first item starts 6px inside the content's edge (80px), while its last ends on the other edge",
+    "fix": "start the nav's first item and end its last on the content's two edges",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "pinned",
+    "where": "section#day > div.wrap > div.day-grid > div.sticky \"已保存本機 施工日報 設定 施工紀錄 進料 聯絡事項 特殊事項 示範大樓新建工程\"",
+    "msg": "held on screen for 3.3 screens of scroll (position: sticky) while the page moves on (a narrow sticky column)",
+    "fix": "let the section scroll with the page",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "cta",
+    "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+    "msg": "a section over 1.5 screens long with no link or button in it",
+    "fix": "add the action: a button in the hero, one on every priced item, one in the closing section",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "copy-headline",
+    "where": "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\"",
+    "msg": "the h1 has 0 words (2 to 8 read at a glance)",
+    "fix": "put the category noun in the h1 (and who it is for, or where), in 2 to 8 words",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "off-grid",
+    "where": "div#chapters > article.chap.on > div.time \"10:00 施工中\"",
+    "msg": "left edge at 104px, 24px off the page margin at 80px (23 elements, none of them near it); 7 more in this section off the grid too (h3 at 104px, p at 104px, div.time at 104px, h3 at 104px, ...)",
+    "fix": "move it onto the page margin, or the column edge its section uses",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-gaps",
+    "where": "section#top / section#day",
+    "msg": "182px between these sections, -55% against the median 401px",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-gaps",
+    "where": "section#promises / main#main > section.close.sec",
+    "msg": "549px between these sections, +34% against the median 411px of gaps at a change of ground",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-gaps",
+    "where": "section#offline / section#collab",
+    "msg": "uneven space at the edge of a band: 253px outside its edge, 150px inside it (the space on either side of a change of ground reads as one gap only when the two match)",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-gaps",
+    "where": "main#main > section.close.sec / footer.f",
+    "msg": "uneven space at the edge of a band: 37px outside its edge, 308px inside it (the space on either side of a change of ground reads as one gap only when the two match)",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "nav-current",
+    "where": "header.top",
+    "msg": "the nav stays on screen with 4 links to the page's sections, but never marks the one you are in (no link changes as the page scrolls)",
+    "fix": "mark the link of the section on screen (a colour, a weight or a line under it) as the visitor scrolls",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "split-align",
+    "where": "section#day > div.wrap > div.day-grid \"先選工地與日期\"",
+    "msg": "the picture beside \"先選工地與日期\" sits loose against a text column 2525px taller: its top and bottom line up with nothing",
+    "fix": "set the picture's top on the heading's top (align-items: start), or let it run the column's full height",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "action-count",
+    "where": "section.close.sec > div.wrap > div:nth-of-type(2) > a.btn",
+    "msg": "the main action \"開啟日報\" is on 5 buttons and links: the nav, the hero and the closing call carry it; elsewhere a section has its own action",
+    "fix": "the main action in the nav, the hero and the closing call; give the other sections their own action",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "empty-area",
+    "where": "section#offline \"收訊差的地方， 也不會丟資料\"",
+    "msg": "41% of the section is empty: 144px above its first content, 144px under its last (div.panel), in its 696px of rows (WARN over 35%, FAIL over 50%)",
+    "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "empty-area",
+    "where": "section#water \"填今天的值， 變化量自己算\"",
+    "msg": "41% of the section is empty: 144px above its first content, 144px under its last (div.panel), in its 696px of rows (WARN over 35%, FAIL over 50%)",
+    "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "empty-area",
+    "where": "section#promises \"你的紀錄， 不會因為更新而消失\"",
+    "msg": "44% of the section is empty: 96px above its first content, 96px under its last (div.p:nth-of-type(4)), 17% beside content that covers under half the container, in its 696px of rows (WARN over 35%, FAIL over 50%)",
+    "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "skip-link",
+    "where": "a.skip \"跳到主要內容\"",
+    "msg": "the first Tab stop is \"跳到主要內容\", not a skip link: a keyboard user tabs through the whole nav on every visit",
+    "fix": "add the starter's skip link as the header's first child: <a class=\"skip-link\" href=\"#top\">Skip to content</a>",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "share-meta",
+    "where": "head",
+    "msg": "the head lacks og:image, twitter:card: a shared link shows no picture or title of its own",
+    "fix": "copy the head block of starter.html: og tags, twitter:card, the icon and theme-color (references/system.md, Head)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "action-repeat",
+    "where": "header.top > div.wrap > nav.links > a.btn.sm:nth-of-type(5) \"開啟日報\"",
+    "msg": "\"開啟日報\" shows 2 times on the first screen at 1440px (nav, hero): the nav's button and the hero's; nothing else on the screen may repeat it",
+    "fix": "show the action once a screen besides the nav's button: the hero's, the close's or the phone bar's, never all at once",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-air",
+    "where": "section#promises / main#main > section.close.sec",
+    "msg": "549px of air between the content of these two sections: 128-480px (64-600px WARN) (SR-3)",
+    "fix": "keep 128-480px of air between the content of neighbouring sections (112-420px on a phone): the sections' padding (--padt, --padb)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-air",
+    "where": "section#water / section#promises",
+    "msg": "528px of air between the content of these two sections: 128-480px (64-600px WARN) (SR-3)",
+    "fix": "keep 128-480px of air between the content of neighbouring sections (112-420px on a phone): the sections' padding (--padt, --padb)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-air",
+    "where": "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+    "msg": "the content fills 40.7% of the section's height (367 of 900px): 55% or more (40% WARN) (and 1 more like it: \"你的紀錄，不會因為更新而消失 更新不清資料App\") (SR-3)",
+    "fix": "fill the section to 55%: more content, a picture or a background layer, or merge it into the section above as its last block",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "overlap-text",
+    "where": "section#day > div.wrap > div.day-grid > div.sticky \"已保存本機 施工日報 設定 施工紀錄 進料 聯絡事項 特殊事項 施工工項 搜尋或\"",
+    "msg": "lies over the text \"08:30 開工\" (article.chap:nth-of-type(2) > div.time) (inside a held section or scroll scene, whose motion --quick does not check)",
+    "fix": "move the box off the text (or the text off the box)",
+    "widths": [
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "tap-size",
+    "where": "header.top > div.wrap > a.mark \"施工日報\"",
+    "msg": "a 116x32px tap target: under the 44px a phone needs",
+    "fix": "make every link and control outside running text 44px tall on a phone: display: inline-flex; align-items: center; min-height: 44px (a footer list then needs no gap), a 44px small button, or a transparent ::before laid past the box",
+    "widths": [
+     390,
+     320
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "tap-size",
+    "where": "button#netSw",
+    "msg": "a 64x36px tap target: under the 44px a phone needs",
+    "fix": "make every link and control outside running text 44px tall on a phone: display: inline-flex; align-items: center; min-height: 44px (a footer list then needs no gap), a 44px small button, or a transparent ::before laid past the box",
+    "widths": [
+     390,
+     320
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "heading-scale",
+    "where": "div#chapters > article.chap:nth-of-type(1) > h3 \"先選工地與日期\"",
+    "msg": "h3 headings in 3 sizes, 20px (\"更新不清資料\") to 24px (x1.20)",
+    "fix": "size headings by level: the h1 largest, one size per level, each level below the one above",
+    "widths": [
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "off-grid",
+    "where": "div#chapters > article.chap:nth-of-type(2) > div.time \"08:30 開工\"",
+    "msg": "left edge at 45.5px, 23.5px off the page margin at 22px (38 elements, none of them near it); 9 more in this section off the grid too (h3 at 45.5px, p at 45.5px, div.time at 45.5px, h3 at 45.5px, ...)",
+    "fix": "move it onto the page margin, or the column edge its section uses",
+    "widths": [
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "text-contrast",
+    "where": "div#dayScreen > div.s-body.fade-swap > div.s-card > span.n \"新增並使用「示範大樓新建工程」\"",
+    "msg": "8 lines of text in drawn mocks read under 4.5:1 (2 colour pairs), the worst \"新增並使用「示範大樓新建工程」\" in #2b2925 on #242119 at 1.11:1",
+    "fix": "lift the mocks' muted text (labels, meta, initials) to 4.5:1 on their own panel, or set it larger",
+    "widths": [
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "section-gaps",
+    "where": "section#collab / section#water",
+    "msg": "140px between these sections, -25% against the median 188px of gaps at a change of ground",
+    "fix": "use one gap between sections (all within 25% of each other)",
+    "widths": [
+     390
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "copy-stat-strip",
+    "msg": "stat strip x1",
+    "fix": "a strip only of figures the brief gives (a price, hours, a count); otherwise put each number in the sentence it proves, or leave it out (references/copy-tells.md)",
+    "widths": [],
+    "from": "copy",
+    "where": "copy x1: \"8 / 8 / 7\"",
+    "exact": false
+   }
+  ],
+  "crashed": [],
+  "seconds": {
+   "consistency": 135,
+   "layout": 14
+  }
+ },
+ "open": [
+  {
+   "check": "hero-fill",
+   "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+   "msg": "the next section shows on the first screen: it starts at 836px on a 900px screen (the hero ends at 836px)",
+   "fix": "let the hero fill the first screen alone (min-height: 100svh, less above it): nothing of the next section on load",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "hero-fill"
+   ],
+   "wheres": [
+    "section#day \"跟著一天走一遍， 日報自己長出來\""
+   ]
+  },
+  {
+   "check": "no-visual",
+   "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+   "msg": "pictures, effects and mocks cover 5% of this section; a feature section needs a visual (about 25% or more)",
+   "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "no-visual"
+   ],
+   "wheres": [
+    "section#day \"跟著一天走一遍， 日報自己長出來\""
+   ]
+  },
+  {
+   "check": "no-visual",
+   "where": "section#offline \"收訊差的地方， 也不會丟資料\"",
+   "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+   "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "no-visual"
+   ],
+   "wheres": [
+    "section#offline \"收訊差的地方， 也不會丟資料\""
+   ]
+  },
+  {
+   "check": "no-visual",
+   "where": "section#collab \"同工地多人填， 不同欄位不打架\"",
+   "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+   "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "no-visual"
+   ],
+   "wheres": [
+    "section#collab \"同工地多人填， 不同欄位不打架\""
+   ]
+  },
+  {
+   "check": "no-visual",
+   "where": "section#water \"填今天的值， 變化量自己算\"",
+   "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+   "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "no-visual"
+   ],
+   "wheres": [
+    "section#water \"填今天的值， 變化量自己算\""
+   ]
+  },
+  {
+   "check": "no-visual",
+   "where": "section#promises \"你的紀錄， 不會因為更新而消失\"",
+   "msg": "no picture, effect or mock in this section; a feature section needs a visual",
+   "fix": "give the section a visual: a UI fragment on a ground, real icons, or a photograph that fits",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "no-visual"
+   ],
+   "wheres": [
+    "section#promises \"你的紀錄， 不會因為更新而消失\""
+   ]
+  },
+  {
+   "check": "text-only",
+   "where": "main#main > section.close.sec \"明天上工， 手機就夠了。\"",
+   "msg": "the closing section is only text: no picture, icon, mock or effect in it",
+   "fix": "give the section a visual: a photograph that fits, the real icons, or a UI fragment on a ground",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "text-only"
+   ],
+   "wheres": [
+    "main#main > section.close.sec \"明天上工， 手機就夠了。\""
+   ]
+  },
+  {
+   "check": "button-styles",
+   "where": "(one screen)",
+   "msg": "3 button styles on one screen: soft, fill #b84e16, outline #b84e16 (\"開啟日報\"); soft, outline #6b6353 (\"看一天怎麼填\"); soft, fill #2b2925 (\"1 筆施工 · 6 人 資料齊全，可檢查日報 檢查與預覽\", in a mock); the odd one out: \"1 筆施工 · 6 人 資料齊全，可檢查日報 檢查與預覽\"",
+   "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "button-styles"
+   ],
+   "wheres": [
+    "(one screen)"
+   ]
+  },
+  {
+   "check": "button-styles",
+   "where": "(the page)",
+   "msg": "3 button styles on the page: soft, fill #b84e16, outline #b84e16 x3 (\"開啟日報\"); soft, outline #6b6353 x1 (\"看一天怎麼填\"); soft, fill #ffffff, outline #ffffff x1 (\"開啟日報\")",
+   "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "button-styles"
+   ],
+   "wheres": [
+    "(the page)"
+   ]
+  },
+  {
+   "check": "copy-headline",
+   "where": "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\"",
+   "msg": "\"三分鐘， 寫完今天的施工日報\" does not name what is sold (app, from flags)",
+   "fix": "put the category noun in the h1 (and who it is for, or where), in 2 to 8 words",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "copy-headline"
+   ],
+   "wheres": [
+    "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\""
+   ]
+  },
+  {
+   "check": "copy-fact",
+   "where": "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\"",
+   "msg": "the first screen holds no number, price, date, place, platform or genre",
+   "fix": "put one hard fact from the brief on the first screen: a number, a price, a date, the place, the platforms it runs on or a game's genre; take it from the brief or remove the claim",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "copy-fact"
+   ],
+   "wheres": [
+    "section#top > div.wrap > div:nth-of-type(1) > h1 \"三分鐘， 寫完今天的施工日報\""
+   ]
+  },
+  {
+   "check": "heading-scale",
+   "where": "section.close.sec > div.wrap > div:nth-of-type(1) > h2 \"明天上工， 手機就夠了。\"",
+   "msg": "an h2 at 104px, as large as the h1 (84px) or larger",
+   "fix": "size headings by level: the h1 largest, one size per level, each level below the one above",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "heading-scale"
+   ],
+   "wheres": [
+    "section.close.sec > div.wrap > div:nth-of-type(1) > h2 \"明天上工， 手機就夠了。\""
+   ]
+  },
+  {
+   "check": "heading-scale",
+   "where": "div#chapters > article.chap:nth-of-type(1) > h3 \"先選工地與日期\"",
+   "msg": "h3 headings in 2 sizes, 20px (\"更新不清資料\") to 36px (x1.80)",
+   "fix": "size headings by level: the h1 largest, one size per level, each level below the one above",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "heading-scale"
+   ],
+   "wheres": [
+    "div#chapters > article.chap:nth-of-type(1) > h3 \"先選工地與日期\""
+   ]
+  },
+  {
+   "check": "top-stagger",
+   "where": "section#top > div.wrap \"給工地現場的手機填報工具 三分鐘， 寫完今天的施工日報 在工地站著就能填。沒有網\"",
+   "msg": "2 boxes side by side start at different heights (+57, +0px)",
+   "fix": "align the tops of the boxes in the row (one floor, one ceiling)",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "top-stagger"
+   ],
+   "wheres": [
+    "section#top > div.wrap \"給工地現場的手機填報工具 三分鐘， 寫完今天的施工日報 在工地站著就能填。沒有網\""
+   ]
+  },
+  {
+   "check": "top-stagger",
+   "where": "main#main > section.close.sec > div.wrap \"明天上工， 手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 \"",
+   "msg": "2 boxes side by side start at different heights (+0, +167px)",
+   "fix": "align the tops of the boxes in the row (one floor, one ceiling)",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "top-stagger"
+   ],
+   "wheres": [
+    "main#main > section.close.sec > div.wrap \"明天上工， 手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 \""
+   ]
+  },
+  {
+   "check": "off-grid",
+   "where": "div:nth-of-type(1) > ul.fact > li:nth-of-type(1) > b \"離線可用\"",
+   "msg": "left edge at 96px, 16px off the page margin at 80px (23 elements, like li:nth-of-type(1))",
+   "fix": "move it onto the page margin, or the column edge its section uses",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "off-grid"
+   ],
+   "wheres": [
+    "div:nth-of-type(1) > ul.fact > li:nth-of-type(1) > b \"離線可用\""
+   ]
+  },
+  {
+   "check": "off-grid",
+   "where": "div#chapters > article.chap.on > div.time \"07:10 進場\"",
+   "msg": "left edge at 104px, 24px off the page margin at 80px (23 elements, like p.lede); 9 more in this section off the grid too (h3 at 104px, p at 104px, div.time at 104px, h3 at 104px, ...)",
+   "fix": "move it onto the page margin, or the column edge its section uses",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "off-grid"
+   ],
+   "wheres": [
+    "div#chapters > article.chap.on > div.time \"07:10 進場\""
+   ]
+  },
+  {
+   "check": "off-grid",
+   "where": "section#offline > div.wrap.off > div:nth-of-type(1) > p.truth \"本機寫入成功，不等於雲端成功。每一筆待同步的操作都看得到。\"",
+   "msg": "left edge at 97px, 17px off the page margin at 80px (23 elements, like p.lede)",
+   "fix": "move it onto the page margin, or the column edge its section uses",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "off-grid"
+   ],
+   "wheres": [
+    "section#offline > div.wrap.off > div:nth-of-type(1) > p.truth \"本機寫入成功，不等於雲端成功。每一筆待同步的操作都看得到。\""
+   ]
+  },
+  {
+   "check": "text-contrast",
+   "where": "section.close.sec > div.wrap > div:nth-of-type(2) > a.btn \"開啟日報\"",
+   "msg": "a caption, label or muted line in #f0a26f on #ffffff reads 2.08:1 (needs 4.5:1)",
+   "fix": "body text in the ink at 7:1 or more; grey (4.5:1 or more) only for captions and labels",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "text-contrast"
+   ],
+   "wheres": [
+    "section.close.sec > div.wrap > div:nth-of-type(2) > a.btn \"開啟日報\""
+   ]
+  },
+  {
+   "check": "text-contrast",
+   "where": "section.close.sec > div.wrap > div:nth-of-type(2) > small \"可加到手機主畫面，像 App 一樣開啟。\"",
+   "msg": "a caption, label or muted line in #f8ede8 on #b84e16 reads 4.42:1 (needs 4.5:1)",
+   "fix": "body text in the ink at 7:1 or more; grey (4.5:1 or more) only for captions and labels",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "text-contrast"
+   ],
+   "wheres": [
+    "section.close.sec > div.wrap > div:nth-of-type(2) > small \"可加到手機主畫面，像 App 一樣開啟。\""
+   ]
+  },
+  {
+   "check": "empty-area",
+   "where": "main#main > section.close.sec \"明天上工， 手機就夠了。\"",
+   "msg": "52% of the section is empty: 176px above its first content, 192px under its last (p), in its 696px of rows (WARN over 35%, FAIL over 50%)",
+   "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "empty-area"
+   ],
+   "wheres": [
+    "main#main > section.close.sec \"明天上工， 手機就夠了。\""
+   ]
+  },
+  {
+   "check": "field-label",
+   "where": "tbody#wbody > tr:nth-of-type(1) > td:nth-of-type(3) > input",
+   "msg": "a input[type=text] without a label you can see: only an aria-label names it",
+   "fix": "put a <label for> with the field's name above it (references/system.md, Forms); a placeholder is no label",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "field-label"
+   ],
+   "wheres": [
+    "tbody#wbody > tr:nth-of-type(1) > td:nth-of-type(3) > input"
+   ]
+  },
+  {
+   "check": "field-label",
+   "where": "tbody#wbody > tr:nth-of-type(2) > td:nth-of-type(3) > input",
+   "msg": "a input[type=text] without a label you can see: only an aria-label names it",
+   "fix": "put a <label for> with the field's name above it (references/system.md, Forms); a placeholder is no label",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "field-label"
+   ],
+   "wheres": [
+    "tbody#wbody > tr:nth-of-type(2) > td:nth-of-type(3) > input"
+   ]
+  },
+  {
+   "check": "field-label",
+   "where": "tbody#wbody > tr:nth-of-type(3) > td:nth-of-type(3) > input",
+   "msg": "a input[type=text] without a label you can see: only an aria-label names it",
+   "fix": "put a <label for> with the field's name above it (references/system.md, Forms); a placeholder is no label",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "field-label"
+   ],
+   "wheres": [
+    "tbody#wbody > tr:nth-of-type(3) > td:nth-of-type(3) > input"
+   ]
+  },
+  {
+   "check": "focus-visible",
+   "where": "button#netSw \"模擬沒有網路\"",
+   "msg": "Tab stop 10, button \"模擬沒有網路\": the focus lands on something you cannot see",
+   "fix": "keep the kit's ring (system.css :focus-visible, 2px in --action, there at once); a control that hides itself shows on focus",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "focus-visible"
+   ],
+   "wheres": [
+    "button#netSw \"模擬沒有網路\""
+   ]
+  },
+  {
+   "check": "hero-enter",
+   "where": "section#top",
+   "msg": "the hero does not enter on load: no data-enter on the hero and no head line setting html.m-enter (motion.md, The hero's entrance)",
+   "fix": "put data-enter on the hero <section> and keep the head line from starter.html that sets html.m-enter",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "hero-enter"
+   ],
+   "wheres": [
+    "section#top"
+   ]
+  },
+  {
+   "check": "moment-none",
+   "where": "(the page)",
+   "msg": "a software page (--type) deals no moment: every kind carries one, two on a long page (moments.md)",
+   "fix": "deal one (moments.mjs pick --page software) and mount it in its own section",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "moment-none"
+   ],
+   "wheres": [
+    "(the page)"
+   ]
+  },
+  {
+   "check": "hero-screen",
+   "where": "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\"",
+   "msg": "the hero ends at 836px on a 900px screen, 64px above the fold: it ends at the fold, 1px either way (SR-1)",
+   "fix": "make the hero exactly one screen (height: 100svh, its content fitted inside), never taller or shorter",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "hero-screen"
+   ],
+   "wheres": [
+    "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\""
+   ]
+  },
+  {
+   "check": "hero-screen",
+   "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+   "msg": "64px of the next section shows on the first screen (from 836px on a 900px screen): nothing below the hero shows at load (SR-1)",
+   "fix": "end the hero at the fold so nothing of the next section shows at load (hero height: 100svh)",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "hero-screen"
+   ],
+   "wheres": [
+    "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\""
+   ]
+  },
+  {
+   "check": "section-height",
+   "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+   "msg": "the section is 4135px tall (4.6 screens), 2335px over two screens (1800px): every section after the hero is one screen or two, 2px either way (SR-2)",
+   "fix": "set the section to one screen or two (height: calc(var(--h,1) * 100vh), --h 1 or 2) and cut or split its content to fit",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-height",
+    "screen-height"
+   ],
+   "wheres": [
+    "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+    "#day section.day.sec \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟\""
+   ]
+  },
+  {
+   "check": "section-height",
+   "where": "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\"",
+   "msg": "the section is 116px tall (0.1 screens), 784px short of one screen (900px): every section after the hero is one screen or two, 2px either way (SR-2)",
+   "fix": "set the section to one screen or two (height: calc(var(--h,1) * 100vh), --h 1 or 2) and cut or split its content to fit",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-height"
+   ],
+   "wheres": [
+    "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\""
+   ]
+  },
+  {
+   "check": "section-height",
+   "where": "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+   "msg": "the section starts at 4971px, 429px above the screen grid (6 x 900px): sections start on whole screens (SR-2)",
+   "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-height",
+    "screen-short",
+    "screen-height"
+   ],
+   "wheres": [
+    "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+    "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\""
+   ]
+  },
+  {
+   "check": "section-height",
+   "where": "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\"",
+   "msg": "the section starts at 5871px, 429px above the screen grid (7 x 900px): sections start on whole screens (SR-2)",
+   "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-height"
+   ],
+   "wheres": [
+    "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\""
+   ]
+  },
+  {
+   "check": "section-height",
+   "where": "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+   "msg": "the section starts at 6771px, 429px above the screen grid (8 x 900px): sections start on whole screens (and 4 more like it: \"你的紀錄，不會因為更新而消失 更新不清資料App\", \"明天上工，手機就夠了。 不用註冊，打開就能填。需\", \"施工日報 · 離線優先的工地填報工具 hello\") (SR-2)",
+   "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-height",
+    "screen-short",
+    "screen-height"
+   ],
+   "wheres": [
+    "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+    "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\""
+   ]
+  },
+  {
+   "check": "section-air",
+   "where": "section#day / section#offline",
+   "msg": "646px of air between the content of these two sections: 128-480px (64-600px WARN) (every gap out of the band at 1440px, top to bottom: 646px after \"一天的紀錄 跟著一天走一遍，日報自己長出\", 495px after \"同工地多人填，不同欄位不打架 登入並選擇\", 528px after \"填今天的值，變化量自己算 每口井拿今天的\", 549px after \"你的紀錄，不會因為更新而消失 更新不清資\") (SR-3)",
+   "fix": "keep 128-480px of air between the content of neighbouring sections (112-420px on a phone): the sections' padding (--padt, --padb)",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-air"
+   ],
+   "wheres": [
+    "section#day / section#offline"
+   ]
+  },
+  {
+   "check": "section-air",
+   "where": "main#main > section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 開\"",
+   "msg": "the content fills 31.4% of the section's height (283 of 900px): 55% or more (40% WARN) (SR-3)",
+   "fix": "fill the section to 55%: more content, a picture or a background layer, or merge it into the section above as its last block",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-air"
+   ],
+   "wheres": [
+    "main#main > section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入選共用工地。 開\""
+   ]
+  },
+  {
+   "check": "section-air",
+   "where": "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+   "msg": "the content fills 39.2% of the section's height (353 of 900px): 55% or more (40% WARN) (SR-3)",
+   "fix": "fill the section to 55%: more content, a picture or a background layer, or merge it into the section above as its last block",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-air"
+   ],
+   "wheres": [
+    "section#water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\""
+   ]
+  },
+  {
+   "check": "one-section",
+   "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+   "msg": "the screen at scroll 4500px (stride 5) shows 406px of section 2 and the content of 2 sections, over 24px each beside section 3: a screen shows one section (another may peek 8px, 24px WARN) (SR-4)",
+   "fix": "make each section exactly one screen or two, so a screen shows one section and no neighbour peeks",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "one-section"
+   ],
+   "wheres": [
+    "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\""
+   ]
+  },
+  {
+   "check": "one-section",
+   "where": "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+   "msg": "the screen at scroll 5400px (stride 6) shows 406px of section 3 and the content of 2 sections, over 24px each beside section 4: a screen shows one section (another may peek 8px, 24px WARN) (SR-4)",
+   "fix": "make each section exactly one screen or two, so a screen shows one section and no neighbour peeks",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "one-section"
+   ],
+   "wheres": [
+    "section#offline \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\""
+   ]
+  },
+  {
+   "check": "one-section",
+   "where": "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\"",
+   "msg": "the screen at scroll 6300px (stride 7) shows 406px of section 4 and the content of 2 sections, over 24px each beside section 5: a screen shows one section (another may peek 8px, 24px WARN) (and 4 more like it: scroll 7200px, scroll 8100px, scroll 8687px) (SR-4)",
+   "fix": "make each section exactly one screen or two, so a screen shows one section and no neighbour peeks",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "one-section"
+   ],
+   "wheres": [
+    "section#collab \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時編輯。每次修改只\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "header.top \"施工日報 一天的紀錄 離線與同步 共編 水位 開啟日報\"",
+   "msg": "the nav's content runs 0px from the left and 0px from the right: the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+   "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "header.top \"施工日報 一天的紀錄 離線與同步 共編 水位 開啟日報\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\"",
+   "msg": "the content of section 1 runs 0px from the left and 0px from the right: the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+   "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "section#top \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著就能填。沒有網路\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\"",
+   "msg": "the content of section 2 runs 0px from the left and 0px from the right: the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (and 7 more like it: \"收訊差的地方，也不會丟資料 本機先存，連得上再同\", \"同工地多人填，不同欄位不打架 登入並選擇共用工地\", \"填今天的值，變化量自己算 每口井拿今天的量測值與\") (SR-6)",
+   "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "section#day \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟著每個時段填上資\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "a.skip \"跳到主要內容\"",
+   "msg": "a <a> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (SR-6)",
+   "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "a.skip \"跳到主要內容\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\"",
+   "msg": "a <footer> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (and 1 more like it: \"給工地現場的手機填報工具 三分鐘，寫完今天的施工\") (SR-6)",
+   "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "footer.f \"施工日報 · 離線優先的工地填報工具 hello@daily-report.ex\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "section#top > div.wrap > div:nth-of-type(1) > p.eyebrow \"給工地現場的手機填報工具\"",
+   "msg": "2 text blocks start on a left line at x 118, 118px from the container's left: text starts on the container's left, or on one split line (x 610, 732, 854) (also \"一天的紀錄\") (SR-6)",
+   "fix": "start the text on the container's left, or on the one split line every split shares",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "section#top > div.wrap > div:nth-of-type(1) > p.eyebrow \"給工地現場的手機填報工具\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "div#chapters > article.chap:nth-of-type(1) > div.time \"07:10 進場\"",
+   "msg": "18 text blocks start on a left line at x 104, 104px from the container's left: text starts on the container's left, or on one split line (x 610, 732, 854) (also \"先選工地與日期\", \"工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用\", \"08:30 開工\") (and 9 more like it: x 97, x 80, \"三分鐘，寫完今天的施工日報\") (SR-6)",
+   "fix": "start the text on the container's left, or on the one split line every split shares",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "div#chapters > article.chap:nth-of-type(1) > div.time \"07:10 進場\""
+   ]
+  },
+  {
+   "check": "row-lines",
+   "where": "section#promises > div.wrap > div.prom \"更新不清資料App 更新前會先存好草稿；更新不會清除本機資料庫。 定稿快照不回寫\"",
+   "msg": "a row of 3 items: its first item starts at 80px, the container's left line at 0px; its last item ends at 1360px, the container's right line at 1440px (2px either way) (SR-7)",
+   "fix": "start the row's first item on the container's left line and end its last on the right line, every item one height",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "row-lines"
+   ],
+   "wheres": [
+    "section#promises > div.wrap > div.prom \"更新不清資料App 更新前會先存好草稿；更新不會清除本機資料庫。 定稿快照不回寫\""
+   ]
+  },
+  {
+   "check": "row-lines",
+   "where": "section#collab > div.wrap > div.cmp \"改不同欄位 王班長改人數，李主任改工項備註。 王人數 6 → 8 李備註 → 3\"",
+   "msg": "a row of 2 items: its first item starts at 80px, the container's left line at 0px; its last item ends at 1360px, the container's right line at 1440px (2px either way) (SR-7)",
+   "fix": "start the row's first item on the container's left line and end its last on the right line, every item one height",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "row-lines"
+   ],
+   "wheres": [
+    "section#collab > div.wrap > div.cmp \"改不同欄位 王班長改人數，李主任改工項備註。 王人數 6 → 8 李備註 → 3\""
+   ]
+  },
+  {
+   "check": "split-pair",
+   "where": "section#offline > div.wrap.off \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\"",
+   "msg": "the two columns of the split start 52px apart at the top (centred on each other): a split's columns are top-aligned, 8px either way (SR-8)",
+   "fix": "top-align both columns of the split (align-items: start)",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "split-pair"
+   ],
+   "wheres": [
+    "section#offline > div.wrap.off \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會假裝你已經上傳：\""
+   ]
+  },
+  {
+   "check": "split-pair",
+   "where": "section#water > div.wrap.wgrid \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\"",
+   "msg": "the two columns of the split start 49px apart at the top (centred on each other): a split's columns are top-aligned, 8px either way (SR-8)",
+   "fix": "top-align both columns of the split (align-items: start)",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "split-pair"
+   ],
+   "wheres": [
+    "section#water > div.wrap.wgrid \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面只顯示近 3 天\""
+   ]
+  },
+  {
+   "check": "split-pair",
+   "where": "section#day > div.wrap > div.day-grid \"07:10 進場 先選工地與日期 工地與日期固定顯示在最上面。日報與水位各有獨立\"",
+   "msg": "the split's columns are off the page's one pair of lines: its right column starts at x 949, on none of the split lines 610 (k=5), 732 (k=6), 854 (k=7) (SR-8)",
+   "fix": "start every split's right column on one shared line (wrap.left + k x (width + 24) / 12, k 5, 6 or 7; 6 on a place page) and end the left one 24px before it",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "split-pair"
+   ],
+   "wheres": [
+    "section#day > div.wrap > div.day-grid \"07:10 進場 先選工地與日期 工地與日期固定顯示在最上面。日報與水位各有獨立\""
+   ]
+  },
+  {
+   "check": "collide",
+   "where": "header.top \"施工日報 開啟日報\"",
+   "msg": "at the top of the page the fixed bar covers \"給工地現場的手機填報工具\": nothing scrolls it out from under the bar",
+   "fix": "on a phone nothing lies on anything else: let the section grow with its content (min-height for its screens, never a fixed height; --hm: 2 when it needs two) or cut what it holds; keep pictures and cards off the buttons; pad the page under a fixed bar by the bar's height (top: the first section; end: the footer)",
+   "widths": [
+    390,
+    320
+   ],
+   "from": "consistency",
+   "ids": [
+    "collide"
+   ],
+   "wheres": [
+    "header.top \"施工日報 開啟日報\""
+   ]
+  },
+  {
+   "check": "cut-text",
+   "where": "div.s-body.fade-swap > div.s-field > div.s-row2 > div.s-input.caret \"搜尋或輸入工項\"",
+   "msg": "cut 6px at the right by the overflow of div.s-body.fade-swap > div.s-field > div.s-row2 > div.s-input.caret",
+   "fix": "give the text room: no overflow clipping a line, no line past its box",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "cut-text"
+   ],
+   "wheres": [
+    "div.s-body.fade-swap > div.s-field > div.s-row2 > div.s-input.caret \"搜尋或輸入工項\""
+   ]
+  },
+  {
+   "check": "cut-text",
+   "where": "div#dayScreen > div.s-body.fade-swap > div.mat:nth-of-type(2) > span \"#4 · 同鋼\"",
+   "msg": "cut 10px at the bottom by the overflow of div#dayScreen",
+   "fix": "give the text room: no overflow clipping a line, no line past its box",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "cut-text"
+   ],
+   "wheres": [
+    "div#dayScreen > div.s-body.fade-swap > div.mat:nth-of-type(2) > span \"#4 · 同鋼\""
+   ]
+  },
+  {
+   "check": "cut-text",
+   "where": "div#dayScreen > div.s-body.fade-swap > div.s-pre \"示範大樓新建工程：11/20（五） 模板：大成營造6工-牆體模板組立、柱模板拆除\"",
+   "msg": "cut 3px at the bottom by the overflow of div#dayScreen > div.s-body.fade-swap",
+   "fix": "give the text room: no overflow clipping a line, no line past its box",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "cut-text"
+   ],
+   "wheres": [
+    "div#dayScreen > div.s-body.fade-swap > div.s-pre \"示範大樓新建工程：11/20（五） 模板：大成營造6工-牆體模板組立、柱模板拆除\""
+   ]
+  },
+  {
+   "check": "pinned",
+   "where": "section#day > div.wrap > div.day-grid > div.sticky \"已保存本機 施工日報 設定 施工紀錄 進料 聯絡事項 特殊事項 示範大樓新建工程\"",
+   "msg": "held on screen for 3.2 screens of scroll (position: sticky) while the page moves on",
+   "fix": "let the section scroll with the page",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "pinned"
+   ],
+   "wheres": [
+    "section#day > div.wrap > div.day-grid > div.sticky \"已保存本機 施工日報 設定 施工紀錄 進料 聯絡事項 特殊事項 示範大樓新建工程\""
+   ]
+  },
+  {
+   "check": "section-gaps",
+   "where": "section#water / section#promises",
+   "msg": "245px between these sections, +64% against the median 149px",
+   "fix": "use one gap between sections (all within 25% of each other)",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-gaps"
+   ],
+   "wheres": [
+    "section#water / section#promises"
+   ]
+  },
+  {
+   "check": "section-gaps",
+   "where": "main#main > section.close.sec / footer.f",
+   "msg": "471px between these sections, +151% against the median 188px of gaps at a change of ground",
+   "fix": "use one gap between sections (all within 25% of each other)",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-gaps"
+   ],
+   "wheres": [
+    "main#main > section.close.sec / footer.f"
+   ]
+  },
+  {
+   "check": "empty-area",
+   "where": "section#day \"跟著一天走一遍， 日報自己長出來\"",
+   "msg": "52% of the section is empty: 1632px of empty rows between its content, 2% beside content that covers under half the container, in its 3258px of rows (WARN over 35%, FAIL over 50%)",
+   "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "empty-area"
+   ],
+   "wheres": [
+    "section#day \"跟著一天走一遍， 日報自己長出來\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day h3 \"先選工地與日期\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day h3 \"先選工地與日期\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day p \"工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day p \"工地與日期固定顯示在最上面。日報與水位各有獨立日期與歷史，只共用\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day h3 \"工種、廠商、人數，同一列\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day h3 \"工種、廠商、人數，同一列\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day p \"選工種、填廠商、填今天幾個人。單日的人數不會被偷偷記成記憶，只有\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day p \"選工種、填廠商、填今天幾個人。單日的人數不會被偷偷記成記憶，只有\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day h3 \"工項用「、」連續輸入\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day h3 \"工項用「、」連續輸入\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day p \"一行打下去，按 Enter 就加入。拖曳握把排序，左滑刪除，刪錯\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day p \"一行打下去，按 Enter 就加入。拖曳握把排序，左滑刪除，刪錯\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day h3 \"進料獨立記，也能接回工程\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day h3 \"進料獨立記，也能接回工程\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day p \"混凝土、鋼筋進場，依材料類型、規格、數量記一筆。一筆進料最多連到\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day p \"混凝土、鋼筋進場，依材料類型、規格、數量記一筆。一筆進料最多連到\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day h3 \"水位變化，用量測綠分開\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day h3 \"水位變化，用量測綠分開\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day p \"每口井填今天的量測值，變化量自動算好。日報用施工橘、水位用量測綠\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day p \"每口井填今天的量測值，變化量自動算好。日報用施工橘、水位用量測綠\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day h3 \"預覽、定稿、複製\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day h3 \"預覽、定稿、複製\""
+   ]
+  },
+  {
+   "check": "edge-left",
+   "where": "#day p \"日報文字即時預覽。定稿會留下 7 天的快照，同樣內容再按只會再複\"",
+   "msg": "starts at x 104; the lines are 80 and the column starts",
+   "fix": "start it on the .wrap left line",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "edge-left"
+   ],
+   "wheres": [
+    "#day p \"日報文字即時預覽。定稿會留下 7 天的快照，同樣內容再按只會再複\""
+   ]
+  },
+  {
+   "check": "screen-short",
+   "where": "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\"",
+   "msg": "836px tall; one screen under the nav is 900px",
+   "fix": "make the section one full screen (--h: 1, layout-v4.md section 2)",
+   "widths": [
+    1440
+   ],
+   "from": "layout",
+   "ids": [
+    "screen-short"
+   ],
+   "wheres": [
+    "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\""
+   ]
+  },
+  {
+   "check": "neighbour-ground",
+   "where": "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\"",
+   "msg": "framed, 64px of #day section.day.sec \"一天的紀錄 跟著一天走一遍，日報自己長出來 往下捲，右邊手機會跟\"'s ground shows",
+   "fix": "end the ground with the section",
+   "widths": [
+    1440
+   ],
+   "from": "layout",
+   "ids": [
+    "neighbour-ground"
+   ],
+   "wheres": [
+    "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\""
+   ]
+  },
+  {
+   "check": "sparse",
+   "where": "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\"",
+   "msg": "its content fills 41% of its screen; merge it or give it its visual (0.55 is the aim)",
+   "fix": "fill the section or make it a screen shorter",
+   "widths": [
+    1440
+   ],
+   "from": "layout",
+   "ids": [
+    "sparse"
+   ],
+   "wheres": [
+    "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\""
+   ]
+  },
+  {
+   "check": "sparse",
+   "where": "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\"",
+   "msg": "its content fills 39% of its screen; merge it or give it its visual (0.55 is the aim)",
+   "fix": "fill the section or make it a screen shorter",
+   "widths": [
+    1440
+   ],
+   "from": "layout",
+   "ids": [
+    "sparse"
+   ],
+   "wheres": [
+    "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\""
+   ]
+  },
+  {
+   "check": "sparse",
+   "where": "#promises section.sec \"你的紀錄，不會因為更新而消失 更新不清資料App 更新前會先存好\"",
+   "msg": "its content fills 47% of its screen; merge it or give it its visual (0.55 is the aim)",
+   "fix": "fill the section or make it a screen shorter",
+   "widths": [
+    1440
+   ],
+   "from": "layout",
+   "ids": [
+    "sparse"
+   ],
+   "wheres": [
+    "#promises section.sec \"你的紀錄，不會因為更新而消失 更新不清資料App 更新前會先存好\""
+   ]
+  },
+  {
+   "check": "sparse",
+   "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+   "msg": "its content fills 29% of its screen; merge it or give it its visual (0.55 is the aim)",
+   "fix": "fill the section or make it a screen shorter",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "sparse"
+   ],
+   "wheres": [
+    "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+   ]
+  },
+  {
+   "check": "hero-fold",
+   "where": "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\"",
+   "msg": "ends at y 836, above the fold (900)",
+   "fix": "the hero fills the first screen alone, its button inside it",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "hero-fold"
+   ],
+   "wheres": [
+    "#top section.hero \"給工地現場的手機填報工具 三分鐘，寫完今天的施工日報 在工地站著\""
+   ]
+  },
+  {
+   "check": "neighbour-ground",
+   "where": "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\"",
+   "msg": "framed, 65px of #collab section.collab.sec \"同工地多人填，不同欄位不打架 登入並選擇共用工地後，成員可以同時\"'s ground shows",
+   "fix": "end the ground with the section",
+   "widths": [
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "neighbour-ground"
+   ],
+   "wheres": [
+    "#offline section.sec \"收訊差的地方，也不會丟資料 本機先存，連得上再同步。App 不會\""
+   ]
+  },
+  {
+   "check": "neighbour-ground",
+   "where": "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\"",
+   "msg": "framed, 65px of #promises section.sec \"你的紀錄，不會因為更新而消失 更新不清資料App 更新前會先存好\"'s ground shows",
+   "fix": "end the ground with the section",
+   "widths": [
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "neighbour-ground"
+   ],
+   "wheres": [
+    "#water section.sec.water \"填今天的值，變化量自己算 每口井拿今天的量測值與前一次相比。畫面\""
+   ]
+  },
+  {
+   "check": "screen-short",
+   "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+   "msg": "779px tall; one screen under the nav is 844px",
+   "fix": "make the section one full screen (--h: 1, layout-v4.md section 2)",
+   "widths": [
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "screen-short"
+   ],
+   "wheres": [
+    "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+   ]
+  },
+  {
+   "check": "screen-height",
+   "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+   "msg": "779px, 0.92 screens; a section is exactly one or two (--h), or on a phone at least one that its content fills",
+   "fix": "make the section exactly one or two screens (--h: 1 or 2)",
+   "widths": [
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "screen-height"
+   ],
+   "wheres": [
+    "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+   ]
+  },
+  {
+   "check": "neighbour",
+   "where": "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\"",
+   "msg": "framed, 65px of the footer shows",
+   "fix": "keep the next section's heading and picture out of this screen",
+   "widths": [
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "neighbour"
+   ],
+   "wheres": [
+    "section.close.sec section.close.sec \"明天上工，手機就夠了。 不用註冊，打開就能填。需要共編時，再登入\""
+   ]
+  }
+ ],
+ "waived": [],
+ "warnCount": 29,
+ "at": "2026-11-20T10:03:45.205Z",
+ "openTold": true
+}

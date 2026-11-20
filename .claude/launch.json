@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "daily-report-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js","--host", "127.0.0.1", "--port", "5566", "--strictPort"],
+      "port": 5566,
+      "url": "http://127.0.0.1:5566"
+    }
+  ]
+}
