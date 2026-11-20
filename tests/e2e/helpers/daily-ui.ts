@@ -96,6 +96,7 @@ export class DailyUI {
         await expect.poll(() => oldType!.evaluate((element) => element.isConnected)).toBe(false);
         await this.type(field('itemName'), material.name, '進料品名');
         await this.key(field('itemName'), 'Tab', '提交品名');
+        if (material.spec) { await this.type(field('specification'), material.spec, '規格'); await this.key(field('specification'), 'Tab', '提交規格'); }
         await this.type(field('supplierNameSnapshot'), material.supplier, '供應商');
         await this.type(field('quantity'), material.quantity, '進料數量');
         await this.type(field('unit'), material.unit, '單位');

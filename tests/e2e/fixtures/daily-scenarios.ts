@@ -1,6 +1,6 @@
 export type TradeInput = { name: string; vendor: string; workers: string; tasks: string[] };
 /** `trade` is the index in the scenario's trades the entry connects to. */
-export type MaterialInput = { type: string; name: string; supplier: string; quantity: string; unit: string; trade: number };
+export type MaterialInput = { type: string; name: string; supplier: string; quantity: string; unit: string; trade: number; spec?: string };
 /** `dateOffset` fills the native planned-date field (calendar days after the report); omit to leave it empty. */
 export type ContactInput = { trade: string; vendor: string; dateOffset?: number; tasks: string[] };
 export type Scenario = {
@@ -112,5 +112,38 @@ export const scenarios: Scenario[] = [
       { trade: '混凝土', vendor: '國產', dateOffset: 3, tasks: ['筏基混凝土澆置'] },
       { trade: '鋼筋', vendor: '萬大禾', dateOffset: 1, tasks: ['鋼筋進料'] },
     ],
+  },
+  // 使用者貼入的三份實際日報文案；答案檔為原文逐字（合併雜工、全形括號、15 連字號等與現行產品不同處會在逐字比對失敗）。
+  {
+    id: 'paste-1120', reportDate: '2026-11-20',
+    trades: [
+      { name: '鋼筋工程', vendor: '順立', workers: '10', tasks: ['預留筋彎折'] },
+      { name: '安全設施', vendor: '承弘', workers: '2', tasks: ['第八層圍令護欄拆除'] },
+      { name: '雜工工程', vendor: '藝境', workers: '1', tasks: ['人員及車輛管制', '環境整理', '交通管制', '工區內及周邊環境清掃', '地下室垃圾撿拾', '覆工板清潔', '鋼筋搬運'] },
+      { name: '雜工工程', vendor: '成保', workers: '2', tasks: ['人員及車輛管制', '環境整理', '交通管制', '工區內及周邊環境清掃', '地下室垃圾撿拾', '覆工板清潔', '鋼筋搬運'] },
+    ],
+    materials: [], contacts: [],
+  },
+  // 進料數量原文「2,503」含千分位，現行驗證只收純小數，這裡輸入 2503。
+  {
+    id: 'paste-1117', reportDate: '2026-11-17',
+    trades: [
+      { name: '混凝土搗築工程', vendor: '正言', workers: '45', tasks: ['基礎版澆置2,503方'] },
+      { name: '雜工工程', vendor: '藝境', workers: '1', tasks: ['人員及車輛管制', '環境整理', '交通管制', '工區內及周邊環境清掃', '地下室垃圾撿拾', '圍籬復原'] },
+      { name: '雜工工程', vendor: '成保', workers: '2', tasks: ['人員及車輛管制', '環境整理', '交通管制', '工區內及周邊環境清掃', '地下室垃圾撿拾', '圍籬復原'] },
+    ],
+    materials: [{ type: '混凝土', name: '一般混凝土', spec: '420kgf/cm2', supplier: '天誠', quantity: '2503', unit: '方', trade: 0 }],
+    contacts: [{ trade: '安全設施', vendor: '承弘', dateOffset: 3, tasks: ['第八層圍令護欄拆除'] }],
+  },
+  {
+    id: 'paste-1118', reportDate: '2026-11-18',
+    trades: [
+      { name: '模板工程', vendor: '正益', workers: '2', tasks: ['加深區模板拆除'] },
+      { name: '鋼筋工程', vendor: '順立', workers: '2', tasks: ['鋼筋材料搬運'] },
+      { name: '雜工工程', vendor: '藝境', workers: '1', tasks: ['人員及車輛管制', '環境整理', '交通管制', '工區內及周邊環境清掃', '地下室上下設備搭設', '通風設備調整', '置料區標記', '構台欄杆修復'] },
+      { name: '雜工工程', vendor: '成保', workers: '1', tasks: ['人員及車輛管制', '環境整理', '交通管制', '工區內及周邊環境清掃', '地下室上下設備搭設', '通風設備調整', '置料區標記', '構台欄杆修復'] },
+    ],
+    materials: [],
+    contacts: [{ trade: '安全設施', vendor: '承弘', dateOffset: 2, tasks: ['第八層圍令護欄拆除'] }],
   },
 ];
