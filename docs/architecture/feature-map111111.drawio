@@ -1,0 +1,321 @@
+<mxfile host="Electron" agent="Claude Code" pages="2">
+  <diagram id="1 功能地圖" name="1 功能地圖">
+    <mxGraphModel dx="3823" dy="1402" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;fontSize=22;fontStyle=1;fontColor=#173f3a;align=left;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="施工日報｜功能地圖（人能做什麼）" vertex="1">
+          <mxGeometry height="36" width="700" x="40" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="root" parent="1" style="rounded=1;arcSize=20;fillColor=#173f3a;strokeColor=#173f3a;fontColor=#ffffff;fontStyle=1;fontSize=18;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="施工日報 App&lt;br&gt;手機、可離線使用" vertex="1">
+          <mxGeometry height="70" width="260" x="560" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="daily" parent="1" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;rounded=1;arcSize=14;fontStyle=1;fontSize=16;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="① 施工日報（每天主要用）" vertex="1">
+          <mxGeometry height="52" width="290" x="40" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="daily0" parent="1" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="選日期、選工地" vertex="1">
+          <mxGeometry height="50" width="290" x="40" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ed0" edge="1" parent="1" source="root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" target="daily" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" edge="1" parent="1" source="root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Q_519LYRxDBvL9iUJGBa-2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-18" edge="1" parent="1" source="set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="set6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-20" edge="1" parent="1" source="set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="set7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-23" edge="1" parent="1" source="set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="OhO-o6pqschxrl1bkoJJ-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="set" parent="1" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;rounded=1;arcSize=14;fontStyle=1;fontSize=16;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="③ 設定" vertex="1">
+          <mxGeometry height="52" width="290" x="1740" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-19" edge="1" parent="1" source="set6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="OhO-o6pqschxrl1bkoJJ-16">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1625" y="503" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="set6" parent="1" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="記憶審核（確認 App 學到的項目）" vertex="1">
+          <mxGeometry height="50" width="290" x="1480" y="397" as="geometry" />
+        </mxCell>
+        <mxCell id="set7" parent="1" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="備份與還原" vertex="1">
+          <mxGeometry height="50" width="290" x="2520" y="501" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" edge="1" parent="1" source="root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" target="set" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="n1" parent="1" style="shape=note;size=12;fillColor=#fffde7;strokeColor=#bda63c;align=left;spacing=8;verticalAlign=top;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="離線也能完整使用；沒登入就只存在這支手機。登入並選共用工地後，才會與其他人同步。" vertex="1">
+          <mxGeometry height="60" width="540" x="-35" y="1310" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" parent="1" style="shape=note;size=12;fillColor=#fffde7;strokeColor=#bda63c;align=left;spacing=8;verticalAlign=top;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="設定整理好的資料，會變成日報輸入時的建議清單；被用過 4 次的項目會自動變成正式資料。" vertex="1">
+          <mxGeometry height="60" width="540" x="-35" y="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-3" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="200" width="640" x="-135" y="354" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-1" parent="OhO-o6pqschxrl1bkoJJ-3" style="swimlane;whiteSpace=wrap;html=1;" value="輸入端口" vertex="1">
+          <mxGeometry height="200" width="640" as="geometry">
+            <mxRectangle height="30" width="90" x="-290" y="354" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="daily1" parent="OhO-o6pqschxrl1bkoJJ-3" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="施工紀錄&lt;br&gt;加工種 → 加工項（位置、內容、人數）" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="daily2" parent="OhO-o6pqschxrl1bkoJJ-3" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="進料&lt;br&gt;加進料；獨立進料可連到某個工種" vertex="1">
+          <mxGeometry height="50" width="290" x="330" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="daily3" parent="OhO-o6pqschxrl1bkoJJ-3" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="聯絡事項" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="daily4" parent="OhO-o6pqschxrl1bkoJJ-3" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="特殊事項" vertex="1">
+          <mxGeometry height="50" width="290" x="330" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-4" edge="1" parent="1" source="daily0" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="OhO-o6pqschxrl1bkoJJ-1" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="380" y="470" as="sourcePoint" />
+            <mxPoint x="430" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-12" edge="1" parent="1" source="OhO-o6pqschxrl1bkoJJ-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="OhO-o6pqschxrl1bkoJJ-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-14" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="368" width="640" x="-135" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-9" parent="OhO-o6pqschxrl1bkoJJ-14" style="swimlane;whiteSpace=wrap;html=1;container=0;" value="檢查與複製" vertex="1">
+          <mxGeometry height="368" width="640" as="geometry" />
+        </mxCell>
+        <mxCell id="daily6" parent="OhO-o6pqschxrl1bkoJJ-14" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="複製日報文字" vertex="1">
+          <mxGeometry height="50" width="290" x="173.75" y="138" as="geometry" />
+        </mxCell>
+        <mxCell id="daily7" parent="OhO-o6pqschxrl1bkoJJ-14" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="定稿並複製（草稿保留）" vertex="1">
+          <mxGeometry height="50" width="290" x="173.75" y="197" as="geometry" />
+        </mxCell>
+        <mxCell id="daily8" parent="OhO-o6pqschxrl1bkoJJ-14" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="歷史：看近 7 天定稿、再複製" vertex="1">
+          <mxGeometry height="50" width="290" x="173.75" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="daily5" parent="OhO-o6pqschxrl1bkoJJ-14" style="rounded=1;arcSize=14;fillColor=#fde7d3;strokeColor=#c2561a;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="檢查與預覽" vertex="1">
+          <mxGeometry height="50" width="290" x="176.25" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-17" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="236" width="630" x="1310" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-15" connectable="0" parent="OhO-o6pqschxrl1bkoJJ-17" style="group" value="" vertex="1">
+          <mxGeometry height="187" width="600" x="10" y="34" as="geometry" />
+        </mxCell>
+        <mxCell id="set0" parent="OhO-o6pqschxrl1bkoJJ-15" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="工種／工項／廠商" vertex="1">
+          <mxGeometry height="50" width="290" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="set1" parent="OhO-o6pqschxrl1bkoJJ-15" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="位置（可帶樓層）" vertex="1">
+          <mxGeometry height="50" width="290" x="310" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="set2" parent="OhO-o6pqschxrl1bkoJJ-15" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="材料類型（品名、規格、單位、供應商）" vertex="1">
+          <mxGeometry height="50" width="290" x="310" as="geometry" />
+        </mxCell>
+        <mxCell id="set3" parent="OhO-o6pqschxrl1bkoJJ-15" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="工地" vertex="1">
+          <mxGeometry height="50" width="290" as="geometry" />
+        </mxCell>
+        <mxCell id="set4" parent="OhO-o6pqschxrl1bkoJJ-15" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="特殊事項模板" vertex="1">
+          <mxGeometry height="50" width="290" y="137" as="geometry" />
+        </mxCell>
+        <mxCell id="set5" parent="OhO-o6pqschxrl1bkoJJ-15" style="rounded=1;arcSize=14;fillColor=#e8eaf6;strokeColor=#5c6bc0;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="水位井位" vertex="1">
+          <mxGeometry height="50" width="290" x="310" y="137" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-16" parent="OhO-o6pqschxrl1bkoJJ-17" style="swimlane;whiteSpace=wrap;html=1;" value="記憶儲存及編輯" vertex="1">
+          <mxGeometry height="236" width="630" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-22" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="433" width="360" x="1980" y="497" as="geometry" />
+        </mxCell>
+        <mxCell id="share0" parent="OhO-o6pqschxrl1bkoJJ-22" style="rounded=1;arcSize=14;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="Google 登入" vertex="1">
+          <mxGeometry height="50" width="290" x="30" y="53" as="geometry" />
+        </mxCell>
+        <mxCell id="share1" parent="OhO-o6pqschxrl1bkoJJ-22" style="rounded=1;arcSize=14;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="建立工地／輸入加入碼" vertex="1">
+          <mxGeometry height="50" width="290" x="30" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="share2" parent="OhO-o6pqschxrl1bkoJJ-22" style="rounded=1;arcSize=14;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="管理員核准成員" vertex="1">
+          <mxGeometry height="50" width="290" x="30" y="177" as="geometry" />
+        </mxCell>
+        <mxCell id="share3" parent="OhO-o6pqschxrl1bkoJJ-22" style="rounded=1;arcSize=14;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="切換共用工地" vertex="1">
+          <mxGeometry height="50" width="290" x="30" y="239" as="geometry" />
+        </mxCell>
+        <mxCell id="share4" parent="OhO-o6pqschxrl1bkoJJ-22" style="rounded=1;arcSize=14;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="看同步狀態" vertex="1">
+          <mxGeometry height="50" width="290" x="30" y="301" as="geometry" />
+        </mxCell>
+        <mxCell id="share5" parent="OhO-o6pqschxrl1bkoJJ-22" style="rounded=1;arcSize=14;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" value="處理衝突（兩人改同一處）" vertex="1">
+          <mxGeometry height="50" width="290" x="30" y="363" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-21" parent="OhO-o6pqschxrl1bkoJJ-22" style="swimlane;whiteSpace=wrap;html=1;" value="多人共編" vertex="1">
+          <mxGeometry height="433" width="360" as="geometry" />
+        </mxCell>
+        <mxCell id="OhO-o6pqschxrl1bkoJJ-24" edge="1" parent="1" source="OhO-o6pqschxrl1bkoJJ-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="OhO-o6pqschxrl1bkoJJ-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1310" y="669.94" />
+              <mxPoint x="680" y="669.94" />
+              <mxPoint x="680" y="454.06" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Q_519LYRxDBvL9iUJGBa-5" connectable="0" parent="OhO-o6pqschxrl1bkoJJ-24" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="記憶快取快速輸入" vertex="1">
+          <mxGeometry relative="1" x="-0.3104" y="1" as="geometry">
+            <mxPoint y="-3" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Q_519LYRxDBvL9iUJGBa-1" edge="1" parent="1" source="set5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="Q_519LYRxDBvL9iUJGBa-2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1775" y="790" />
+              <mxPoint x="1750" y="790" />
+              <mxPoint x="1750" y="1166.52" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Q_519LYRxDBvL9iUJGBa-7" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="433" width="330" x="710" y="950" as="geometry" />
+        </mxCell>
+        <mxCell id="water" parent="Q_519LYRxDBvL9iUJGBa-7" style="rounded=1;arcSize=14;fillColor=#dff3e4;strokeColor=#2e7d32;rounded=1;arcSize=14;fontStyle=1;fontSize=16;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="② 水位變化" vertex="1">
+          <mxGeometry height="52" width="290" x="20" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="water0" parent="Q_519LYRxDBvL9iUJGBa-7" style="rounded=1;arcSize=14;fillColor=#dff3e4;strokeColor=#2e7d32;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="輸入各井位水位" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="water1" parent="Q_519LYRxDBvL9iUJGBa-7" style="rounded=1;arcSize=14;fillColor=#dff3e4;strokeColor=#2e7d32;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="自動算變化量（上升／下降）" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="water2" parent="Q_519LYRxDBvL9iUJGBa-7" style="rounded=1;arcSize=14;fillColor=#dff3e4;strokeColor=#2e7d32;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="貼上文字一次匯入" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="234" as="geometry" />
+        </mxCell>
+        <mxCell id="water3" parent="Q_519LYRxDBvL9iUJGBa-7" style="rounded=1;arcSize=14;fillColor=#dff3e4;strokeColor=#2e7d32;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="看近 3 天紀錄" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="296" as="geometry" />
+        </mxCell>
+        <mxCell id="water4" parent="Q_519LYRxDBvL9iUJGBa-7" style="rounded=1;arcSize=14;fillColor=#dff3e4;strokeColor=#2e7d32;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;container=0;" value="複製水位文字" vertex="1">
+          <mxGeometry height="50" width="290" x="20" y="358" as="geometry" />
+        </mxCell>
+        <mxCell id="Q_519LYRxDBvL9iUJGBa-2" parent="Q_519LYRxDBvL9iUJGBa-7" style="swimlane;whiteSpace=wrap;html=1;container=0;" value="水位區域" vertex="1">
+          <mxGeometry height="433" width="330" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="2 一天的使用流程" name="2 一天的使用流程">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" math="0" shadow="0" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="施工日報｜一天的使用流程" style="text;html=1;fontSize=22;fontStyle=1;fontColor=#173f3a;align=left;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="15" width="700" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="a" value="打開 App" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="210" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="b" value="選日期、選工地" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="210" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="c" value="施工紀錄&lt;br&gt;加工種 → 加工項" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="d" value="進料&lt;br&gt;（需要時連到工種）" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="430" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="e" value="聯絡事項／特殊事項&lt;br&gt;（有才填）" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="540" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="f" value="檢查與預覽" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="g" value="內容正確？" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="h" value="定稿並複製" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="760" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="i" value="貼給主管／群組" style="ellipse;fillColor=#f8cecc;strokeColor=#b85450;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="870" width="210" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="w0" value="今天有量水位？" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="210" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="w1" value="輸入水位&lt;br&gt;或貼上文字匯入" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="320" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="w2" value="複製水位文字" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="430" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="s0" value="要整理常用資料？" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="790" y="210" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="設定：主檔、位置、&lt;br&gt;材料類型、記憶審核" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="790" y="320" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="o0" value="多人一起填？" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="210" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="o1" value="登入 → 選共用工地&lt;br&gt;→ 自動同步" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="320" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="o2" value="兩人改同處時&lt;br&gt;處理衝突" style="rounded=1;arcSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="430" width="210" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="ed0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="a" target="b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="b" target="c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="c" target="d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="d" target="e">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="e" target="f">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="f" target="g">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed6" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="g" target="h">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed7" value="否，回去補" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="g" target="c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="h" target="i">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed9" value="另一條" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="1" source="a" target="w0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed10" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="w0" target="w1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="w1" target="w2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed12" value="平常" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="1" source="a" target="s0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed13" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="s0" target="s1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed14" value="選用" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;dashed=1;" edge="1" parent="1" source="a" target="o0">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed15" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="o0" target="o1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ed16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#475569;fontFamily=Microsoft JhengHei;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="o1" target="o2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="n" value="定稿後草稿仍保留，隔天可繼續改；已定稿的文字在「歷史」保留 7 天。" style="shape=note;size=12;fillColor=#fffde7;strokeColor=#bda63c;align=left;spacing=8;verticalAlign=top;fontFamily=Microsoft JhengHei;fontSize=14;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="520" width="500" height="56" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
