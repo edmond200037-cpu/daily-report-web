@@ -1,10 +1,8 @@
 import { bindTradePickerDialog } from './daily/trade-picker-dialog';
-import { bindTabNavigation } from './daily/tab-navigation';
 import { registerSW } from 'virtual:pwa-register';
 import { transitionPwaUpdateState, PWA_UPDATE_SUCCESS_MARKER } from './pwa/update-state';
 import { DailyController } from './daily/daily-controller';
 import { databaseSummary, listMemoryCandidates, listRecentFinalizedReports, type MemoryCandidate, type MemoryCandidateKey, confirmMemoryCandidates, exportMemories, clearDebugLogs, deleteTemplate, createMaterialType, deleteMaterialType, confirmMemory, deleteMemory, loadDailyDraft, listMaterialTypes, pruneExpiredReports } from './data/daily-repository';
-import type { DailyReportV3 } from './domain/daily';
 import { withActiveSharedSite } from './daily/report-site';
 import { groupMemoryCandidates, confirmationSelection, rejectionSelection, memoryCandidateImpact } from './settings/memory-review';
 import { completeOAuthRedirect } from './auth/auth-service';
@@ -22,7 +20,7 @@ import { renderAccountLoading, refreshAccount, renderAccountLoaded, bindAccountE
 import { dailyHistoryView, dailyView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
 import { bindMaterialConnectionResize, syncMaterialConnectionCurves, discardMaterialEditor, materialDirty } from './daily/views/material-view';
 import { contactDirty } from './daily/views/contact-view';
-import { restoreEntryScope, persistEntryDraft, savePendingDailyInput, showEntrySaveError } from './daily/views/daily-entry';
+import { restoreEntryScope, persistEntryDraft } from './daily/views/daily-entry';
 import { bindMaterialSuggestionEvents } from './daily/views/material-suggestions';
 import { bindDailyInputEvents, bindContactInputEvents, bindSiteSearchEvents, handleDailyAction, bindBackgroundCollapseEvents, bindDailyKeyEvents } from './daily/views/daily-events';
 import { bindDailyGestureEvents } from './daily/views/daily-gestures';
@@ -38,7 +36,6 @@ import './water-level/water.css';
 import './account/account.css';
 import './daily/input-workflow.css';
 const pickerDialog = bindTradePickerDialog(app, async () => { appState.tradePickerOpen = false; await renderApp(); });
-bindTabNavigation(app);
 export function parseRoute(hash: string): AppRoute {
   const normalized = hash || '#daily';
   if (normalized === '#settings') return { module: 'settings', page: 'home' };
@@ -63,6 +60,7 @@ export async function renderApp(): Promise<void> {
   if (location.hash === '#settings/daily/vendors') { history.replaceState(null, '', '#settings/daily/trade-tasks'); return renderApp(); }
   if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }
   const token = ++appState.renderToken; const route = parseRoute(location.hash); const previousRoute = appState.renderedRoute; appState.renderedRoute = route; appState.water = undefined;
+  if (route.module !== 'daily' || route.page !== 'main') appState.justAddedEntry = null;
   if (route.module === 'settings' && route.page === 'home' && (previousRoute?.module === 'daily' || previousRoute?.module === 'water-level') && previousRoute.page === 'main') appState.settingsReturnModule = previousRoute.module;
   if (route.module === 'account') { if (route.page === 'debug') appState.settingsDebug = await databaseSummary(); if (token !== appState.renderToken) return; renderAccountLoading(); void refreshAccount(() => { if (token !== appState.renderToken || parseRoute(location.hash).module !== 'account') return; if (appState.accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); }); return; }
   if (!appState.accountAuth.enabled) await refreshAccount();
@@ -141,24 +139,6 @@ app.addEventListener('click', async (event) => {
     return;
   }
   if (route.module === 'daily' && route.page === 'settings') { const actionButton = target.closest<HTMLButtonElement>('[data-settings-action]'); if (actionButton) { const action = actionButton.dataset.settingsAction!; const id = actionButton.dataset.id!; const kind = actionButton.dataset.settingsKind as 'sites' | 'trades' | 'vendors' | 'tasks' | 'locations' | undefined; if (action === 'export-memory-backup') { const payload = await exportMemories(); const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = `施工日報-記憶備份-${payload.exportedAt.slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); appState.memoryBackupFeedback = '已下載記憶備份。'; await renderApp(); return; } if (action === 'add-material-type') { settingsState.adding = true; settingsState.editingId = null; settingsState.editingKind = null; await renderApp(); return; } if (action === 'delete-template') { if (!window.confirm(`確定刪除模板「${actionButton.dataset.name ?? ''}」？`)) return; await deleteTemplate(id); await persistActiveMemoryPartition(); settingsState.editingId = null; await renderApp(); return; } if (action === 'delete-material-type') { const current = appState.materialTypes.find((row) => row.id === id); const entries = appState.daily.report.standaloneMaterialEntries.filter((entry) => entry.materialTypeId === id); const normal = entries.filter((entry) => entry.entryType !== 'independent').length; const independent = entries.length - normal; const linked = entries.filter((entry) => entry.entryType === 'independent' && entry.connectedTradeSectionId).length; if (!window.confirm(`刪除材料類型「${current?.name ?? ''}」？\n\n普通進料 ${normal} 筆\n獨立進料 ${independent} 筆${linked ? `（已連接 ${linked} 筆）` : ''}\n共計刪除 ${entries.length} 筆進料及相關搜尋記憶。\n\n此操作無法復原。`)) return; try { appState.daily.report = await deleteMaterialType(appState.daily.report, id); } catch (error) { alert(error instanceof Error ? error.message : '刪除材料類型失敗。'); } await renderApp(); return; } if (action === 'toggle-trade-tasks') { settingsState.selectedTradeTypeId = settingsState.selectedTradeTypeId === actionButton.dataset.tradeTypeId ? null : actionButton.dataset.tradeTypeId ?? null; settingsState.editingId = null; settingsState.editingKind = null; settingsState.adding = false; settingsState.taskSearchKeyword = ''; await renderApp(); return; } if (action === 'edit-trade') { settingsState.selectedTradeTypeId = actionButton.dataset.tradeTypeId ?? null; settingsState.editingId = actionButton.dataset.tradeTypeId ?? null; settingsState.editingKind = 'trade'; settingsState.adding = false; await renderApp(); return; } if (action === 'delete-trade') { await deleteTradeWithConfirm(actionButton.dataset.tradeTypeId ?? ''); return; } if (action === 'add-trade') { appState.dailyPreviewOpen = false; settingsState.selectedTradeTypeId = null; settingsState.adding = true; settingsState.editingId = null; settingsState.editingKind = 'trade'; } else if (action === 'add-task' || action === 'add-vendor') { settingsState.adding = true; settingsState.editingId = null; settingsState.editingKind = action === 'add-task' ? 'tasks' : 'vendors'; } else if (action === 'clear-task-search') { settingsState.taskSearchKeyword = ''; await renderApp(); app.querySelector<HTMLInputElement>('[data-settings-search="tasks"]')?.focus(); return; } else if (action === 'edit-task' || action === 'edit-vendor' || action === 'edit') { settingsState.editingId = id; settingsState.editingKind = action === 'edit-task' ? 'tasks' : action === 'edit-vendor' ? 'vendors' : null; settingsState.adding = false; } else if (action === 'cancel') { settingsState.editingId = null; settingsState.editingKind = null; settingsState.adding = false; settingsState.dirty = false; } else if (action === 'confirm' && kind) await confirmMemory(kind as 'vendors' | 'tasks' | 'locations', id); else if (action === 'delete' && kind) { if (!window.confirm(`確定刪除「${actionButton.dataset.name ?? ''}」？\n\n此操作將影響設定記憶與目前草稿中的相關內容；既有日報快照與已複製文字不受影響。`)) return; const savedDraft = await deleteMemory(kind, id); if (savedDraft) appState.daily.mergeRemote(savedDraft); settingsState.editingId = null; settingsState.editingKind = null; if (kind === 'trades' && settingsState.selectedTradeTypeId === id) { settingsState.selectedTradeTypeId = null; settingsState.taskSearchKeyword = ''; } } else if (action === 'copy-debug') await navigator.clipboard.writeText(JSON.stringify(appState.settingsDebug, null, 2)); else if (action === 'clear-debug') { if (window.confirm('確定清除偵錯紀錄？')) await clearDebugLogs(); } await renderApp(); return; } }
-  const tab = target.closest<HTMLButtonElement>('[data-daily-tab]');
-  if (tab && route.module === 'daily') {
-    if (appState.tabSwitching) return;
-    const previous = appState.daily.report.activeTab;
-    const restoreTabFocus = () => {
-      app.querySelectorAll<HTMLButtonElement>('[data-daily-tab]').forEach(button => { button.tabIndex = button.dataset.dailyTab === appState.daily.report.activeTab ? 0 : -1; });
-      app.querySelector<HTMLButtonElement>(`[data-daily-tab="${appState.daily.report.activeTab}"]`)?.focus();
-    };
-    if (!discardMaterialEditor()) { restoreTabFocus(); return; }
-    appState.tabSwitching = true;
-    try {
-      await savePendingDailyInput(); persistEntryDraft(); appState.activeContactSearch = null; appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null;
-      appState.daily.switchTab(tab.dataset.dailyTab as DailyReportV3['activeTab']);
-      await appState.daily.flush(); await renderApp(); restoreTabFocus();
-    } catch (error) { appState.daily.update(() => { appState.daily.report.activeTab = previous; }); showEntrySaveError(error); await renderApp(); restoreTabFocus(); }
-    finally { appState.tabSwitching = false; }
-    return;
-  }
   const waterButton = target.closest<HTMLButtonElement>('[data-water-action],[data-water-view]');
   if (waterButton && route.module === 'water-level' && appState.water) { if (waterButton.dataset.waterView) { appState.water.mode = waterButton.dataset.waterView; appState.water.render(); return; } if (waterButton.dataset.waterAction) { await appState.water.handleAction(waterButton.dataset.waterAction, waterButton.dataset.id); if (route.page === 'settings') appState.water.renderSettings(); } return; }
   if (route.module === 'daily' && route.page === 'history') { const finalized = target.closest<HTMLElement>('[data-daily-action="copy-finalized"]'); if (finalized) { const report = appState.finalizedReports.find((item) => item.id === finalized.dataset.finalizedId); if (report) await navigator.clipboard.writeText(report.outputText); return; } }

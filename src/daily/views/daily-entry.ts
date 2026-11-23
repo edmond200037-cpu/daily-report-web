@@ -19,9 +19,9 @@ export function updateDailyInput(target: HTMLInputElement | HTMLTextAreaElement 
   else appState.daily.update(() => { (destination as unknown as Record<string, string>)[name] = target.value; });
 }
 export function refreshTradePickerSearch(target: HTMLInputElement): void { appState.tradePickerSearch = target.value; const results = app.querySelector<HTMLElement>('[data-trade-picker-results]'); if (results) results.innerHTML = tradePickerResults(); const clear = app.querySelector<HTMLButtonElement>('[data-daily-action="clear-trade-search"]'); if (clear) clear.hidden = !appState.tradePickerSearch; }
-export function refreshSiteSearch(target: HTMLInputElement): void { appState.siteSearchQuery = target.value; appState.siteSearchOpen = true; appState.daily.update(() => { appState.daily.report.siteId = null; appState.daily.report.siteNameSnapshot = target.value; }); void renderApp().then(() => { const input = app.querySelector<HTMLInputElement>('[data-site-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); }
+export function refreshSiteSearch(target: HTMLInputElement): void { appState.justAddedEntry = null; appState.siteSearchQuery = target.value; appState.siteSearchOpen = true; appState.daily.update(() => { appState.daily.report.siteId = null; appState.daily.report.siteNameSnapshot = target.value; }); void renderApp().then(() => { const input = app.querySelector<HTMLInputElement>('[data-site-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }); }
 export async function activateSiteSearch(target: HTMLInputElement): Promise<void> { if (appState.siteSearchOpen) return; appState.siteSearchOpen = true; appState.siteSearchQuery = target.value; appState.dailySites = await listMemories('sites'); await renderApp(); const input = app.querySelector<HTMLInputElement>('[data-site-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); }
-export async function selectDailySite(value: string): Promise<void> { try { const result = await selectSiteMemory(appState.daily.report, value); appState.daily.report = result.report; appState.dailySites = [result.site, ...appState.dailySites.filter((site) => site.id !== result.site.id)]; await persistActiveMemoryPartition(); appState.siteSearchOpen = false; appState.siteSearchQuery = ''; await renderApp(); } catch (error) { alert(error instanceof Error ? error.message : '設定工地失敗，請稍後再試。'); } }
+export async function selectDailySite(value: string): Promise<void> { try { const result = await selectSiteMemory(appState.daily.report, value); appState.justAddedEntry = null; appState.daily.report = result.report; appState.dailySites = [result.site, ...appState.dailySites.filter((site) => site.id !== result.site.id)]; await persistActiveMemoryPartition(); appState.siteSearchOpen = false; appState.siteSearchQuery = ''; await renderApp(); } catch (error) { alert(error instanceof Error ? error.message : '設定工地失敗，請稍後再試。'); } }
 export function showEntrySaveError(error: unknown): void {
   appState.dailyCopyFeedback = error instanceof Error ? error.message : '本機保存失敗，請重試。';
   appState.entrySaveError = appState.dailyCopyFeedback;
@@ -38,6 +38,7 @@ export function persistEntryDraft(): void {
 export function restoreEntryScope(): void {
   const key = entryDraftKey(appState.accountAuth.user?.id, appState.accountActiveSiteId ?? appState.daily.report.siteId, appState.daily.report.date);
   if (key === appState.entryScopeKey) return;
+  appState.justAddedEntry = null;
   persistEntryDraft(); appState.entryScopeKey = key; appState.entryDraftStorageBlocked = false;
   appState.contactEditor = null; appState.contactEditorCollapsed = false; restoreWorkDrafts([]); appState.lastContactDate = ''; appState.tradePickerOpen = false;
   try { const stored = readEntryDraft(localStorage, key); appState.contactEditor = stored.contact; restoreWorkDrafts(stored.work); }

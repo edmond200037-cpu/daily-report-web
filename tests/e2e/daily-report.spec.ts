@@ -6,6 +6,9 @@ import { compareOutput } from './helpers/compare-output';
 import { DailyUI } from './helpers/daily-ui';
 import { Metrics } from './helpers/metrics';
 
+// Windows 剪貼簿使用 CRLF，DOM 文字使用 LF；只統一換行，不改其他字元。
+const normalizeLineEndings = (text: string) => text.replace(/\r\n/g, '\n');
+
 for (const scenario of scenarios) {
   test(`${scenario.id}：從零填報、定稿與標準答案逐字比對`, async ({ page, context, browser }, info) => {
     const dates = datesFor(scenario.reportDate ?? process.env.DAILY_E2E_DATE!);
@@ -52,7 +55,7 @@ for (const scenario of scenarios) {
       await expect(page.locator('.daily-output__feedback')).toContainText('已在本機定稿並複製');
       const actual = await page.evaluate(() => navigator.clipboard.readText());
       await writeFile(info.outputPath('actual.txt'), actual);
-      const comparison = compareOutput(expected, actual);
+      const comparison = compareOutput(normalizeLineEndings(expected), normalizeLineEndings(actual));
       textMatch = comparison.equal;
       await writeFile(info.outputPath('comparison.json'), JSON.stringify(comparison, null, 2));
       await writeFile(info.outputPath('output.diff'), comparison.diff);
@@ -60,12 +63,13 @@ for (const scenario of scenarios) {
       // Validation navigation is outside the filling action counter.
       await page.getByRole('link', { name: '查看近 7 天' }).click();
       await expect(page.locator('.history-list article')).toHaveCount(1);
-      expect(await page.locator('.history-list pre').textContent()).toBe(actual);
-      await writeFile(info.outputPath('history.txt'), (await page.locator('.history-list pre').textContent())!);
+      const history = (await page.locator('.history-list pre').textContent())!;
+      expect(normalizeLineEndings(history)).toBe(normalizeLineEndings(actual));
+      await writeFile(info.outputPath('history.txt'), history);
       complete = true;
       expect(externalRequests, '測試不得向外部服務發出請求').toEqual([]);
       expect(errors, '瀏覽器錯誤或非預期對話框').toEqual([]);
-      expect(actual, `逐字不符：${JSON.stringify(comparison.firstDifference)}；請檢查 output.diff`).toBe(expected);
+      expect(normalizeLineEndings(actual), `逐字不符：${JSON.stringify(comparison.firstDifference)}；請檢查 output.diff`).toBe(normalizeLineEndings(expected));
     } finally {
       await metrics.finish(scenario.id, complete, { dates, browser: browser.version(), textMatch, errors, externalRequests, runId: process.env.DAILY_E2E_RUN_ID });
     }

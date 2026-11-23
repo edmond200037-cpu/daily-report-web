@@ -36,14 +36,6 @@
 .continuous-work input, .continuous-work textarea { caret-color:#9a510c; }
 .daily-page .trade-card.daily-entry--expanded, .trade-swipe:has(.daily-entry--expanded) { overflow:visible; }
 /* Compact input surface; loaded after the shared daily styles. */
-.daily-page .daily-basics { padding:12px 14px; margin-bottom:12px; }
-.daily-context-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; align-items:start; }
-.daily-context-row .workspace-site { position:relative; display:grid; gap:5px; padding:0; margin:0; font-size:.8rem; }
-.daily-context-row .workspace-site select { width:100%; min-width:0; max-width:none; min-height:44px; font-size:16px; margin:0; padding:8px; }
-.daily-context-row .workspace-site a { justify-self:start; min-height:28px; font-size:.75rem; }
-.daily-page .daily-context-row .basics__fields { border:0; padding:0; min-width:0; }
-.daily-context-row .basics__fields label { display:grid; gap:5px; margin:0; font-size:.8rem; }
-.daily-context-row input[type="date"] { display:block; width:100%; min-width:0; max-width:100%; box-sizing:border-box; min-height:44px; padding:8px; margin:0; font-size:16px; }
 .daily-page .construction-fields { grid-template-columns:minmax(0,1fr) 76px; gap:8px; }
 .daily-page .construction-fields label { display:grid; gap:4px; margin:0; font-size:.8rem; }
 .daily-page .construction-fields input { min-width:0; padding:8px; font-size:16px; }

@@ -13,18 +13,16 @@ describe('日報共用工作區骨架', () => {
     expect(main).not.toContain("${moduleHeader('施工日報', saveLabel");
   });
 
-  it('把主要功能頁籤與日報分類包在明確的工作區語意中', () => {
+  it('主要模組頁籤保留，四類日報內容連續呈現', () => {
     expect(main).toContain('class="module-page__tabs"');
-    expect(main).toContain('<section class="daily-workspace" aria-label="日報內容">');
-    expect(main).toContain('role="tabpanel"');
-    expect(main).toContain('aria-labelledby="daily-tab-${appState.daily.report.activeTab}"');
-    expect(main).toContain('aria-controls="daily-panel-${id}"');
+    expect(main).toContain('<section class="daily-workspace" aria-label="日報內容">${dailySections()}');
+    expect(main).not.toContain('role="tabpanel"');
   });
 
-  it('工地與日期直接顯示，採日報專用欄線區段', () => {
-    expect(main).toContain('class="basics daily-basics basics--expanded"');
-    expect(dailyCss).toContain('.daily-page .daily-basics {');
-    expect(dailyCss).toContain('border-inline: 0;');
+  it('工地與日期只在頁首面板展開時渲染', () => {
+    expect(main).toContain("if (!appState.dailyBasicsExpanded) return '';");
+    expect(main).toContain('id="daily-basics-panel"');
+    expect(dailyCss).toContain('.daily-basics-panel {');
     expect(dailyCss).toContain('border-radius: 0;');
   });
 

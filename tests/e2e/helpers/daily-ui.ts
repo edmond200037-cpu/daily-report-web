@@ -42,13 +42,13 @@ export class DailyUI {
     else await this.click(existing.first(), `選用既有工種：${name}`);
     await expect(dialog).toHaveCount(0);
   }
-  async tab(name: string) {
-    const tab = this.page.locator(`[data-daily-tab="${name}"]`);
-    await this.click(tab, `切換：${name}`);
-    await expect(tab).toHaveAttribute('aria-selected', 'true');
+  async section(name: 'engineering' | 'supplies' | 'contacts' | 'special') {
+    const labels = { engineering: '施工紀錄', supplies: '進料', contacts: '聯絡事項', special: '特殊事項' };
+    await this.page.locator(`.daily-section[aria-label="${labels[name]}"]`).scrollIntoViewIfNeeded();
   }
 
   async fill(scenario: Scenario, dates: ReturnType<typeof datesFor>) {
+    await this.click(this.action('toggle-basics'), '展開日期與工地');
     await expect(this.page.locator('.workspace-site')).toContainText('本機工作區');
     await expect(this.page.locator('[data-daily-field="date"]')).toHaveValue(dates.reportISO);
     await expect(this.page.locator('[data-site-search]')).toHaveValue('');
@@ -58,6 +58,7 @@ export class DailyUI {
     await this.type(this.page.locator('[data-site-search]'), '鑫天地六期', '工地');
     await this.click(this.page.locator('[data-site-search-action="create"]'), '新增並使用工地');
     await expect(this.page.locator('#site-search-suggestions')).toHaveCount(0);
+    await this.click(this.action('toggle-basics'), '收合日期與工地');
     const tradeIds: string[] = [];
     let longWorkSampled = false;
     for (const [index, trade] of scenario.trades.entries()) {
@@ -84,7 +85,7 @@ export class DailyUI {
       await expect(card).toContainText('資料齊全');
     }
     if (scenario.materials.length) {
-      await this.tab('supplies');
+      await this.section('supplies');
       const materialIds: string[] = [];
       for (const [index, material] of scenario.materials.entries()) {
         await this.click(this.action('add-normal-material'), '新增進料');
@@ -124,7 +125,7 @@ export class DailyUI {
         await expect(source).toContainText(`已接至 ${target.name}`);
       }
       await this.metrics.sample('connection-board');
-      await this.tab('engineering');
+      await this.section('engineering');
       // Connecting returns the receiving trade to draft; confirm each one again.
       for (const tradeIndex of new Set(scenario.materials.map((material) => material.trade))) {
         const trade = this.page.locator(`[data-trade="${tradeIds[tradeIndex]}"]`);
@@ -134,7 +135,7 @@ export class DailyUI {
       }
     }
     if (scenario.contacts.length) {
-      await this.tab('contacts');
+      await this.section('contacts');
       for (const [index, contact] of scenario.contacts.entries()) {
         await this.click(this.action('add-contact'), '新增聯絡事項');
         await this.chooseTrade(contact.trade);

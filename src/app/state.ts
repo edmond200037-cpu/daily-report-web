@@ -16,7 +16,6 @@ class AppState {
   daily!: DailyController;
   workDetailUndo: WorkDetailUndo | undefined;
   detailsRestoreBusy = false;
-  tabSwitching = false;
   water: WaterController | undefined;
   tradePickerOpen = false;
   entryKind: 'engineering' | 'contacts' = 'engineering';
@@ -51,6 +50,7 @@ class AppState {
   renderToken = 0;
   dailyPreviewOpen = false;
   dailyBasicsExpanded = false;
+  justAddedEntry: { kind: 'trade' | 'special'; id: string } | null = null;
   dailyCopyFeedback = '';
   finalizedReports: FinalizedDailyReport[] = [];
   memoryBackupFeedback = '';
