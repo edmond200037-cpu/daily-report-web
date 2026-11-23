@@ -27,7 +27,7 @@ describe('日報紙本表單基礎 tokens', () => {
     expect(dailyCss).toContain('.daily-page { background: var(--daily-paper);');
     expect(dailyCss).toContain('.daily-page .daily-entry, .daily-page .compact-entry {');
     expect(dailyCss).toContain('border-color: var(--daily-line);');
-    expect(dailyCss).toContain('.daily-page .daily-section__header h2, .daily-page .work-section__header h2 {');
+    expect(dailyCss).toContain('.daily-page .work-section__header h2 {');
   });
 
   it('讓日報表單與主要觸控控制至少達 44px', () => {

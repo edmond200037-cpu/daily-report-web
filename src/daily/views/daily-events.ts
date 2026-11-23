@@ -17,13 +17,27 @@ import { isReadOnlySite, switchActiveDataPartition, scheduleBackgroundSync } fro
 import { selectSharedSiteFromWorkspace, refreshAccount } from '../../account/account-controller';
 import { updateDailySaveStatus, refreshWorkItemComposer, focusWorkItemComposer, workItemComposerState, focusWorkAuxMenu, focusWorkActionsTrigger } from './daily-view';
 import { refreshMaterialConnectionSearch, discardMaterialEditor, startMaterialEditor, materialValidation, syncMaterialEditor, enqueueMaterialConnectionUndo } from './material-view';
-import { refreshContactSearch, activateContactSearch, contactDirty, refreshContactTaskList, appendPendingContactTask, startContactEntry, refreshContactSuggestions } from './contact-view';
+import { refreshContactSearch, activateContactSearch, contactDirty, discardContactEditor, refreshContactTaskList, appendPendingContactTask, startContactEntry, refreshContactSuggestions } from './contact-view';
 import { persistEntryDraft, showEntrySaveError, commitInputMemories, refreshTradePickerSearch, refreshSiteSearch, activateSiteSearch, selectDailySite, savePendingDailyInput, capturePendingWork } from './daily-entry';
 import { deleteItemBySwipe, pruneTradeUndoQueue, clearWorkItemDrag, clearTradeDrag, clearTradeSwipe } from './daily-gestures';
 import { refreshTaskSearch, refreshTradeSearch } from '../../settings/views/settings-view';
-const backgroundCollapseExclusions = '.trade-card,.contact-card,.app-header,.top-tabs,.basics,.daily-tabs,.settings-button,.floating-add-trade,.preview,.form-card,button,input,textarea,select,label,a,[role="dialog"],.dialog-backdrop,.trade-picker,[data-ignore-background-collapse]';
+const backgroundCollapseExclusions = '.trade-card,.contact-card,.app-header,.top-tabs,.basics,.daily-basics-panel,.material-entry,.material-connection-panel,.special-card,.settings-button,.floating-add-trade,.preview,.form-card,button,input,textarea,select,label,a,[role="dialog"],.dialog-backdrop,.trade-picker,[data-ignore-background-collapse]';
+function scrollAndFocus(selector: string): void {
+  const target = app.querySelector<HTMLElement>(selector);
+  const details = target?.closest('details');
+  if (details) details.open = true;
+  target?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  target?.focus({ preventScroll: true });
+}
 export async function handleDailyAction(target: HTMLElement, actionElement: HTMLElement): Promise<void> {
   const action = actionElement.dataset.dailyAction!;
+  if (action === 'cancel-new-entry') {
+    const entry = appState.justAddedEntry;
+    if (isReadOnlySite() || !entry || entry.id !== actionElement.dataset.id || entry.kind !== actionElement.dataset.entryKind) return;
+    appState.justAddedEntry = null;
+    await deleteItemBySwipe(entry.kind, entry.id);
+    return;
+  }
   if (appState.suppressTradeSummaryClick && actionElement.closest('.trade-row-summary__toggle')) { appState.suppressTradeSummaryClick = false; return; }
   if (action === 'undo-trade-delete') {
     pruneTradeUndoQueue();
@@ -35,7 +49,7 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
     if (result.skipped) appState.dailyCopyFeedback = `已復原工程條目；${result.skipped} 筆獨立進料已改連其他工種，未覆蓋。`;
     await renderApp(); return;
   }
-  if (action === 'fix-entry') { appState.dailyPreviewOpen = false; appState.daily.expandedId = actionElement.dataset.id!; appState.daily.report.activeTab = 'engineering'; appState.dailyPreviewOpen = false; await renderApp(); const trade = appState.daily.trade(appState.daily.expandedId)!; const issue = validateTrade(trade, appState.daily.linkedMaterialEntries(trade.id))[0]?.field; const name = issue === 'vendor' ? 'vendorNameSnapshot' : issue === 'workerCount' ? 'workerCount' : issue === 'trade' ? 'tradeNameSnapshot' : ''; const selector = name ? `[data-trade="${escapeHtml(trade.id)}"] [data-daily-field="${name}"]` : `[data-continuous-work="${escapeHtml(trade.id)}"]`; app.querySelector<HTMLInputElement>(selector)?.focus(); return; }
+  if (action === 'fix-entry') { appState.dailyPreviewOpen = false; appState.daily.expandedId = actionElement.dataset.id!; appState.dailyPreviewOpen = false; await renderApp(); const trade = appState.daily.trade(appState.daily.expandedId)!; const issue = validateTrade(trade, appState.daily.linkedMaterialEntries(trade.id))[0]?.field; const name = issue === 'vendor' ? 'vendorNameSnapshot' : issue === 'workerCount' ? 'workerCount' : issue === 'trade' ? 'tradeNameSnapshot' : ''; const selector = name ? `[data-trade="${CSS.escape(trade.id)}"] [data-daily-field="${name}"]` : `[data-continuous-work="${CSS.escape(trade.id)}"]`; scrollAndFocus(selector); return; }
   if (action === 'keep-trade') { if (appState.entryComposing) return; try { await savePendingDailyInput(); appState.daily.expandedId = null; await renderApp(); } catch (error) { showEntrySaveError(error); } return; }
   if (action === 'finish-entry' || action === 'next-entry') {
     if (appState.entryComposing || appState.dateSwitching) return;
@@ -51,30 +65,30 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
       app.querySelector<HTMLInputElement>(name ? `[data-trade="${escapeHtml(trade.id)}"] [data-daily-field="${name}"]` : `[data-continuous-work="${escapeHtml(trade.id)}"]`)?.focus();
       return;
     }
-    if (action === 'next-entry') { appState.entryKind = 'engineering'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; }
+    if (action === 'next-entry') { appState.justAddedEntry = null; appState.entryKind = 'engineering'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; }
     await renderApp();
     void commitInputMemories(false).catch(showEntrySaveError);
     return;
   }
-  if (action === 'toggle-basics') { appState.dailyBasicsExpanded = !appState.dailyBasicsExpanded; await renderApp(); return; }
+  if (action === 'toggle-basics') { if (appState.entryComposing || appState.siteSearchComposing || appState.contactSearchComposing) return; appState.dailyBasicsExpanded = !appState.dailyBasicsExpanded; await renderApp(); return; }
   if (action === 'toggle-preview') { if (!isReadOnlySite()) await savePendingDailyInput(); appState.dailyPreviewOpen = !appState.dailyPreviewOpen; await renderApp(); return; }
   if (action === 'toggle-material') { const id = actionElement.dataset.materialId!; if (appState.materialEditor?.id === id) { if (!discardMaterialEditor()) return; await renderApp(); return; } const entry = appState.daily.materialEntry(id); if (!entry || (appState.materialEditor && !discardMaterialEditor())) return; startMaterialEditor(entry.entryType ?? 'normal', entry); await renderApp(); return; }
   if (action === 'edit-material') { const entry = appState.daily.materialEntry(actionElement.dataset.materialId!); if (!entry) return; if (appState.materialEditor && appState.materialEditor.id !== entry.id && !discardMaterialEditor()) return; startMaterialEditor(entry.entryType ?? 'normal', entry); await renderApp(); app.querySelector<HTMLInputElement>('[data-material-field="materialTypeSnapshot"]')?.focus(); return; }
-  if (action === 'add-normal-material' || action === 'add-trade-material') { if (appState.materialEditor && !discardMaterialEditor()) return; const tradeId = action === 'add-trade-material' ? actionElement.dataset.tradeId ?? null : null; startMaterialEditor('normal'); if (tradeId && appState.daily.trade(tradeId)) { appState.materialEditor!.value.entryType = 'independent'; appState.materialEditor!.value.connectedTradeSectionId = tradeId; } appState.daily.switchTab('supplies'); await renderApp(); app.querySelector<HTMLInputElement>('[data-material-field="materialTypeSnapshot"]')?.focus(); return; }
+  if (action === 'add-normal-material' || action === 'add-trade-material') { if (appState.materialEditor && !discardMaterialEditor()) return; const tradeId = action === 'add-trade-material' ? actionElement.dataset.tradeId ?? null : null; appState.justAddedEntry = null; startMaterialEditor('normal'); if (tradeId && appState.daily.trade(tradeId)) { appState.materialEditor!.value.entryType = 'independent'; appState.materialEditor!.value.connectedTradeSectionId = tradeId; } await renderApp(); scrollAndFocus('[data-material-field="materialTypeSnapshot"]'); return; }
   if (action === 'cancel-material') { if (!discardMaterialEditor()) return; await renderApp(); return; }
   if (action === 'save-material' && appState.materialEditor) { const errors = materialValidation(appState.materialEditor.value); if (errors.length) { appState.materialEditor.errors = errors; await renderApp(); app.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return; } try { const entry = { ...appState.materialEditor.value, id: appState.materialEditor.originalId ?? '' }; const saved = await saveMaterialEntry(appState.daily.report, entry); appState.daily.report = saved.report; await appState.daily.flush(); await commitInputMemories(); appState.materialTypes = await listMaterialTypes(); appState.materialMemory = await listMaterialMemory(); appState.materialEditor = null; await renderApp(); } catch (error) { alert(error instanceof Error ? error.message : '儲存進料失敗，已保留草稿。'); } return; }
   if (action === 'toggle-contact') { appState.dailyPreviewOpen = false; const id = actionElement.dataset.contactId!; if (appState.contactEditor?.id === id) { appState.activeContactSearch = null; appState.contactEditorCollapsed = !appState.contactEditorCollapsed; persistEntryDraft(); await renderApp(); return; } const current = appState.daily.report.contacts.find((item) => item.id === id); if (!current || (appState.contactEditor && contactDirty() && !window.confirm('目前聯絡事項尚未儲存，是否放棄這次修改？'))) return; appState.activeContactSearch = null; appState.contactEditorCollapsed = false; appState.contactEditor = editContactEntry(current, appState.daily.report.date); await renderApp(); return; }
   if (action === 'edit-contact') { const current = appState.daily.report.contacts.find((item) => item.id === actionElement.dataset.contactId); if (!current) return; if (appState.contactEditor && appState.contactEditor.id !== current.id && contactDirty() && !window.confirm('目前聯絡事項尚未儲存，是否放棄這次修改？')) return; appState.activeContactSearch = null; appState.contactEditorCollapsed = false; appState.contactEditor = editContactEntry(current, appState.daily.report.date); await renderApp(); return; }
-  if (action === 'add-contact') { appState.dailyPreviewOpen = false; if (appState.contactEditor) { alert('請先完成或取消目前的聯絡草稿。'); return; } appState.entryKind = 'contacts'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; await renderApp(); return; }
+  if (action === 'add-contact') { appState.dailyPreviewOpen = false; if (appState.contactEditor) { alert('請先完成或取消目前的聯絡草稿。'); return; } appState.justAddedEntry = null; appState.entryKind = 'contacts'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; await renderApp(); return; }
   if (action === 'keep-contact') { appState.contactEditorCollapsed = true; appState.activeContactSearch = null; persistEntryDraft(); await renderApp(); return; }
-  if (action === 'cancel-contact') { if (contactDirty() && !window.confirm('放棄未儲存的聯絡事項變更？')) return; appState.activeContactSearch = null; appState.contactEditor = null; await renderApp(); return; }
+  if (action === 'cancel-contact') { if (!discardContactEditor()) return; await renderApp(); return; }
   if (action === 'pick-work-item-memory') { const tradeId = actionElement.dataset.tradeId!; const memory = appState.dailyTasks.find((item) => item.id === actionElement.dataset.memoryId); if (!memory) return; const composer = workItemComposerState(tradeId); composer.query = memory.name; composer.taskId = memory.id; appState.activeWorkItemComposerTradeId = tradeId; await renderApp(); focusWorkItemComposer(tradeId); return; }
   if (action === 'add-work-item') { const tradeId = actionElement.dataset.tradeId!; const trade = appState.daily.trade(tradeId); const composer = workItemComposerState(tradeId); const value = composer.query.trim(); if (!trade || !value) return; const work = appState.daily.addWorkItem(tradeId, value, composer.taskId); composer.query = ''; composer.taskId = null; appState.activeWorkItemComposerTradeId = tradeId; if (work && duplicateWorkItemIds(appState.daily.trade(tradeId)! ).has(work.id)) { appState.activeWorkItemComposerTradeId = null; appState.activeWorkAuxEditor = { workItemId: work.id, kind: 'location' }; appState.focusWorkItemId = work.id; appState.focusWorkAuxField = 'start'; } else { appState.focusWorkItemId = null; appState.focusWorkAuxField = null; } await appState.daily.flush(); await renderApp(); if (appState.focusWorkAuxField === 'start') { app.querySelector<HTMLInputElement>(`[data-work="${work?.id}"] [data-daily-field="startFloorRaw"]`)?.focus(); appState.focusWorkAuxField = null; } else focusWorkItemComposer(tradeId); return; }
   if (action === 'contact-pick-memory' && appState.contactEditor) { const id = actionElement.dataset.memoryId!; const trade = appState.dailyTrades.find((item) => item.id === id); const vendor = appState.dailyVendors.find((item) => item.id === id); const task = appState.dailyTasks.find((item) => item.id === id); if (trade) { const changedTrade = appState.contactEditor.value.tradeTypeId !== trade.id; if (appState.contactEditor.value.items.length && changedTrade && !window.confirm('切換工種會清除目前已加入的施工項目，是否繼續？')) return; appState.contactEditor.value.tradeTypeId = trade.id; appState.contactEditor.value.tradeNameSnapshot = trade.name; if (changedTrade) appState.contactEditor.value.items = []; const recent = memoryOrder(appState.dailyVendors.filter((item) => item.tradeTypeId === trade.id))[0]; appState.contactEditor.value.vendorId = recent?.id ?? null; appState.contactEditor.value.vendorNameSnapshot = recent?.name ?? ''; appState.contactEditor.tradeQuery = trade.name; appState.contactEditor.vendorQuery = appState.contactEditor.value.vendorNameSnapshot; } else if (vendor) { appState.contactEditor.value.vendorId = vendor.id; appState.contactEditor.value.vendorNameSnapshot = vendor.name; appState.contactEditor.vendorQuery = vendor.name; } else if (task) { appendContactTask(appState.contactEditor, task.name); refreshContactTaskList(); return; } appState.activeContactSearch = null; await renderApp(); return; }
   if (action === 'contact-reuse-date' && appState.contactEditor) { appState.contactEditor.plannedDate = appState.lastContactDate; appState.contactEditor.plannedDateChanged = true; persistEntryDraft(); const input = app.querySelector<HTMLInputElement>('[data-contact-date]'); if (input) input.value = appState.lastContactDate; return; }
   if (action === 'contact-add-task' && appState.contactEditor) { if (appState.contactSearchComposing) return; appendPendingContactTask(); refreshContactTaskList(); return; }
   if (action === 'contact-remove-task' && appState.contactEditor) { appState.contactEditor.value.items = appState.contactEditor.value.items.filter((item) => item.id !== actionElement.dataset.taskId).map((item, index) => ({ ...item, sortOrder: index })); await renderApp(); return; }
-  if ((action === 'save-contact' || action === 'save-contact-next') && appState.contactEditor) { if (appState.entryComposing || appState.contactSearchComposing) return; if (appState.contactEditor.taskDetails?.trim() && !appState.contactEditor.taskQuery.trim()) { alert('請輸入數量／規格所屬的工作內容，再完成這筆。'); app.querySelector<HTMLInputElement>('#contact-task')?.focus(); return; } appendPendingContactTask(); applyContactPlannedDate(appState.contactEditor); const value = appState.contactEditor.value; const items = value.items.map((item) => ({ ...item, content: item.content.trim() })).filter((item) => item.content); const duplicate = new Set<string>(); const duplicateFound = items.some((item) => { const key = normalizeSearch(item.content); if (duplicate.has(key)) return true; duplicate.add(key); return false; }); const errors = !value.tradeNameSnapshot.trim() ? ['請選擇工種。'] : !value.vendorNameSnapshot.trim() ? ['請選擇廠商。'] : !items.length ? ['請至少加入一個施工項目。'] : duplicateFound ? ['同一筆聯絡事項不可重複施工項目。'] : []; if (errors.length) { appState.contactEditor.errors = errors; appState.activeContactSearch = null; await renderApp(); app.querySelector<HTMLInputElement>(!value.tradeNameSnapshot.trim() ? '#contact-trade' : !value.vendorNameSnapshot.trim() ? '#contact-vendor' : '#contact-task')?.focus(); return; } try { app.inert = true; appState.lastContactDate = appState.contactEditor.plannedDate ?? ''; const saved = await saveContactEntry(appState.daily.report, { ...value, id: appState.contactEditor.originalId ?? appState.contactEditor.id, items }); appState.daily.report = saved.report; await appState.daily.flush(); appState.activeContactSearch = null; appState.contactEditor = null; persistEntryDraft(); if (action === 'save-contact-next') { appState.entryKind = 'contacts'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; } await renderApp(); void commitInputMemories(false).catch(showEntrySaveError); } catch (error) { alert(error instanceof Error ? error.message : '儲存聯絡事項失敗，已保留草稿。'); } finally { app.inert = false; } return; }
+  if ((action === 'save-contact' || action === 'save-contact-next') && appState.contactEditor) { if (appState.entryComposing || appState.contactSearchComposing) return; if (appState.contactEditor.taskDetails?.trim() && !appState.contactEditor.taskQuery.trim()) { alert('請輸入數量／規格所屬的工作內容，再完成這筆。'); app.querySelector<HTMLInputElement>('#contact-task')?.focus(); return; } appendPendingContactTask(); applyContactPlannedDate(appState.contactEditor); const value = appState.contactEditor.value; const items = value.items.map((item) => ({ ...item, content: item.content.trim() })).filter((item) => item.content); const duplicate = new Set<string>(); const duplicateFound = items.some((item) => { const key = normalizeSearch(item.content); if (duplicate.has(key)) return true; duplicate.add(key); return false; }); const errors = !value.tradeNameSnapshot.trim() ? ['請選擇工種。'] : !value.vendorNameSnapshot.trim() ? ['請選擇廠商。'] : !items.length ? ['請至少加入一個施工項目。'] : duplicateFound ? ['同一筆聯絡事項不可重複施工項目。'] : []; if (errors.length) { appState.contactEditor.errors = errors; appState.activeContactSearch = null; await renderApp(); app.querySelector<HTMLInputElement>(!value.tradeNameSnapshot.trim() ? '#contact-trade' : !value.vendorNameSnapshot.trim() ? '#contact-vendor' : '#contact-task')?.focus(); return; } try { app.inert = true; appState.lastContactDate = appState.contactEditor.plannedDate ?? ''; const saved = await saveContactEntry(appState.daily.report, { ...value, id: appState.contactEditor.originalId ?? appState.contactEditor.id, items }); appState.daily.report = saved.report; await appState.daily.flush(); appState.activeContactSearch = null; appState.contactEditor = null; persistEntryDraft(); if (action === 'save-contact-next') { appState.justAddedEntry = null; appState.entryKind = 'contacts'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; } await renderApp(); void commitInputMemories(false).catch(showEntrySaveError); } catch (error) { alert(error instanceof Error ? error.message : '儲存聯絡事項失敗，已保留草稿。'); } finally { app.inert = false; } return; }
   if (action === 'toggle-trade') { appState.dailyPreviewOpen = false;
     if (target.closest('.trade-card__status')) return;
     if (appState.suppressTradeSummaryClick) { appState.suppressTradeSummaryClick = false; return; }
@@ -88,7 +102,7 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
   if (action === 'toggle-special') { appState.expandedSpecialId = appState.expandedSpecialId === actionElement.dataset.id ? null : actionElement.dataset.id ?? null; await renderApp(); return; }
   if (action === 'delete-trade') { const id = actionElement.dataset.id!; const trade = appState.daily.trade(id); if (!trade) return; if (!appState.daily.deleteTrade(id)) return; appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null; await appState.daily.flush(); await renderApp(); return; }
   const button = actionElement;
-  if (action === 'add-trade') { appState.entryKind = 'engineering'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; await renderApp(); return; }
+  if (action === 'add-trade') { appState.justAddedEntry = null; appState.entryKind = 'engineering'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; await renderApp(); return; }
   if (action === 'undo-work-details') {
     if (appState.detailsRestoreBusy || !appState.workDetailUndo || !canRestoreDetails(appState.workDetailUndo, appState.daily.report)) return;
     const undo = appState.workDetailUndo;
@@ -123,17 +137,20 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
       app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
     }
     const created = appState.daily.addTradeEntry(trade.name, trade.id, vendor);
+    appState.justAddedEntry = { kind: 'trade', id: created.id };
     appState.tradePickerOpen = false; await appState.daily.flush(); await renderApp();
     app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return;
   }
   if (action === 'create-trade-from-search') {
     appState.dailyPreviewOpen = false;
     const name = appState.tradePickerSearch.trim(); if (!name) return;
+    appState.justAddedEntry = null;
     if (appState.entryKind === 'contacts') {
       startContactEntry(name); appState.tradePickerOpen = false; await renderApp();
       app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
     }
     const created = appState.daily.addTradeEntry(name, null);
+    appState.justAddedEntry = { kind: 'trade', id: created.id };
     appState.tradePickerOpen = false; await appState.daily.flush(); await renderApp();
     app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="vendorNameSnapshot"]`)?.focus(); return;
   }
@@ -145,7 +162,7 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
   else if (action === 'undo-material-disconnect') { const undo = appState.materialConnectionUndo; if (!undo || !appState.daily.undoDisconnectMaterial(undo)) return; syncMaterialEditor(undo.materialId); window.clearTimeout(undo.timer); appState.materialConnectionUndo = null; }
   else if (action === 'disconnect-material') { const undo = appState.daily.disconnectMaterial(button.dataset.materialId!); if (undo) { syncMaterialEditor(undo.materialId); enqueueMaterialConnectionUndo(undo.materialId, undo.tradeId); } }
   else if (action === 'toggle-material-type') { const entry = appState.daily.materialEntry(button.dataset.materialId!); if (!entry) return; const previousTradeId = entry.entryType === 'independent' ? entry.connectedTradeSectionId ?? null : null; const trade = previousTradeId ? appState.daily.trade(previousTradeId) : undefined; if (previousTradeId && !window.confirm(`轉為普通進料將解除與「${trade?.tradeNameSnapshot ?? '原工種'}」的連接。確定繼續？`)) return; appState.daily.convertMaterialType(entry.id); if (appState.materialEditor?.id === entry.id) appState.materialEditor.value = structuredClone(appState.daily.materialEntry(entry.id)!); }
-  else if (action === 'manage-material-connections') { appState.materialConnectionFocusTradeId = button.dataset.tradeId!; appState.materialConnectionSelectionId = null; appState.daily.switchTab('supplies'); await appState.daily.flush(); await renderApp(); return; }
+  else if (action === 'manage-material-connections') { appState.materialConnectionFocusTradeId = button.dataset.tradeId!; appState.materialConnectionSelectionId = null; await renderApp(); scrollAndFocus('[data-material-connection-search]'); return; }
   else if (action === 'select-connection-material') { appState.materialConnectionSelectionId = button.dataset.materialId!; await renderApp(); return; }
   else if (action === 'clear-connection-selection') { appState.materialConnectionSelectionId = null; await renderApp(); return; }
   else if (action === 'select-connection-trade') { const materialId = appState.materialConnectionSelectionId; const tradeId = button.dataset.tradeId!; if (!materialId) return; const entry = appState.daily.materialEntry(materialId); if (!entry) return; const previous = entry.connectedTradeSectionId ? appState.daily.trade(entry.connectedTradeSectionId) : undefined; if (previous && previous.id !== tradeId && !window.confirm(`改接「${entry.itemName || entry.materialTypeSnapshot || '未命名進料'}」？\n\n${previous.tradeNameSnapshot} → ${appState.daily.trade(tradeId)?.tradeNameSnapshot ?? '新工種'}\n\n兩個工種都會退回草稿。`)) return; appState.daily.connectMaterial(tradeId, materialId); syncMaterialEditor(materialId); appState.materialConnectionSelectionId = null; appState.materialConnectionFocusTradeId = null; }
@@ -181,7 +198,7 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
     return;
   }
   else if (action === 'delete-contact') { appState.activeContactSearch = null; appState.contactEditor = null; await deleteItemBySwipe('contact', button.dataset.id!); return; }
-  else if (action === 'add-special') { appState.daily.addSpecial(); appState.expandedSpecialId = appState.daily.report.specialItems.at(-1)?.id ?? null; }
+  else if (action === 'add-special') { appState.daily.addSpecial(); appState.expandedSpecialId = appState.daily.report.specialItems.at(-1)?.id ?? null; appState.justAddedEntry = appState.expandedSpecialId ? { kind: 'special', id: appState.expandedSpecialId } : null; }
   else if (action === 'delete-special') appState.daily.update(() => appState.daily.report.specialItems = appState.daily.report.specialItems.filter((item) => item.id !== button.dataset.id));
   await appState.daily.flush(); await renderApp();
   if (appState.focusWorkItemId) {
@@ -316,7 +333,7 @@ export function bindSiteSearchEvents(): void {
 export function bindBackgroundCollapseEvents(): void {
   document.addEventListener('click', (event) => {
     if (tradeDrag.active || tradeDrag.pending || appState.suppressTradeSummaryClick || !appState.daily?.expandedId) return;
-    const route = parseRoute(location.hash); if (route.module !== 'daily' || route.page !== 'main' || appState.daily.report.activeTab !== 'engineering') return;
+    const route = parseRoute(location.hash); if (route.module !== 'daily' || route.page !== 'main') return;
     const target = event.target; if (!(target instanceof Element) || target.closest(backgroundCollapseExclusions)) return;
     appState.daily.expandedId = null; appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null;
     void renderApp();
@@ -329,7 +346,7 @@ export function bindBackgroundCollapseEvents(): void {
   });
   document.addEventListener('click', (event) => {
     if (!appState.contactEditor) return;
-    const route = parseRoute(location.hash); if (route.module !== 'daily' || route.page !== 'main' || appState.daily.report.activeTab !== 'contacts') return;
+    const route = parseRoute(location.hash); if (route.module !== 'daily' || route.page !== 'main') return;
     const target = event.target; if (!(target instanceof Element) || target.closest(backgroundCollapseExclusions)) return;
     persistEntryDraft(); appState.activeContactSearch = null; refreshContactSuggestions();
   });

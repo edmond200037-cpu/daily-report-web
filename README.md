@@ -39,6 +39,8 @@
 
 ## 已知限制
 
+日報依 [ADR-017](docs/adr/017-daily-single-page.md) 改為四區段一頁到底，日期與工地預設收進頁首按鈕。舊 `activeTab` 欄位保留相容性，UI 已不再使用；正式部署、手機 IME 與共用 Realtime 仍須另行驗收。
+
 搜尋、候選確認與記憶重新命名已有實作。舊資料升級採保留原始備份的自動修復；完整 migration 管理 UI 尚未提供。本機測試不代表實機手勢、正式 Supabase OAuth／Realtime 或部署快取已驗收。此次稽核修復與驗證邊界見 `docs/full-repository-audit-fixes-2026-10-05.md`。
 
 ## 本機手動 E2E 驗收

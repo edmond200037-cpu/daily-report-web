@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { createDailyDraft, createTrade, createWorkItem } from '../../src/domain/daily';
-import { nextTabIndex } from '../../src/daily/tab-navigation';
 import { canRestoreDetails, snapshotDetails, workUndoScope } from '../../src/daily/work-detail-undo';
 import { clearWorkItemDetails, workSuggestions, workInputView } from '../../src/daily/work-input';
 import type { NamedMemory } from '../../src/data/daily-repository';
@@ -22,14 +21,6 @@ describe('日報介面安全契約', () => {
     expect(markup).toContain(`data-work="${first.id}"`);
     expect(markup).toContain(`data-work="${last.id}"`);
     expect(trade).toEqual(original);
-  });
-  it('頁籤方向鍵循環與首末定位，確認鍵不移動焦點', () => {
-    expect(nextTabIndex('ArrowLeft', 0, 4)).toBe(3);
-    expect(nextTabIndex('ArrowRight', 3, 4)).toBe(0);
-    expect(nextTabIndex('Home', 2, 4)).toBe(0);
-    expect(nextTabIndex('End', 0, 4)).toBe(3);
-    expect(nextTabIndex('Enter', 0, 4)).toBeUndefined();
-    expect(nextTabIndex('ArrowRight', 0, 0)).toBeUndefined();
   });
   it('依實際名稱去重，confirmed 優先，去重後取六筆且不變動來源', () => {
     const trade = createTrade('水電', '甲', 0, 'water');
