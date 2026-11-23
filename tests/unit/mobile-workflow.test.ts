@@ -1,3 +1,4 @@
+import { dragIntent, edgeScrollSpeed } from '../../src/daily/drag-presentation';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { swipeDeletes, workSwipeIntent } from '../../src/daily/work-gestures';
 import { DailyController } from '../../src/daily/daily-controller';
@@ -25,5 +26,28 @@ describe('手機工項操作', () => {
     expect(next).toMatchObject({ tradeNameSnapshot: '', vendorNameSnapshot: '', workerCount: '', tradeTypeId: null, vendorId: null });
     expect(controller.report.tradeSections).toHaveLength(2);
     expect(controller.expandedId).toBe(next.id);
+  });
+});
+
+describe('ADR-015 共用拖曳門檻', () => {
+  it('觸控及筆在 8px 立即取消，滑鼠需要垂直為主且達 6px', () => {
+    for (const pointer of ['touch', 'pen']) {
+      expect(dragIntent(pointer, 0, 7.99)).toBe('pending');
+      expect(dragIntent(pointer, 0, 8)).toBe('cancel');
+      expect(dragIntent(pointer, 6, 6)).toBe('cancel');
+    }
+    expect(dragIntent('mouse', 0, 5.99)).toBe('pending');
+    expect(dragIntent('mouse', 0, 6)).toBe('start');
+    expect(dragIntent('mouse', 6, 0)).toBe('cancel');
+    expect(dragIntent('mouse', 6, 6)).toBe('cancel');
+  });
+  it('100px 邊界內捲動 4–18px，上下對稱', () => {
+    expect(edgeScrollSpeed(100, 812)).toBe(0);
+    expect(edgeScrollSpeed(99, 812)).toBe(-4);
+    expect(edgeScrollSpeed(50, 812)).toBe(-11);
+    expect(edgeScrollSpeed(0, 812)).toBe(-18);
+    expect(edgeScrollSpeed(812, 812)).toBe(18);
+    expect(edgeScrollSpeed(762, 812)).toBe(11);
+    expect(edgeScrollSpeed(712, 812)).toBe(0);
   });
 });

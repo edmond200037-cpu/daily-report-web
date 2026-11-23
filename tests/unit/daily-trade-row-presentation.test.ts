@@ -46,7 +46,10 @@ describe('工程資料列呈現契約', () => {
   });
   it('點工項即編輯文字，附加操作提供欄位、排序與刪除', () => {
     expect(input).toContain('data-inline-work');
-    expect(input).toContain('data-work-detail="location"');
+    expect(input).toContain('class="work-location-chip" data-work-detail="location"');
+    expect(input).toContain("'＋位置'");
+    expect(input).not.toContain('位置／樓層');
+    expect(input).not.toContain('work-input-hint');
     expect(input).toContain('data-work-detail="note"');
     expect(input).not.toContain('data-work-detail="more"');
     expect(input).toContain('data-work-move="-1"');

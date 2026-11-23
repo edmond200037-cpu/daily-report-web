@@ -1,39 +1,43 @@
 import { readFileSync } from 'node:fs';
 import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
-
-const source = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
-
-describe('工項拖曳呈現契約', () => {
+const source = (path: string) => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
+describe('工項握把與整列共用拖曳契約', () => {
   const daily = appSource();
-  const styles = source('src/daily/daily.css');
-
-  it('保留完整 transient 拖曳狀態與 6px pending 門檻', () => {
-    expect(daily).toContain('pending: false');
-    expect(daily).toContain('originalOrder: [] as string[]');
-    expect(daily).toContain('activeDropSlotIndex: null as number | null');
-    expect(daily).toContain("preview: null as HTMLElement | null");
-    expect(daily).toContain("placeholderMarkup: ''");
-    expect(daily).toContain('Math.hypot(event.clientX - workItemDrag.startX, event.clientY - workItemDrag.startY) < 6');
+  it('接上兩種握把並刪除舊入口', () => {
+    expect(daily).toContain('[data-work-gesture],[data-contact-gesture]');
+    expect(daily).not.toContain('[data-work-item-handle]');
+    expect(daily).toContain('dragIntent(workItemDrag.pointerType');
+    expect(daily).toContain('dragIntent(tradeDrag.pointerType');
+    expect(daily).toContain('if (workItemDrag.pending) startWorkItemDrag(row); }, 400)');
   });
-
-  it('連續輸入保留工項識別，沿用控制器排序能力', () => {
-    const input = source('src/daily/work-input.ts');
-    expect(input).toContain('data-work="${work.id}"');
-    expect(input).toContain('data-sortable-work');
-  });
-  it('預覽完整工項、停用 clone 互動，且 pointer cancel 與 Escape 清理狀態', () => {
-    expect(daily).toContain('function startWorkItemDrag');
-    expect(daily).toContain("preview.className = 'work-item-drag-preview'");
-    expect(daily).toContain('preview.append(inertWorkItemClone(row))');
+  it('共用去識別預覽、虛擬框、插槽與邊緣捲動', () => {
+    expect(daily).toContain('content.append(inertDragClone(row))');
+    expect(daily).toContain("attribute.name.startsWith('data-')");
     expect(daily).toContain('control.disabled = true; control.tabIndex = -1');
-    expect(daily).toContain('window.addEventListener(\'pointercancel\'');
-    expect(daily).toContain('clearWorkItemDrag(); event.preventDefault(); void renderApp(); return;');
+    expect(daily).toContain("placeholder.setAttribute('aria-hidden', 'true')");
+    expect(daily).toContain("placeholder.style.height = rect.height + 'px'");
+    expect(daily).toContain('resolveDropSlotIndex(workItemDrag.clientY, rows)');
+    expect(daily).toContain('dropIndicatorMarkup(nextSlot === rows.length)');
+    expect(daily).toContain('scrollDragEdge(event.clientY)');
+    expect(daily).toContain("workItemDrag.contact ? '[data-contact-task]' : '[data-sortable-work]'");
   });
-
-  it('連續編輯器保留工項及附加資料入口', () => {
-    const input = source('src/daily/work-input.ts');
-    expect(input).toContain('data-work-item-input');
-    expect(input).toContain('data-work-detail');
-    expect(styles).toContain('.work-item-drag-preview { position: fixed;');
-  });});
+  it('取消與原位不寫入，失敗還原，沿用指定寫入入口', () => {
+    expect(daily).toContain('if (from < 0 || from === to) return');
+    expect(daily).toContain('appState.daily.reorderWorkItems(tradeId, from, to)');
+    expect(daily).toContain('trade.workItems = originalWorkItems; trade.status = originalStatus');
+    expect(daily).toContain('editor.value.items = old');
+    expect(daily).toContain('clearWorkItemDrag(); event.preventDefault(); void renderApp(); return;');
+    expect(daily).toContain("window.addEventListener('pointercancel'");
+  });
+  it('左滑模組不再擁有排序，握把允許原生捲動', () => {
+    const gestures = source('src/daily/work-gestures.ts');
+    expect(gestures).not.toContain('translateY');
+    expect(gestures).not.toContain('active.drag');
+    expect(gestures).toContain('if (target.closest(gripSelector)) return');
+    const css = source('src/daily/input-workflow.css');
+    expect(css).toContain('.work-gesture { touch-action:pan-y;');
+    expect(css).not.toContain('.work-drop-line');
+    expect(css).not.toContain('.work-token--dragging');
+  });
+});

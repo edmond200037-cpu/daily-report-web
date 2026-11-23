@@ -89,12 +89,12 @@ describe('日報收合摘要高度契約', () => {
     expect(daily).toContain("toggle.getAttribute('aria-expanded') !== 'false'");
     expect(daily).toContain('isReadOnlySite()');
     expect(daily).toContain('}, 400);');
-    expect(daily).toContain('if (moved >= 8) clearTradeDrag(); return;');
-    expect(daily).toContain('if (Math.abs(dy) <= Math.abs(dx)) { clearTradeDrag(); return; }');
+    expect(daily).toContain('dragIntent(tradeDrag.pointerType, dx, dy)');
+    expect(daily).toContain("return Math.abs(dy) > Math.abs(dx) ? 'start' : 'cancel'");
     expect(daily).toContain('navigator.vibrate?.(10)');
     expect(daily).toContain('clearTradeSwipe(); navigator.vibrate');
     expect(daily).toContain("document.addEventListener('touchmove', guardTouchScroll, { passive: false })");
-    expect(daily).toContain('if (tradeDrag.active && event.cancelable) event.preventDefault()');
+    expect(daily).toContain('if ((tradeDrag.active || workItemDrag.active) && event.cancelable) event.preventDefault()');
     expect(dailyCss).toContain('-webkit-touch-callout: none; user-select: none;');
     expect(dailyCss).toContain('.swipe-item, .trade-swipe { position: relative; overflow: hidden; border-radius: var(--radius-md); touch-action: pan-y; }');
   });
@@ -112,6 +112,10 @@ describe('日報收合摘要高度契約', () => {
   it('以獨立工項輸入元件組成施工紀錄，保留進料與預覽入口', () => {
     expect(daily).toContain('workInputView(trade)');
     expect(daily).toContain('data-daily-action="manage-material-connections"');
+    expect(daily).toContain('已連接 ${linked.length} 筆進料');
+    expect(daily).not.toContain('work-material-details');
+    expect(daily).not.toContain('data-daily-action="next-entry"');
+    expect(daily).not.toContain('請確認廠商');
     expect(daily).toContain('class="daily-output__actions"');
   });
   it('新工項輸入由可獨立驗證的連續編輯器負責', () => {
