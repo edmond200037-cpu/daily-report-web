@@ -26,3 +26,13 @@ describe('工項移動儲存失敗時還原順序', () => {
     expect(actions.error).toHaveBeenCalledWith(expect.objectContaining({ message: '儲存失敗' }));
   });
 });
+
+it('menu reorder succeeds', async () => {
+  vi.stubGlobal('CSS', { escape: (value: string) => value });
+  vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn() }) });
+  const { actions, undo, click } = setup(async () => undefined);
+  await click();
+  expect(actions.move).toHaveBeenCalledWith('t1', 'w1', 1);
+  expect(undo).not.toHaveBeenCalled();
+  expect(actions.error).not.toHaveBeenCalled();
+});

@@ -30,10 +30,10 @@ export function showEntrySaveError(error: unknown): void {
   if (!notice) { notice = document.createElement('p'); notice.dataset.entrySaveError = ''; notice.setAttribute('role', 'alert'); app.prepend(notice); }
   notice.textContent = appState.dailyCopyFeedback;
 }
-export function persistEntryDraft(): void {
-  if (!appState.entryScopeKey || isReadOnlySite() || appState.entryDraftStorageBlocked) return;
-  try { localStorage.setItem(appState.entryScopeKey, JSON.stringify({ contact: appState.contactEditor, work: snapshotWorkDrafts() })); }
-  catch (error) { showEntrySaveError(error); }
+export function persistEntryDraft(): boolean {
+  if (!appState.entryScopeKey || isReadOnlySite() || appState.entryDraftStorageBlocked) return false;
+  try { localStorage.setItem(appState.entryScopeKey, JSON.stringify({ contact: appState.contactEditor, work: snapshotWorkDrafts() })); return true; }
+  catch (error) { showEntrySaveError(error); return false; }
 }
 export function restoreEntryScope(): void {
   const key = entryDraftKey(appState.accountAuth.user?.id, appState.accountActiveSiteId ?? appState.daily.report.siteId, appState.daily.report.date);

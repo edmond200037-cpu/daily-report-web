@@ -44,12 +44,9 @@
 .daily-page .trade-card__content .subsection-title, .daily-page .contact-card__content .subsection-title { margin:12px 0 6px; }
 .daily-page .trade-card__content .action-row, .daily-page .contact-card__content .form-actions--submit { gap:8px; margin-top:10px; }
 .daily-page .continuous-work .work-token--item { display:grid; grid-template-columns:44px minmax(0,1fr); width:100%; box-sizing:border-box; border-bottom:1px solid var(--line); padding:4px 0; }
-.work-gesture { touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; min-width:44px; min-height:44px; padding:8px; border:0; background:transparent; cursor:grab; }
+.work-gesture { touch-action:pan-y; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; min-width:44px; min-height:44px; padding:8px; border:0; background:transparent; cursor:grab; }
 .work-gesture svg { pointer-events:none; }
 .work-token--item { touch-action:pan-y pinch-zoom; }
-.work-token--dragging { z-index:30; background:var(--daily-orange-soft); outline:2px solid var(--daily-orange); }
-.work-drop-line { position:absolute; left:0; right:0; height:3px; margin-top:-1px; background:var(--daily-orange, #b94f0b); border-radius:2px; z-index:35; pointer-events:none; }
-.work-drop-line::before { content:''; position:absolute; left:0; top:-3px; width:9px; height:9px; border-radius:50%; background:inherit; }
 .work-token--deleting { background:#f5deda; }
 .work-token--deleting::after { content:'放開刪除'; position:absolute; right:0; top:0; color:#7a302b; font-size:.75rem; }
 .work-gesture-undo { position:fixed; bottom:20px; left:16px; right:16px; z-index:100; padding:10px 14px; background:var(--ink); color:white; border-radius:8px; display:flex; align-items:center; justify-content:space-between; }
@@ -88,7 +85,7 @@
 .trade-change summary, .contact-discard summary { cursor:pointer; min-height:48px; display:flex; align-items:center; }
 .trade-change input { width:100%; min-height:48px; font-size:16px; box-sizing:border-box; }
 .daily-page .construction-fields input, .daily-page .work-token input, .daily-page .work-token button, .daily-page .contact-card input, .daily-page .contact-card button { min-height:48px; }
-.daily-page .continuous-work .work-token--item { grid-template-columns:48px minmax(0,1fr); }
+.daily-page .continuous-work .work-token--item { grid-template-columns:48px minmax(0,1fr) auto; }
 .daily-page .work-gesture { min-width:48px; }
 .work-item-context[hidden] { display:none; }
 .work-add-feedback { display:flex; align-items:center; gap:8px; font-size:.8rem; color:var(--daily-ink-soft); min-width:0; contain:inline-size; }
@@ -137,3 +134,8 @@
 @media (max-width:639px) { .daily-page .trade-row-summary--plain > .trade-row-summary__toggle { padding-left:12px; } }
 .daily-page .contact-discard { margin-top:8px; border-top:1px solid var(--line); font-size:.8rem; }
 .daily-page .contact-discard summary, .daily-page .contact-task-details summary { min-height:44px; box-sizing:border-box; padding:12px 4px; cursor:pointer; }
+.daily-page .work-location-chip { min-width:48px; max-width:9.5rem; min-height:48px; padding:0 8px; border:0; background:transparent; color:var(--daily-orange-strong); font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.daily-page .work-location-chip span { display:block; overflow:hidden; text-overflow:ellipsis; }
+.daily-page .work-location-chip[aria-expanded="true"] { background:var(--daily-orange-soft); border-radius:8px; }
+.daily-page .linked-material-line { display:block; width:100%; min-height:48px; margin-top:8px; text-align:left; border:0; border-top:1px solid var(--line); background:transparent; font-size:.85rem; }
+.daily-page .trade-card__content > .action-row { grid-template-columns:minmax(0,1fr); position:static; background:transparent; padding:12px 0 0; }

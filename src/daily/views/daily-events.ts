@@ -99,7 +99,7 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
   if (action === 'toggle-work-aux-menu') { const id = actionElement.dataset.workItemId!; const open = appState.workAuxMenuId !== id; appState.workAuxMenuId = open ? id : null; await renderApp(); if (open) focusWorkAuxMenu(id); else focusWorkActionsTrigger(id); return; }
   if (action === 'open-work-aux') { appState.activeWorkAuxEditor = { workItemId: actionElement.dataset.workItemId!, kind: actionElement.dataset.workAuxKind as 'location' | 'note' }; appState.workAuxMenuId = null; await renderApp(); return; }
   if (action === 'close-work-aux') { appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null; await renderApp(); return; }
-  if (action === 'toggle-special') { appState.expandedSpecialId = appState.expandedSpecialId === actionElement.dataset.id ? null : actionElement.dataset.id ?? null; await renderApp(); return; }
+  if (action === 'toggle-special') { if (appState.expandedSpecialId === actionElement.dataset.id && appState.justAddedEntry?.kind === 'special' && appState.justAddedEntry.id === actionElement.dataset.id) appState.justAddedEntry = null; appState.expandedSpecialId =appState.expandedSpecialId === actionElement.dataset.id ? null : actionElement.dataset.id ?? null; await renderApp(); return; }
   if (action === 'delete-trade') { const id = actionElement.dataset.id!; const trade = appState.daily.trade(id); if (!trade) return; if (!appState.daily.deleteTrade(id)) return; appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null; await appState.daily.flush(); await renderApp(); return; }
   const button = actionElement;
   if (action === 'add-trade') { appState.justAddedEntry = null; appState.entryKind = 'engineering'; appState.tradePickerOpen = true; appState.tradePickerSearch = ''; await renderApp(); return; }
@@ -137,7 +137,6 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
       app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
     }
     const created = appState.daily.addTradeEntry(trade.name, trade.id, vendor);
-    appState.justAddedEntry = { kind: 'trade', id: created.id };
     appState.tradePickerOpen = false; await appState.daily.flush(); await renderApp();
     app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return;
   }
@@ -150,7 +149,6 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
       app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
     }
     const created = appState.daily.addTradeEntry(name, null);
-    appState.justAddedEntry = { kind: 'trade', id: created.id };
     appState.tradePickerOpen = false; await appState.daily.flush(); await renderApp();
     app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="vendorNameSnapshot"]`)?.focus(); return;
   }

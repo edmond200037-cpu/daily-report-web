@@ -11,7 +11,7 @@ describe('剛新增項目的取消入口契約', () => {
     expect(read('app/state.ts')).toContain("justAddedEntry: { kind: 'trade' | 'special'; id: string } | null = null;");
     const persist = read('daily/views/daily-entry.ts').split('export function persistEntryDraft()')[1].split('export function restoreEntryScope()')[0];
     expect(persist).not.toContain('justAddedEntry');
-    expect(events).toContain("appState.justAddedEntry = { kind: 'trade', id: created.id }");
+    expect(events).not.toContain("appState.justAddedEntry = { kind: 'trade'");
     expect(events).toContain("{ kind: 'special', id: appState.expandedSpecialId }");
     expect(events).not.toContain('report.justAddedEntry');
   });
@@ -27,23 +27,26 @@ describe('剛新增項目的取消入口契約', () => {
     expect(read('daily/views/daily-gestures.ts')).toContain('Date.now() + 6000');
   });
 
-  it('立即新增工種的工程分支也標記新紀錄，聯絡分支先返回', () => {
+  it('施工卡不再標記剛新增，也不顯示取消新增；撤回改用左滑刪除', () => {
     const create = events.split("if (action === 'create-trade-from-search') {")[1].split("if (action === 'add-work')")[0];
-    expect(create).toMatch(/const created = appState\.daily\.addTradeEntry\(name, null\);\s+appState\.justAddedEntry = \{ kind: 'trade', id: created.id \};/);
-    expect(create.indexOf('startContactEntry(name)')).toBeLessThan(create.indexOf('const created ='));
-    expect(create.slice(create.indexOf('startContactEntry(name)'), create.indexOf('const created ='))).toContain('return;');
-    expect(create.slice(0, create.indexOf('const created ='))).not.toContain("{ kind: 'trade'");
+    expect(create).not.toContain('justAddedEntry = {');
     expect(events.match(/appState\.daily\.addTradeEntry\(/g)).toHaveLength(2);
-    expect(events.match(/appState\.justAddedEntry = \{ kind: 'trade', id: created.id \}/g)).toHaveLength(2);
+    expect(view).not.toContain("cancelNewEntryButton('trade'");
+    expect(view).toContain('data-swipe-kind="trade"');
   });
 
   it('只有對應的可編輯卡片顯示入口，收合與展開施工卡都保留', () => {
     const button = view.split('export function cancelNewEntryButton')[1].split('function tradeCard')[0];
     expect(button).toContain('isReadOnlySite() || appState.justAddedEntry?.kind !== kind || appState.justAddedEntry.id !== id');
     expect(button).toContain('data-id="${escapeHtml(id)}"');
-    expect(view.match(/cancelNewEntryButton\('trade', trade.id\)/g)).toHaveLength(2);
     expect(read('daily/views/special-view.ts')).toContain("placeholder ? '' : cancelNewEntryButton('special', item.id)");
     expect(read('daily/daily.css')).toMatch(/\.daily-page \.cancel-new-entry \{[^}]*min-height: var\(--daily-touch-target\)/);
+  });
+
+  it('收合特殊事項即清除標記', () => {
+    const special = events.split("if (action === 'toggle-special') {")[1].split('\n')[0];
+    expect(special).toContain("appState.expandedSpecialId === actionElement.dataset.id && appState.justAddedEntry?.kind === 'special' && appState.justAddedEntry.id === actionElement.dataset.id) appState.justAddedEntry = null;");
+    expect(special.indexOf('justAddedEntry = null')).toBeLessThan(special.indexOf('await renderApp()'));
   });
 
   it('再新增項目、變更工作區與離開日報會清除標記', () => {
