@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { settingsMarkup, appState, memoryReviewState } from './helpers/react-settings';
+import { MemoryReview } from '../../src/app/react-settings';
 import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
 import { confirmationSelection, groupMemoryCandidates, memoryCandidateImpact, rejectionSelection } from '../../src/settings/memory-review';
@@ -53,35 +54,10 @@ describe('記憶例外收件匣 workflow', () => {
   });
 });
 
-describe('記憶審核呈現契約', () => {
-  const main = appSource();
-  const css = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
-  it('沿用設定中心工作區骨架，提供全選全部、區內全選與條件式批次操作列', () => {
-    expect(main).toContain('data-memory-group-toggle');
-    expect(main).toContain('data-memory-select-group');
-    expect(main).toContain('data-memory-select-all');
-    expect(main).toContain('settings-work-area memory-review__group');
-    expect(main).toContain('settings-work-area__toggle');
-    expect(main).toContain('memory-review__action-bar');
-    expect(css).toContain('.memory-review__action-bar { position: fixed;');
-    expect(css).toContain('background: var(--daily-paper-raised);');
-  });
-  it('候選列顯示套用進度並可按需展開詳細資料', () => {
-    expect(main).toContain('data-memory-detail-toggle');
-    expect(main).toContain('Math.min(row.usageCount, 4)');
-    expect(css).toContain('.memory-candidate__detail');
-    expect(main).toContain('class="memory-candidate__select"');
-    expect(css).toContain('min-width: var(--daily-touch-target);');
-  });
-  it('寫入失敗保留選取並顯示繁體中文回饋', () => {
-    expect(main).toContain('performMemoryReviewWrite');
-    expect(main).toContain('選取內容已保留');
-    expect(main).toContain("memoryReviewState.feedbackTone === 'error' ? 'alert' : 'status'");
-    expect(css).toContain('.memory-review__feedback--error');
-  });
-
-  it('批次駁回會先揭露選取摘要，再要求第二次確認', () => {
-    expect(main).toContain('已選 ${selected.length} 筆');
-    expect(main).toContain('再次確認：駁回後無法還原');
-  });
+describe('React 記憶審核呈現契約', () => {
+ const render = (selected = false, expanded = false) => settingsMarkup(MemoryReview, () => { appState.memoryCandidates = [candidate({ parentKey: undefined })]; memoryReviewState.openKind = 'tasks'; if (selected) memoryReviewState.explicitKeys.add('tasks:task-1'); if (expanded) memoryReviewState.expandedKeys.add('tasks:task-1'); });
+ it('提供全選全部、全選本區與條件式批次操作', () => { const html = render(true); for (const text of ['全選全部', '全選本區', '批次操作']) expect(html).toContain(text); });
+ it('顯示套用進度與按需展開明細', () => { const html = render(false, true); expect(html).toContain('2/4'); expect(html).toContain('目前草稿影響'); expect(html).toContain('data-memory-detail-toggle'); });
+ it('寫入失敗保留選取與回饋', () => { const source = appSource(); expect(source).toContain('選取內容已保留'); const html = settingsMarkup(MemoryReview, () => { memoryReviewState.feedback = '確認失敗，選取內容已保留'; memoryReviewState.feedbackTone = 'error'; }); expect(html).toContain('role="alert"'); expect(html).toContain('確認失敗'); });
+ it('批次駁回揭露摘要並保留二次確認', () => { expect(render(true)).toContain('已選 1 筆'); expect(appSource()).toContain('再次確認：駁回後無法還原'); });
 });

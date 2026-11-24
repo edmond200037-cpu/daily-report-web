@@ -1,13 +1,22 @@
 
 import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
-import { accountMarkup as renderAccountPage } from './helpers/react-settings';
+import { accountMarkup as renderAccountPage, appState } from './helpers/react-settings';
 import { oauthRedirectUrl } from '../../src/auth/auth-service';
 import type { SyncOperation } from '../../src/sync/types';
 
 const main = appSource();
 
 describe('共用工地帳號頁', () => {
+  it('帳號動作期間停用重複操作，結束後恢復控制', () => {
+    const state = { auth: { enabled: true, session: null, user: null }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' };
+    try {
+      appState.accountActionBusy = true;
+      expect(renderAccountPage(state)).toMatch(/<button(?=[^>]*data-account-action="sign-in")(?=[^>]*aria-disabled="true")[^>]*>/);
+      appState.accountActionBusy = false;
+      expect(renderAccountPage(state)).not.toContain('aria-disabled="true"');
+    } finally { appState.accountActionBusy = false; }
+  });
   it('OAuth callback 使用 query string，避免與 hash 路由衝突', () => {
     expect(oauthRedirectUrl('http://localhost:5173/#account')).toBe('http://localhost:5173/?auth_callback=1');
     expect(oauthRedirectUrl('https://example.github.io/daily-report-web/#account')).toBe('https://example.github.io/daily-report-web/?auth_callback=1');

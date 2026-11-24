@@ -39,7 +39,7 @@ node scripts/db-behavior-tests.mjs   # 隔離 PostgreSQL 行為測試（見 §7�
 
 | 路徑 | 職責 |
 |---|---|
-| `src/main.ts` | Hash 路由 + 手機優先 UI 殼層（最大檔，約 1500 行）|
+| `src/main.ts` | 載入 Astryx 樣式及啟動 React；路由與啟動協調在 src/app/application.ts，介面在 src/app/react-*.tsx|
 | `src/data/db.js` | **唯一**開啟 IndexedDB、schema migration 的入口（`DB_VERSION = 18`）|
 | `src/data/daily-repository.ts` | 草稿、定稿、記憶、設定的 repository |
 | `src/data/{memory,water}-partition.ts`、`local/shared-context.ts` | 依帳號／工地隔離的本機分區快取 |
@@ -93,7 +93,7 @@ node scripts/db-behavior-tests.mjs   # 隔離 PostgreSQL 行為測試（見 §7�
 ### 安全與機密
 - 本倉庫是 **public repo**。`.env.local`、`.env`、service role／secret key、資料庫連線字串、任何 token **絕不 commit、絕不貼進輸出或文件**。`VITE_*` 只能放 URL 與 publishable key，**禁止**放 secret／service role。
 - 已被忽略、不得提交：`node_modules/`、`.npm-cache/`、`dist/`、`artifacts/`、`*.zip`、`.test-results.json`、`.mobile-test-results.json`、`supabase/.temp/`、`.verification-*`。
-- 所有渲染進 HTML 的使用者字串須經 `src/shared/html.ts` 跳脫（含單／雙引號）；選擇器用 `CSS.escape`；遠端與草稿載入要驗證，非法遠端列隔離備份。
+- 使用者字串透過 React 文字節點自動跳脫；禁止 dangerouslySetInnerHTML。保留的非 React HTML 工具須經 `src/shared/html.ts` 跳脫（含單／雙引號）；選擇器用 `CSS.escape`；遠端與草稿載入要驗證，非法遠端列隔離備份。
 - 驗證工具、診斷產物放 `artifacts/`（已忽略），不要散落根目錄。
 
 ### 介面與產品
@@ -103,12 +103,12 @@ node scripts/db-behavior-tests.mjs   # 隔離 PostgreSQL 行為測試（見 §7�
 - 純 UI 暫態（展開／收合、頁籤、焦點、未提交輸入、Bottom Sheet 開關）**不得造成 dirty、不得觸發保存、不得進入 mutation／遠端快照**。
 - 「完整性」由內容自動推導，不加逐卡手動「完成」標記。UI 上 `draft` 顯示為「未完成」，但**資料狀態名稱不改**。
 - 獨立進料最多連接**一個**工程條目（單一來源）；連接／解除／改接要原子化，並使受影響工種退回草稿。
-- 工項排序只提供長按 400ms 拖曳握把（無鍵盤替代，ADR-007 已接受）；左滑 ≥72px 且水平為主才刪除，並提供 6 秒復原。
+- 依 ADR-019 使用 Astryx createReorderable：握把長按時間由元件決定，支援鍵盤 Enter／空白鍵及方向鍵排序；createSwipe 左滑露出刪除按鈕，按下刪除後用 6 秒 Toast 復原。
 - 水位頁與全站三入口導覽依 ADR-019 遷移至 React + Astryx；不得變更資料模型、備份格式、formatter、驗證規則、定稿快照，除非需求明確要求。
 
 ## 5. 開發慣例
 
-- TypeScript `strict`、`noUnusedLocals`、`noUnusedParameters` 全開；新程式用 `.ts`。`water-level/`、`data/db.js` 等既有 `.js` 維持原狀，不順手改寫。
+- TypeScript `strict`、`noUnusedLocals`、`noUnusedParameters` 全開；新程式用 `.ts`／`.tsx`。`water-level/`、`data/db.js` 等既有 `.js` 維持原狀，不順手改寫。
 - 沒有 ESLint／Prettier：**沿用周邊檔案的風格**（單引號、分號、2 空格縮排），不要大範圍重排版。
 - 領域用語依 `docs/glossary.md` 與 `CONTEXT.md`（例：工項輸入器、定稿快照、記憶提交點、衝突審核項、待同步操作明細）；UI 文案與測試命名沿用這些詞，避免 `CONTEXT.md` 的 _Avoid_ 寫法。
 - 小步修改、局部 DOM 更新優先；`main.ts` 很大，新增邏輯優先放進對應模組（`daily/`、`sync/`、`settings/`），不要再往 `main.ts` 堆。
@@ -147,8 +147,8 @@ node scripts/db-behavior-tests.mjs   # 隔離 PostgreSQL 行為測試（見 §7�
 - 完整 migration 管理 UI 尚未提供；舊資料升級靠保留原始備份的自動修復。
 - 雲端定稿 RPC 與**定稿快照的跨裝置歷史**未實作（定稿仍僅本機 7 日）。
 - 正式 Supabase 的 OAuth／Realtime、手機實機手勢、部署快取**尚未完整驗收**；兩個 baseline migration（202609230001／0002）的 history 補登需使用者在正式專案手動執行 `supabase/repairs/reconcile-deployment-history.sql`。
-- Bottom Sheet 預覽／定稿面板等 DESIGN.md 後續階段尚未全數實作。
-- `main.ts` 過大、水位模組仍為 `.js`，屬技術債，非當前優先。
+- 依 ADR-019 已完成日報 BottomSheet 檢查、預覽、複製與定稿；純 UI 開關不寫入資料。
+- `main.ts` 已縮為啟動入口；React 介面與路由協調分開，水位既有 `.js` 計算、解析、格式化及儲存邏輯保留，見 ADR-019。
 - GitHub Actions 新增的 DB 閘門是否已在遠端實際跑過，需到 Actions 頁確認。
 
 ## 10. 快速參考：常見任務該看哪裡

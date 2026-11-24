@@ -1,9 +1,8 @@
 import { loadDailyDraftForDate } from '../data/daily-repository';
 import { createDailyDraft } from '../domain/daily';
-import { renderApp, parseRoute } from '../main';
+import { renderApp } from '../main';
 import { app, appState } from './state';
-import { isReadOnlySite, scheduleBackgroundSync, syncActiveSiteNow, refreshDailySyncStatus } from './sync-runtime';
-import { selectSharedSiteFromWorkspace } from '../account/account-controller';
+import { isReadOnlySite, scheduleBackgroundSync, refreshDailySyncStatus } from './sync-runtime';
 import { readOnlyDailyActions } from '../daily/views/daily-view';
 import { persistEntryDraft, capturePendingWork, showEntrySaveError } from '../daily/views/daily-entry';
 import { notifyReact } from './react-store';
@@ -20,8 +19,7 @@ export async function switchDailyDate(nextDate: string): Promise<void> {
   finally { appState.dateSwitching = false; app.inert = false; scheduleBackgroundSync(); notifyReact(); }
 }
 export function bindWorkspaceEvents(): void {
-  app.addEventListener('click', (event) => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-shared-site-select]'); if (button?.dataset.sharedSiteSelect) { event.preventDefault(); void selectSharedSiteFromWorkspace(button.dataset.sharedSiteSelect); } });
-  app.addEventListener('click', (event) => {
+app.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
     const dailyMutation = target.closest<HTMLElement>('[data-daily-action],[data-work-commit],[data-work-move],[data-work-suggestion]');
     if (isReadOnlySite() && dailyMutation && !readOnlyDailyActions.has(dailyMutation.dataset.dailyAction ?? '')) { event.preventDefault(); event.stopImmediatePropagation(); return; }
@@ -31,39 +29,15 @@ export function bindWorkspaceEvents(): void {
     if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改或審核工地記憶。'); return; }
     window.setTimeout(scheduleBackgroundSync, 1000);
   }, true);
-  app.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' || event.isComposing || appState.entryComposing || event.keyCode === 229) return;
-    const target = event.target as HTMLInputElement;
-    if (target.dataset.dailyField === 'workerCount' || target.dataset.dailyField === 'vendorNameSnapshot') {
-      const card = target.closest('[data-trade]');
-      const next = card?.querySelector<HTMLInputElement>(target.dataset.dailyField === 'workerCount' ? '[data-continuous-work]' : '[data-daily-field="workerCount"]');
-      if (next) { event.preventDefault(); next.focus(); }
-    }
-  });
-  app.addEventListener('submit', (event) => {
+app.addEventListener('submit', (event) => {
     if (!(event.target instanceof HTMLFormElement) || !(event.target.dataset.settingsForm || event.target.dataset.materialItemForm)) return;
     const role = appState.accountSites.find((site) => site.id === appState.accountActiveSiteId)?.role ?? appState.accountActiveSiteRole;
     if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); alert('檢視者無法修改工地記憶。'); return; }
     window.setTimeout(scheduleBackgroundSync, 1000);
   }, true);
-  app.addEventListener('change', (event) => {
+app.addEventListener('change', (event) => {
     if (!(event.target instanceof HTMLInputElement) || !event.target.dataset.memoryBackupImport) return;
     const role = appState.accountSites.find((site) => site.id === appState.accountActiveSiteId)?.role ?? appState.accountActiveSiteRole;
     if (role === 'viewer') { event.preventDefault(); event.stopImmediatePropagation(); event.target.value = ''; alert('檢視者無法匯入工地記憶。'); }
-  }, true);
-  app.addEventListener('click', async (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-sync-now]');
-    if (!button || appState.syncInFlight) return;
-    event.stopImmediatePropagation();
-    button.disabled = true; button.textContent = '同步中…';
-    await syncActiveSiteNow();
-    await renderApp();
-  });
-  app.addEventListener('change', async (event) => {
-    const target = event.target;
-    const route = parseRoute(location.hash);
-    if (!(target instanceof HTMLInputElement) || route.module !== 'daily' || route.page !== 'main' || target.dataset.dailyField !== 'date') return;
-    event.stopImmediatePropagation();
-    await switchDailyDate(target.value);
   }, true);
 }

@@ -3,6 +3,7 @@ import { listAccessibleSites, listPendingJoinRequests, listSiteMembers, approveS
 import { selectActiveSharedSite, loadSharedContext, cacheActiveSiteRole } from '../data/local/shared-context';
 import { mountSettingsPage } from '../app/react-settings-route';
 import { confirmAction } from '../app/react-confirm';
+import { notifyReact } from '../app/react-store';
 import { withAccountDeadline, AccountLoadTimeoutError } from './load-timeout';
 import { listAllOperations, retryMissingRpcOperations } from '../sync/outbox';
 import { runSyncOnce, refreshCloudMemoryLibrary } from '../sync/engine';
@@ -100,15 +101,13 @@ export async function refreshAccount(onProgress?: () => void): Promise<void> {
 export function renderAccountLoading(): void { mountSettingsPage(); }
 export function renderAccountLoaded(): void { mountSettingsPage(); }
 export function bindAccountEvents(): void {
-  app.addEventListener('click', (event) => {
-    const jump = (event.target as HTMLElement).closest<HTMLElement>('[data-account-jump]');
-    if (!jump?.dataset.accountJump) return;
-    document.getElementById(jump.dataset.accountJump)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-  });
   app.addEventListener('click', async (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-account-action]');
     if (!button) return;
     event.stopImmediatePropagation();
+    if (appState.accountActionBusy) return;
+    appState.accountActionBusy = true;
+    notifyReact();
     appState.accountFeedback = ''; appState.accountError = '';
     try {
       if (button.dataset.accountAction === 'retry-load-account') {
@@ -118,7 +117,6 @@ export function bindAccountEvents(): void {
       }
       if (button.dataset.accountAction === 'load-conflict-reviews' && appState.accountAuth.user && appState.accountActiveSiteId) {
         const token = appState.renderToken;
-        button.disabled = true; button.textContent = '讀取中…';
         try {
           const scope = { userId: appState.accountAuth.user.id, siteId: appState.accountActiveSiteId };
           const operations = await listAllOperations(scope);
@@ -144,11 +142,6 @@ export function bindAccountEvents(): void {
           await navigator.clipboard.writeText(site.joinCode);
           appState.accountFeedback = `已複製「${site.name}」加入碼`;
           await renderApp();
-          const copiedButton = app.querySelector<HTMLButtonElement>(`[data-account-action="copy-join-code"][data-site-id="${CSS.escape(site.id)}"]`);
-          if (copiedButton) {
-            copiedButton.textContent = '已複製';
-            window.setTimeout(() => { if (copiedButton.isConnected) copiedButton.textContent = '複製'; }, 1600);
-          }
         } catch {
           appState.accountError = '無法自動複製，請手動選取加入碼';
           await renderApp();
@@ -265,14 +258,18 @@ export function bindAccountEvents(): void {
         await removeSiteMember(memberSiteId, memberUserId); appState.accountFeedback = '成員已移除。';
       }
     } catch (error) { appState.accountError = error instanceof Error ? error.message : '帳號操作失敗。'; }
+    finally { appState.accountActionBusy = false; notifyReact(); }
     await renderApp();
   });
   app.addEventListener('submit', async (event) => {
     const form = (event.target as HTMLElement).closest<HTMLFormElement>('[data-account-form]');
     if (!form) return;
     event.preventDefault(); event.stopImmediatePropagation();
-    appState.accountFeedback = ''; appState.accountError = '';
+    if (appState.accountActionBusy) return;
     const values = new FormData(form);
+    appState.accountActionBusy = true;
+    notifyReact();
+    appState.accountFeedback = ''; appState.accountError = '';
     try {
       if (form.dataset.accountForm === 'create-site') {
         const result = await createSharedSite(String(values.get('name') ?? ''));
@@ -284,6 +281,7 @@ export function bindAccountEvents(): void {
         appState.accountFeedback = '加入申請已送出，請由工地管理員核准。';
       }
     } catch (error) { appState.accountError = error instanceof Error ? error.message : '工地操作失敗。'; }
+    finally { appState.accountActionBusy = false; notifyReact(); }
     await renderApp();
   });
 }

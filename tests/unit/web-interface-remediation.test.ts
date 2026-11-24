@@ -1,23 +1,19 @@
+import { dailyMarkup } from './helpers/react-daily';
 import { describe, expect, it } from 'vitest';
 import { createDailyDraft, createTrade, createWorkItem } from '../../src/domain/daily';
 import { canRestoreDetails, snapshotDetails, workUndoScope } from '../../src/daily/work-detail-undo';
-import { clearWorkItemDetails, workSuggestions, workInputView } from '../../src/daily/work-input';
+import { clearWorkItemDetails, workSuggestions } from '../../src/daily/work-input';
 import type { NamedMemory } from '../../src/data/daily-repository';
 
 describe('日報介面安全契約', () => {
-  it('同名獨立工項保留 ID，第一筆不能上移、最後一筆不能下移', () => {
+  it('同名獨立工項以穩定 ID 呈現，排序邊界由 Astryx 瀏覽器測試驗證', () => {
     const trade = createTrade('水電', '甲', 0);
     const first = createWorkItem(0); const last = createWorkItem(1);
     first.taskTextSnapshot = last.taskTextSnapshot = '配管';
     trade.workItems.push(first, last);
     const original = structuredClone(trade);
-    const markup = workInputView(trade);
-    const rows = markup.split('data-sortable-work>').slice(1);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toContain('data-work-move="-1" disabled');
-    expect(rows[0]).not.toContain('data-work-move="1" disabled');
-    expect(rows[1]).toContain('data-work-move="1" disabled');
-    expect(rows[1]).not.toContain('data-work-move="-1" disabled');
+    const markup = dailyMarkup((daily) => { daily.report.tradeSections.push(trade); daily.expandedId = trade.id; });
+    expect(markup).toContain('astryx-list');
     expect(markup).toContain(`data-work="${first.id}"`);
     expect(markup).toContain(`data-work="${last.id}"`);
     expect(trade).toEqual(original);

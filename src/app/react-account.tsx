@@ -12,11 +12,11 @@ import type { ConflictReview } from '../sync/conflict-review';
 import { appState } from './state';
 import { SettingsFrame, DebugPanel, preStyle } from './react-settings';
 const roleLabel = (role: string) => role === 'owner' ? '管理員' : role === 'editor' ? '編輯者' : '檢視者';
-const action = (label: string, name: string, data: Record<string, string> = {}, disabled = false) => <Button label={label} size="lg" data-account-action={name} isDisabled={disabled} {...data} />;
+const action = (label: string, name: string, data: Record<string, string> = {}, disabled = false) => <Button label={label} size="lg" data-account-action={name} isDisabled={disabled || appState.accountActionBusy} {...data} />;
 function AccountForm({ kind }: { kind: 'create-site' | 'request-join' }) {
   const [value, setValue] = useState('');
   const create = kind === 'create-site';
-  return <form data-account-form={kind}><VStack gap={3}><Heading level={3}>{create ? '建立新工地' : '用加入碼申請加入'}</Heading><TextInput label={create ? '工地名稱' : '加入碼'} htmlName={create ? 'name' : 'joinCode'} size="lg" value={value} onChange={setValue} isRequired /><Button label={create ? '建立並成為管理員' : '送出申請'} size="lg" type="submit" /></VStack></form>;
+  return <form data-account-form={kind}><VStack gap={3}><Heading level={3}>{create ? '建立新工地' : '用加入碼申請加入'}</Heading><TextInput label={create ? '工地名稱' : '加入碼'} htmlName={create ? 'name' : 'joinCode'} size="lg" value={value} onChange={setValue} isRequired isDisabled={appState.accountActionBusy} /><Button label={create ? '建立並成為管理員' : '送出申請'} size="lg" type="submit" isDisabled={appState.accountActionBusy} /></VStack></form>;
 }
 export function SharedSiteContent({ state }: { state: AccountPageState }) {
   if (!state.auth.enabled) return <Text>目前使用本機模式。資料只存在這台裝置。啟用雲端服務後，才可登入與跨裝置共用工地。</Text>;

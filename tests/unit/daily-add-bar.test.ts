@@ -1,19 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { currentDailySection } from '../../src/daily/add-bar';
-
-describe('新增工具列當前區段', () => {
-  it('沒有日報區段時不選取', () => {
-    expect(currentDailySection([], 44)).toBeUndefined();
-  });
-
-  it('第一段尚未越過工具列時以第一段為預設', () => {
-    expect(currentDailySection([{ id: 'trade', top: 180 }, { id: 'material', top: 900 }], 44)).toBe('trade');
-  });
-
-  it('只以位置選取最後越過工具列底部的區段，包含正好相等', () => {
-    const sections = [{ id: 'trade', top: -800 }, { id: 'material', top: -200 }, { id: 'contact', top: 44 }, { id: 'special', top: 800 }] as const;
-    expect(currentDailySection(sections, 44)).toBe('contact');
-    expect(currentDailySection(sections, 43)).toBe('material');
-    expect(currentDailySection(sections, 800)).toBe('special');
-  });
+import { dailyMarkup } from './helpers/react-daily';
+describe('React 日報區段新增入口', () => {
+ it('空白日報保留四區入口', () => { expect((dailyMarkup().match(/class="astryx-heading/g) ?? []).length).toBeGreaterThanOrEqual(4); });
+ it('施工與進料新增順序不變', () => { const html = dailyMarkup(); expect(html.indexOf('新增施工紀錄')).toBeLessThan(html.indexOf('新增進料')); });
+ it('聯絡與特殊事項維持獨立新增', () => { const html = dailyMarkup(); expect(html).toContain('data-daily-action="add-contact"'); expect(html).toContain('data-daily-action="add-special"'); });
 });

@@ -1,10 +1,10 @@
-import { formatWaterLog, formatWaterLogs } from './formatter.js';
+import { formatWaterLogs } from './formatter.js';
 import { parseWaterText } from './parser.js';
 import { loadLogs, loadPoints, newLog, saveLog, importLog, deleteLog, savePoint, deletePoint } from './repository.js';
 import { validateLog } from './calculator.js';
 import { formatMeasurementTime } from '../shared/date.js';
-import { escapeHtml } from '../shared/html';
-
+import { notifyReact } from '../app/react-store';
+import { confirmAction } from '../app/react-confirm';
 export const waterLogSummary = (log) => {
   const measuredCount = log.readings.filter((reading) => reading.value !== '').length;
   const totalCount = log.readings.length;
@@ -15,9 +15,8 @@ export const waterLogSummary = (log) => {
     status: complete ? '完整' : '缺值',
   };
 };
-
 export class WaterLevelController {
-  constructor(root, onLocalSaved = () => {}) {
+constructor(root, onLocalSaved = () => {}) {
     this.root = root;
     this.points = [];
     this.logs = [];
@@ -29,9 +28,8 @@ export class WaterLevelController {
     this.importFeedback = [];
     this.onLocalSaved = onLocalSaved;
   }
-
-  async initialize() { this.points = await loadPoints(); this.logs = await loadLogs(); this.editing = newLog(this.points); }
-  async refresh() {
+async initialize() { this.points = await loadPoints(); this.logs = await loadLogs(); this.editing = newLog(this.points); }
+async refresh() {
     const active = document.activeElement;
     const field = active?.dataset?.waterField ?? active?.dataset?.waterReading;
     const selectionStart = typeof active?.selectionStart === 'number' ? active.selectionStart : null;
@@ -50,55 +48,13 @@ export class WaterLevelController {
       if (next) { next.focus(); if (selectionStart !== null) next.setSelectionRange(selectionStart, selectionEnd ?? selectionStart); }
     }
   }
-  preview() { return formatWaterLogs(this.logs); }
-
-  render() {
-    const log = this.editing;
-    const errors = validateLog(log);
-    const historyCount = this.logs.length;
-    this.root.innerHTML = `<section class="water-page"><section class="subtabs water-tabs" role="tablist" aria-label="水位流程"><button type="button" data-water-view="entry" role="tab" aria-selected="${this.mode === 'entry'}" class="${this.mode === 'entry' ? 'active' : ''}">輸入水位</button><button type="button" data-water-view="history" role="tab" aria-selected="${this.mode === 'history'}" class="${this.mode === 'history' ? 'active' : ''}">最近三天${historyCount ? `<span class="water-tab__count" aria-label="${historyCount} 筆紀錄">${historyCount}</span>` : ''}</button><button type="button" data-water-view="import" role="tab" aria-selected="${this.mode === 'import'}" class="${this.mode === 'import' ? 'active' : ''}">貼上匯入</button></section>${this.mode === 'entry' ? this.entryView(log, errors) : this.mode === 'history' ? this.historyView() : this.importView()}${this.outputDrawer()}</section>`;
-  }
-
-  renderSettings() {
-    this.root.innerHTML = `<section class="water-page water-settings"><p class="hint">刪除井位只影響後續輸入；既有歷史紀錄保留名稱快照。</p>${this.pointsView()}</section>`;
-  }
-
-  entryView(log, errors) {
-    return `<section class="workflow-section water-entry"><header class="workflow-section__header"><div><h2>${log.id ? '編輯量測紀錄' : '新增量測紀錄'}</h2><p>填寫現場量測值後儲存；空白井位會標示為缺值。</p></div></header><section class="form-card"><div class="water-entry__meta"><label>量測時間<input data-water-field="measuredAt" type="datetime-local" value="${escapeHtml(log.measuredAt)}"></label><label>電池電量（選填）<input data-water-field="battery" inputmode="decimal" value="${escapeHtml(log.battery)}" placeholder="例如 2.798"></label></div><div class="reading-list">${log.readings.length ? log.readings.map((reading, index) => `<label>${escapeHtml(reading.pointNameSnapshot)}<input data-water-reading="${index}" inputmode="decimal" value="${escapeHtml(reading.value)}" placeholder="空白表示無數據"></label>`).join('') : '<p class="empty">請先到「水位設定」新增量測井位。</p>'}</div>${errors.length ? `<ul class="issues">${errors.map((error) => `<li>${escapeHtml(error)}</li>`).join('')}</ul>` : ''}<div class="form-actions form-actions--submit ${log.id ? '' : 'form-actions--single'}"><button type="button" class="primary" data-water-action="save-log">儲存量測</button>${log.id ? '<button type="button" data-water-action="cancel-edit">取消編輯</button>' : ''}</div></section></section>`;
-  }
-
-  historyView() {
-    const cards = [...this.logs].reverse().map((log) => {
-      const summary = waterLogSummary(log);
-      const expanded = this.expandedHistoryId === log.id;
-      return `<article class="compact-entry water-history-card ${expanded ? 'compact-entry--expanded' : ''}" data-water-history="${escapeHtml(log.id)}"><button type="button" class="compact-entry__summary water-history-card__summary" data-water-action="toggle-history" data-id="${escapeHtml(log.id)}" aria-expanded="${expanded}"><span class="water-history-card__lead">水位</span><span class="water-history-card__copy"><strong>${escapeHtml(summary.title)}</strong><span>${escapeHtml(summary.detail)}</span></span><span class="water-history-card__status ${summary.status === '完整' ? 'water-history-card__status--complete' : ''}">${summary.status}</span></button>${expanded ? `<section class="water-history-card__content"><pre>${escapeHtml(formatWaterLog(log))}</pre><div class="water-history-card__actions"><button type="button" data-water-action="edit-log" data-id="${escapeHtml(log.id)}">編輯</button><button type="button" class="danger-text" data-water-action="delete-log" data-id="${escapeHtml(log.id)}">刪除</button></div></section>` : ''}</article>`;
-    }).join('');
-    return `<section class="workflow-section water-history"><header class="workflow-section__header"><div><h2>最近三天量測</h2><p>點選摘要可查看完整歷史紀錄。</p></div></header><div class="workflow-section__list water-history__list">${cards || '<p class="workflow-section__empty">尚無最近三天的水位紀錄。</p>'}</div></section>`;
-  }
-
-  importView() {
-    return `<section class="workflow-section water-import"><header class="workflow-section__header"><div><h2>貼上水位文字</h2><p>每筆量測以空白行分隔；系統會解析井位、變化與電池資料。</p></div></header><section class="form-card"><textarea id="water-import-text" rows="10" placeholder="7/29-16點\nA井：10.452(下降0.113)\n電池電量：2.798"></textarea><div class="form-actions form-actions--single"><button type="button" class="primary" data-water-action="parse-import">解析並匯入</button></div>${this.importFeedback.length ? `<div class="water-import__result" role="status"><ul>${this.importFeedback.map((message) => `<li>${escapeHtml(message)}</li>`).join('')}</ul></div>` : ''}</section></section>`;
-  }
-
-  outputDrawer() {
-    const count = this.logs.length;
-    const output = this.preview() || '尚無水位紀錄。';
-    return `<aside class="output-drawer water-output ${this.outputOpen ? 'output-drawer--open' : ''}"><button type="button" class="output-drawer__toggle" data-water-action="toggle-output" aria-expanded="${this.outputOpen}" aria-controls="water-output-content"><span><strong>${count} 筆水位紀錄</strong><span>${count ? '最近三天輸出已準備完成' : '新增量測後可複製輸出'}</span></span><span>${this.outputOpen ? '收合輸出' : '查看輸出'}</span></button><div id="water-output-content" ${this.outputOpen ? '' : 'hidden'}>${this.outputOpen ? `<div class="output-drawer__content"><pre>${escapeHtml(output)}</pre><button type="button" class="primary" data-water-action="copy-water">複製最近三天</button></div>` : ''}</div></aside>`;
-  }
-
-  pointsView() {
-    const form = (id, name) => `<form id="${id ? 'point-edit-form' : 'point-form'}" class="settings-edit-form" ${id ? `data-id="${escapeHtml(id)}"` : ''}><label>井位名稱<input name="name" required maxlength="50" value="${escapeHtml(name)}" placeholder="例如 A井" autofocus></label><div class="form-actions form-actions--submit"><button type="submit" class="primary">儲存</button><button type="button" data-water-action="cancel-point">取消</button>${id ? `<button type="button" class="danger-text settings-edit-form__delete" data-water-action="delete-point" data-id="${escapeHtml(id)}">刪除</button>` : ''}</div></form>`;
-    const rows = this.points.map((point) => this.pointEditing === point.id ? form(point.id, point.name) : `<button type="button" class="settings-row" data-water-action="edit-point" data-id="${escapeHtml(point.id)}"><span class="settings-row__name">${escapeHtml(point.name)}</span><span class="settings-row__meta">編輯</span></button>`).join('') || '<p class="empty">尚無井位。</p>';
-    return `<div class="settings-toolbar settings-toolbar--end">${this.pointEditing === 'new' ? '' : '<button type="button" class="settings-add" data-water-action="add-point">＋ 新增井位</button>'}</div>${this.pointEditing === 'new' ? form('', '') : ''}<div class="settings-rows">${rows}</div>`;
-  }
-
-  async handleInput(target) {
+preview() { return formatWaterLogs(this.logs); }
+async handleInput(target) {
     if (['measuredAt', 'battery'].includes(target.dataset.waterField)) this.editing[target.dataset.waterField] = target.value;
     const index = Number(target.dataset.waterReading);
     if (target.dataset.waterReading !== undefined && Number.isInteger(index) && this.editing.readings[index]) this.editing.readings[index].value = target.value;
   }
-
-  async handleAction(action, id, extra) {
+async handleAction(action, id, extra) {
     if (action === 'toggle-output') { this.outputOpen = !this.outputOpen; this.render(); return; }
     if (action === 'toggle-history') { this.expandedHistoryId = this.expandedHistoryId === id ? null : id; this.render(); return; }
     if (action === 'copy-water') { await navigator.clipboard.writeText(this.preview()); return; }
@@ -110,12 +66,11 @@ export class WaterLevelController {
     if (action === 'update-point') { await savePoint(String(extra), id); this.pointEditing = null; this.onLocalSaved(); await this.refresh(); return; }
     if (action === 'cancel-edit') { this.editing = newLog(await loadPoints()); this.mode = 'entry'; this.render(); return; }
     if (action === 'edit-log') { const log = this.logs.find((item) => item.id === id); if (log) { this.editing = structuredClone(log); this.mode = 'entry'; this.expandedHistoryId = null; this.render(); } return; }
-    if (action === 'delete-log' && confirm('刪除後，後續下降量將重新計算。確定刪除？')) { await deleteLog(id); this.onLocalSaved(); if (this.expandedHistoryId === id) this.expandedHistoryId = null; await this.refresh(); return; }
-    if (action === 'delete-point' && confirm('刪除井位只影響後續輸入，不會刪除歷史讀值。確定刪除？')) { await deletePoint(id); this.pointEditing = null; this.onLocalSaved(); await this.refresh(); return; }
+    if (action === 'delete-log' && await confirmAction('刪除後，後續下降量將重新計算。確定刪除？')) { await deleteLog(id); this.onLocalSaved(); if (this.expandedHistoryId === id) this.expandedHistoryId = null; await this.refresh(); return; }
+    if (action === 'delete-point' && await confirmAction('刪除井位只影響後續輸入，不會刪除歷史讀值。確定刪除？')) { await deletePoint(id); this.pointEditing = null; this.onLocalSaved(); await this.refresh(); return; }
     if (action === 'parse-import') await this.importText();
   }
-
-  async importText() {
+async importText() {
     const text = this.root.querySelector('#water-import-text').value;
     const parsed = parseWaterText(text);
     const messages = [];
@@ -124,7 +79,7 @@ export class WaterLevelController {
       const errors = validateLog(segment, true);
       if (errors.length) { messages.push(`略過：${errors.join('；')}`); continue; }
       const existing = this.logs.find((log) => log.measuredAt === segment.measuredAt);
-      if (existing && !confirm(`${segment.measuredAt} 已有量測紀錄，是否覆蓋？`)) { messages.push(`${segment.measuredAt}：略過重複紀錄`); continue; }
+      if (existing && !await confirmAction(`${segment.measuredAt} 已有量測紀錄，是否覆蓋？`)) { messages.push(`${segment.measuredAt}：略過重複紀錄`); continue; }
       try { await importLog(segment, existing?.id); }
       catch (error) { messages.push(`${segment.measuredAt}：匯入失敗（${error.message}）`); continue; }
       this.points = await loadPoints();
@@ -137,4 +92,6 @@ export class WaterLevelController {
     this.mode = 'import';
     this.render();
   }
+render() { notifyReact(); }
+renderSettings() { notifyReact(); }
 }

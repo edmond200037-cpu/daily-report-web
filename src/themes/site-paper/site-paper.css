@@ -586,62 +586,62 @@
 
   .astryx-text-input {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-text-area {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-number-input {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-date-input {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-time-input {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-date-time-input {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-date-range-input {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-selector {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-multi-selector {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-complex-selector {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-typeahead {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-tokenizer {
     min-height: 44px;
-    height: 64px;
+    height: auto;
   }
 
   .astryx-tab {
@@ -652,6 +652,22 @@
     position: sticky;
     bottom: 0px;
     background-color: var(--color-background-surface);
+  }
+
+  .astryx-list-item {
+    min-height: 44px;
+  }
+
+  .astryx-checkbox-label {
+    min-height: 44px;
+  }
+
+  .astryx-date-time-input-date-segment {
+    min-height: 44px;
+  }
+
+  .astryx-date-time-input-time-segment {
+    min-height: 44px;
   }
 
   .astryx-text[data-color="primary"] { color: var(--color-text-primary); }

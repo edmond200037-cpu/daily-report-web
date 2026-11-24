@@ -13,7 +13,7 @@ import { persistActiveWaterPartition, restoreActiveWaterPartition } from '../dat
 import { subscribeToSiteChanges } from '../sync/realtime';
 import { withWorkspaceLock } from '../sync/workspace-lock';
 import { parseRoute, renderApp } from '../main';
-import { appState, settingsState, workItemComposerByTrade } from './state';
+import { appState, settingsState } from './state';
 import { updateDailySaveStatus } from '../daily/views/daily-view';
 import { materialDirty } from '../daily/views/material-view';
 import { contactDirty } from '../daily/views/contact-view';
@@ -46,7 +46,7 @@ export async function switchActiveDataPartition(changeContext: () => Promise<voi
       await changeContext();
       await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]);
       appState.daily.replaceReport((await loadDailyDraftForDate(date)) ?? createDailyDraft(null, '', date));
-      appState.daily.expandedId = null; appState.activeWorkAuxEditor = null; workItemComposerByTrade.clear();
+      appState.daily.expandedId = null; appState.activeWorkAuxEditor = null;
       await refreshActiveMemoryCache();
       const scope = await loadActiveSharedScope(); appState.lastPulledAt = scope ? await loadLastPulledAt(scope) : null;
       appState.syncFeedback = '';

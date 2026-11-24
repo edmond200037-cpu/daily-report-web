@@ -7,6 +7,8 @@ const server = await createServer({
   base: '/',
   // Keep isolated old-UI checkouts from sharing Vite's dependency chunks via node_modules.
   cacheDir: 'artifacts/vite-e2e-react-cache',
+  // Scan both app and IME fixture before parallel pages load their chunks.
+  optimizeDeps: { entries: ['index.html', 'tests/e2e/fixtures/astryx-ime.html'] },
   resolve: { preserveSymlinks: true },
   define: {
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(''),

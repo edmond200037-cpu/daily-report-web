@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+test.use({ hasTouch: true });
 const routes = ['settings', 'settings/memory', 'settings/daily/sites', 'settings/daily/trade-tasks', 'settings/daily/locations', 'settings/daily/materials', 'settings/daily/templates', 'settings/water', 'settings/data', 'settings/account', 'settings/debug'];
 for (const width of [360, 390, 430]) test(`設定各路由無水平捲動與大型控制 ${width}`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
@@ -6,8 +7,13 @@ for (const width of [360, 390, 430]) test(`設定各路由無水平捲動與大�
     await page.goto(`/#${route}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), route).toBe(true);
-    const small = await page.locator('main .astryx-button, main .astryx-text-input, main .astryx-selector, main .astryx-typeahead').evaluateAll((nodes) => nodes.filter((node) => { const rect = node.getBoundingClientRect(); return rect.height > 0 && rect.height < 44; }).map((node) => node.getAttribute('aria-label') || node.textContent));
+    const small = await page.locator('main .astryx-button, main .astryx-text-input, main .astryx-selector, main .astryx-typeahead, main a[href], main .astryx-checkbox-label').evaluateAll((nodes) => nodes.filter((node) => { const target = node.matches("a") ? node.closest(".astryx-list-item") ?? node : node; const rect = target.getBoundingClientRect(); return rect.height > 0 && rect.height < 44; }).map((node) => node.getAttribute('aria-label') || node.textContent));
     expect(small, route).toEqual([]);
+    if (route === 'settings') {
+      // Astryx 的 invisible-anchor 擴及整列；實際點列邊緣，確認測量的是可點範圍。
+      await page.getByRole('listitem').filter({ has: page.getByRole('link', { name: '位置', exact: true }) }).click({ position: { x: 12, y: 3 } });
+      await expect(page).toHaveURL(/#settings\/daily\/locations$/);
+    }
   }
 });
 test('設定工地新增編輯刪除與備份下載', async ({ page }) => {

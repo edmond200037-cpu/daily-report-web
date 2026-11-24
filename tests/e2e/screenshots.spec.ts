@@ -6,7 +6,7 @@ import { scenarios } from './fixtures/daily-scenarios';
 
 // 改版前後截圖：SHOT_LABEL=before|after npx playwright test screenshots
 const label = process.env.SHOT_LABEL ?? 'after';
-const routes = ['daily', 'daily/history', 'water-level', 'settings', 'settings/memory', 'settings/data', 'settings/account', 'settings/water', 'settings/daily/sites', 'settings/daily/trades', 'settings/daily/locations', 'settings/daily/materials'];
+const routes = ['daily', 'daily/history', 'water-level', 'settings', 'settings/memory', 'settings/data', 'settings/account', 'settings/water', 'settings/daily/sites', 'settings/daily/trade-tasks', 'settings/daily/locations', 'settings/daily/materials', 'settings/daily/templates', 'settings/debug'];
 
 for (const scheme of ['light', 'dark'] as const) {
   test(`截圖 ${label} ${scheme}`, async ({ page }, info) => {

@@ -1,12 +1,12 @@
 # ADR-019：React 19 與 Astryx 資訊架構遷移
 
-狀態：6a、6b、7 本機關卡通過；8 尚未完成。
+狀態：6a、6b、7、8 本機自動關卡與最後視覺檢查完成；全部路由已遷移。
 
 ## 決策
 
 以 React 19 與 Astryx 0.7.17 負責全站介面。保留 appState、DailyController、repository、資料、同步、定稿與記憶規則，React 透過 version counter 與 useSyncExternalStore 訂閱，不複製業務狀態。
 
-外框使用 AppShell，頂部三入口為施工日報、水位變化及設定。遷移中的舊頁面置於固定 host；舊樣式限制在該 host。日報依序為日期與工地、施工紀錄／進料／聯絡事項／特殊事項、底部摘要及檢查與預覽 BottomSheet。複製與定稿並複製共用面板，歷史使用 List。
+外框使用 AppShell，頂部三入口為施工日報、水位變化及設定。全部路由已遷移；共用內容 host 只承載 React，舊模板與專屬 CSS 已移除。日報依序為日期與工地、施工紀錄／進料／聯絡事項／特殊事項、底部摘要及檢查與預覽 BottomSheet。複製與定稿並複製共用面板，歷史使用 List。
 
 設定首頁以分組 List 連往記憶審核、主檔管理、井位、備份、多人共編及同步診斷。既有 hash 轉址保留。水位輸入、匯入、計算、近三日與複製工作流保留。
 
@@ -34,7 +34,7 @@
 | #settings/data | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
 | #settings/account | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
 | #settings/debug | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
-| #water-level | 未遷移 | 舊 host |
+| #water-level | 已遷移 | React 量測、歷史、匯入、變化量與複製 |
 
 ## 已知限制與驗證邊界
 
@@ -68,3 +68,17 @@
 - 設定導覽 12 項、格線 3 項、工種管理 4 項改為 React SSR；帳號與同步修復的輸出改從 React SSR 取得，保留角色、載入未知數量、全部待同步明細、衝突整筆選擇、未修改原操作等行為。OAuth、資料、同步及記憶邏輯的斷言未修改。
 - 設定、記憶、帳號原事件寫入流程保留；確認框改為共用 AlertDialog 佇列。井位頁直接呼叫既有 loadPoints／savePoint／deletePoint；普通表單與切換鎖不另建業務狀態。
 - 隔離 DB：N/A（未動 SQL）；線上 OAuth、Realtime 與實機：尚未驗證。
+
+## 8 驗證
+
+- tsc、E2E 型別檢查、check:release（56 檔／305 項）、兩種 BASE_PATH 建置通過；Node 22.23.5。Astryx doctor 24 pass、0 warn、0 fail，exit 0。
+- npm run test:e2e -- --fully-parallel --workers=4：60 通過、0 失敗、1 個既定 IME fixme。十份 baseline-output 仍逐字相等。
+- 新增七類 Typeahead × 兩種 IME 硬狀態的 14 項整合測試：工地、工種、材料類型、單位、聯絡廠商、聯絡工項、位置。組字期間強制通知 React 重繪後仍保留文字、焦點與游標；組字結束後選取的值不會被元件清空 query 的回呼擦除。沒有另寫輸入器或包裝元件。
+- 另驗水位量測／編輯／匯入／變化量／逐字複製／刪除，水位與歷史 360／390／430 版面及控制尺寸，以及工項欄位保存後的復原。帳號動作鎖是純 UI 暫態，表單值在停用控制前擷取；結果仍走既有帳號與同步函式。
+- 剩餘舊呈現契約改為 React SSR，混合測試中的資料與計算斷言不變；移除舊模板、事件綁定、專屬 CSS 與 theme.template.ts，theme 預覽產物明確忽略。main.ts 僅啟動與路由匯出。
+- src/data、src/sync、src/domain、DailyController、水位 calculator／parser／formatter／repository 與答案檔相對 6a 沒有變更。TSX 禁用內容掃描及 git diff --check 通過。
+- 隔離 DB：N/A（未動 SQL）；線上與實機：尚未驗證。
+
+- 最後看圖後透過 Astryx 主題編輯器把清單列、Checkbox 標籤及 DateTimeInput 日期／時間區段補至至少 44px；主題深淺色預覽已檢視。輸入器高度改由內容撐開，避免窄螢幕日期／時間換列時與下一個欄位重疊；三種寬度均直接檢查下一欄標籤位於時間區段下方。尺寸測試涵蓋實際區段與清單整列，並在觸控環境點擊列邊緣確認可導頁。
+
+- `SHOT_LABEL=after npx playwright test screenshots --workers=2`：2 通過、0 失敗。15 個畫面 × 深淺色共 30 張原圖，以原始解析度分成 21 張並排圖逐張檢視；未見文字溢出、不可讀深色內容或水位標籤重疊。日報整頁截圖中的固定摘要與 Sheet 只覆蓋當時視窗範圍，屬全頁截圖的固定定位呈現；Sheet 定稿／複製另有操作測試通過。

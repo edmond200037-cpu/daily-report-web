@@ -1,4 +1,3 @@
-import { escapeHtml } from '../shared/html';
 import type { WorkItem } from '../domain/daily';
 import type { NamedMemory } from '../data/daily-repository';
 export function normalizeFloor(value: string): string | null {
@@ -19,5 +18,3 @@ export function applyLocationMemory(work: WorkItem, memory?: Pick<NamedMemory, '
   const start = normalizeFloor(memory.startFloorRaw ?? '') || ''; const end = normalizeFloor(memory.endFloorRaw ?? '') || '';
   work.startFloorRaw = start; work.startFloorNormalized = start || null; work.endFloorRaw = end; work.endFloorNormalized = end || null;
 }
-
-export const locationOptions = (rows: NamedMemory[]): string => rows.filter((row) => (row.status ?? 'confirmed') === 'confirmed').map((row) => `<option value="${escapeHtml(row.name)}">${escapeHtml([row.startFloorRaw, row.endFloorRaw].filter(Boolean).join('～'))}</option>`).join('');

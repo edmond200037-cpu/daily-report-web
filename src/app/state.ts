@@ -1,7 +1,7 @@
 import type { ContactEditorDraft } from '../daily/entry-workflow';
 import type { WorkDetailUndo } from '../daily/work-detail-undo';
 import { type PwaUpdateState, consumePwaUpdateSuccess } from '../pwa/update-state';
-import { DailyController, type DailySaveState, type DailyDeleteUndo } from '../daily/daily-controller';
+import { DailyController, type DailySaveState } from '../daily/daily-controller';
 import type { NamedMemory, MaterialType, MaterialMemoryItem, DailySettingsSection, SpecialTemplate, MemoryCandidate, MemoryCandidateKey } from '../data/daily-repository';
 import type { MaterialEntry, FinalizedDailyReport } from '../domain/daily';
 import type { AuthSnapshot } from '../auth/auth-service';
@@ -69,7 +69,6 @@ class AppState {
   tradePickerSearchComposing = false;
   contactSearchComposing = false;
   materialConnectionSearchComposing = false;
-  tradeUndoQueue: TradeUndoEntry[] = [];
   suppressTradeSummaryClick = false;
   settingsRows: NamedMemory[] = [];
   settingsTrades: NamedMemory[] = [];
@@ -84,6 +83,7 @@ class AppState {
   settingsReturnModule: SettingsReturnModule = 'daily';
   renderedRoute: AppRoute | null = null;
   accountAuth: AuthSnapshot = { enabled: false, session: null, user: null };
+  accountActionBusy = false;
   accountSites: SiteSummary[] = [];
   accountActiveSiteRole: SiteSummary['role'] | null = null;
   accountActiveSiteId: string | null = null;
@@ -139,13 +139,6 @@ type MaterialEditor = { id: string; originalId: string | null; value: MaterialEn
 type ContactEditor = ContactEditorDraft;
 export type ContactSearchField = 'trade' | 'vendor' | 'task';
 type ActiveWorkAuxEditor = { workItemId: string; kind: 'location' | 'note' } | null;
-export const workItemComposerByTrade = new Map<string, { query: string; taskId: string | null }>();
-export const workItemDrag = { contact: false, pointerType: '', holdTimer: null as number | null, row: null as HTMLElement | null, placeholder: null as HTMLElement | null, indicator: null as HTMLElement | null, suppressClick: false, active: false, pending: false, tradeId: null as string | null, workItemId: null as string | null, pointerId: null as number | null, handle: null as HTMLElement | null, originalOrder: [] as string[], startX: 0, startY: 0, clientX: 0, clientY: 0, offsetX: 0, offsetY: 0, activeDropSlotIndex: null as number | null, preview: null as HTMLElement | null };
-// 四類資料列共用的整列長按排序狀態（kind 決定重排哪個集合）。
-export type EntryDragKind = 'trade' | 'material' | 'contact' | 'special';
-export const tradeDrag = { active: false, pending: false, kind: null as EntryDragKind | null, pointerType: '' as string, holdTimer: null as number | null, id: null as string | null, originalOrder: [] as string[], pointerId: null as number | null, offsetX: 0, offsetY: 0, startX: 0, startY: 0, activeDropSlotIndex: null as number | null, preview: null as HTMLElement | null, frame: null as number | null, clientX: 0, clientY: 0 };
-export const tradeSwipe = { active: false, eligible: false, id: null as string | null, kind: null as 'trade' | 'material' | 'contact' | 'special' | null, pointerId: null as number | null, startX: 0, startY: 0, offset: 0, root: null as HTMLElement | null };
-export type TradeUndoEntry = { undo: DailyDeleteUndo; expiresAt: number; timer: number };
 export const settingsState: { activeSection: DailySettingsSection; editingId: string | null; adding: boolean; dirty: boolean; selectedTradeTypeId: string | null; taskSearchKeyword: string; editingKind: 'trade' | 'tasks' | 'vendors' | null; expandedMaterialTypeId: string | null; editingMaterialItemId: string | null } = { activeSection: 'sites', editingId: null, adding: false, dirty: false, selectedTradeTypeId: null, taskSearchKeyword: '', editingKind: null, expandedMaterialTypeId: null, editingMaterialItemId: null };
 export const memoryReviewState: { openKind: MemoryCandidate['kind'] | null | undefined; nextKind: MemoryCandidate['kind'] | null; explicitKeys: Set<MemoryCandidateKey>; expandedKeys: Set<MemoryCandidateKey>; feedback: string; feedbackTone: 'success' | 'error' } = { openKind: undefined, nextKind: null, explicitKeys: new Set(), expandedKeys: new Set(), feedback: '', feedbackTone: 'success' };
 export type AccountLoadStage = '帳號驗證' | '工地清單' | '成員資料' | '本機同步佇列' | '衝突資料';

@@ -1,3 +1,8 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { settingsMarkup } from './helpers/react-settings';
+import { WaterPointsSettings } from '../../src/app/react-water-points';
+import { WaterContent, type WaterViewController } from '../../src/app/react-water';
 import { describe, expect, it } from 'vitest';
 import { WaterLevelController, waterLogSummary } from '../../src/water-level/controller.js';
 import { recalculate } from '../../src/water-level/calculator.js';
@@ -30,16 +35,17 @@ describe('水位摘要呈現契約', () => {
     controller.mode = 'history';
 
     await controller.handleAction('toggle-history', 'first');
-    expect(root.innerHTML).toContain('data-water-history="first"');
-    expect(root.innerHTML).toContain('aria-expanded="true"');
+    const markup = () => renderToStaticMarkup(createElement(WaterContent, { controller: controller as unknown as WaterViewController }));
+    expect(markup()).toContain('data-water-history="first"');
+    expect(markup()).toContain('aria-expanded="true"');
 
     await controller.handleAction('toggle-history', 'second');
     expect(controller.expandedHistoryId).toBe('second');
-    expect(root.innerHTML.match(/aria-expanded="true"/g)).toHaveLength(1);
+    expect(markup().match(/aria-expanded="true"/g)).toHaveLength(1);
 
     await controller.handleAction('toggle-output');
     expect(controller.outputOpen).toBe(true);
-    expect(root.innerHTML).toContain('複製最近三天');
+    expect(markup()).toContain('複製最近三天');
   });
 
   it('移除量測後以剩餘紀錄重新計算變化量', () => {
@@ -51,28 +57,8 @@ describe('水位摘要呈現契約', () => {
   });
 });
 
-describe('井位設定行內表單', () => {
-  const controller = () => { const c = new WaterLevelController({ innerHTML: '' }); c.points = [{ id: 'p1', name: 'A井' }, { id: 'p2', name: 'B井' }]; return c; };
-  it('井位以單行列呈現，列上無編輯／刪除按鈕，改名不使用 prompt', () => {
-    const html = controller().pointsView();
-    expect(html).toContain('class="settings-row" data-water-action="edit-point" data-id="p1"');
-    expect(html).toContain('data-water-action="add-point"');
-    expect(html).not.toContain('rename-point');
-    expect(html).not.toContain('delete-point');
-    expect(WaterLevelController.toString()).not.toContain('prompt(');
-  });
-  it('編輯時以表單取代該列並提供儲存／取消／刪除', async () => {
-    const c = controller(); await c.handleAction('edit-point', 'p2');
-    const html = c.pointsView();
-    expect(html).toContain('id="point-edit-form"');
-    expect(html).toContain('data-water-action="delete-point" data-id="p2"');
-    expect(html).not.toContain('data-id="p2"><span');
-    expect(html).toContain('data-id="p1"');
-  });
-  it('新增表單開啟時隱藏新增按鈕', async () => {
-    const c = controller(); await c.handleAction('add-point');
-    const html = c.pointsView();
-    expect(html).toContain('id="point-form"');
-    expect(html).not.toContain('data-water-action="add-point"');
-  });
+describe('React 井位設定', () => {
+ it('初始頁使用設定子頁及新增入口', () => { const html = settingsMarkup(WaterPointsSettings); expect(html).toContain('水位井位'); expect(html).toContain('新增井位'); expect(html).toContain('href="#settings"'); });
+ it('刪除影響範圍保持可見', () => { expect(settingsMarkup(WaterPointsSettings)).toContain('既有歷史紀錄保留名稱快照'); });
+ it('空白清單提供清楚狀態，CRUD 由瀏覽器測試覆蓋', () => { expect(settingsMarkup(WaterPointsSettings)).toContain('尚無井位'); });
 });

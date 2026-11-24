@@ -1,6 +1,7 @@
+import { dailyMarkup } from './helpers/react-daily';
 import { describe, expect, it } from 'vitest';
 import { createTrade, createWorkItem } from '../../src/domain/daily';
-import { sameWorkNames, workInputView, workSuggestions, clearWorkItemDetails } from '../../src/daily/work-input';
+import { sameWorkNames, workSuggestions, clearWorkItemDetails } from '../../src/daily/work-input';
 import type { NamedMemory } from '../../src/data/daily-repository';
 
 describe('手機連續工項與同名提醒', () => {
@@ -18,11 +19,10 @@ describe('手機連續工項與同名提醒', () => {
     expect(differentFloor.workItems).toHaveLength(2);
   });
   it('搜尋加入區在工項之前，提醒可由輔助工具讀取', () => {
-    const html = workInputView(trade);
-    expect(html.indexOf('data-continuous-work')).toBeLessThan(html.indexOf('data-inline-work'));
-    expect(html).toContain('aria-live="polite"');
-    expect(html).toContain('data-work-panel="location"');
-    expect(html).toContain('class="work-token__tools" hidden');
+    const html = dailyMarkup((daily) => { daily.report.tradeSections.push(trade); daily.expandedId = trade.id; });
+    expect(html.indexOf('搜尋或輸入下一個工項')).toBeLessThan(html.indexOf('data-inline-work'));
+    expect(html).toContain('astryx-typeahead'); expect(html).toContain('位置、樓層與備註');
+
   });
   it('新增推薦排除既有工項後再取六筆，待審核工項仍可選用', () => {
     const current = { ...trade, tradeTypeId: 'water' };

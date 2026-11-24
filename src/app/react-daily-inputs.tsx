@@ -37,6 +37,7 @@ import {
   clearWorkItemDetails,
 } from '../daily/work-input';
 import { splitWorkInput } from '../daily/input-workflow';
+import { canRestoreDetails, snapshotDetails, workUndoScope } from '../daily/work-detail-undo';
 import { applyLocationMemory, normalizeFloor } from '../daily/floor';
 import { startMaterialEditor } from '../daily/views/material-view';
 import { startContactEntry } from '../daily/views/contact-view';
@@ -87,6 +88,8 @@ async function save() {
 
 function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
   const [details, setDetails] = useState(false);
+  const locationQuerying = useRef(false);
+  const locationPicking = useRef(false);
   const showToast = useToast();
   const edit = (mutator: () => void) =>
     change(() => appState.daily.updateTradeOutputData(trade.id, mutator));
@@ -157,23 +160,28 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
             label="位置"
             size="lg"
             searchSource={locations}
-            value={selected(work.locationTextSnapshot)}
+            value={locationQuerying.current ? null : selected(work.locationTextSnapshot)}
             onChangeQuery={(text) => {
+              if (!text && locationPicking.current) return;
+              locationQuerying.current = true;
               if (!locked())
                 appState.daily.updateTradeOutputData(trade.id, () => {
                   work.locationTextSnapshot = text;
                   work.locationId = null;
                 });
             }}
-            onChange={(item) =>
+            onChange={(item) => {
+              locationPicking.current = Boolean(item);
+              queueMicrotask(() => { locationPicking.current = false; });
+              locationQuerying.current = false;
               edit(() => {
                 work.locationTextSnapshot = item?.label ?? '';
                 applyLocationMemory(
                   work,
                   appState.dailyLocations.find((row) => row.id === item?.id),
                 );
-              })
-            }
+              });
+            }}
           />
           <TextArea
             label="備註"
@@ -194,8 +202,10 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
             label="移除位置與備註"
             size="lg"
             onClick={() => {
-              const before = structuredClone(work);
+              const before = snapshotDetails(work);
+              const scope = workUndoScope(appState.daily.report);
               edit(() => clearWorkItemDetails(work));
+              const undo = { scope, tradeId: trade.id, workId: work.id, before, cleared: snapshotDetails(work) };
               const dismiss = showToast({
                 body: '已移除位置與備註',
                 autoHideDuration: 6000,
@@ -204,6 +214,9 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
                     label="復原"
                     size="lg"
                     onClick={() => {
+                      if (locked() || !canRestoreDetails(undo, appState.daily.report)) return;
+                      const current = appState.daily.trade(trade.id)?.workItems.find((row) => row.id === work.id);
+                      if (!current) return;
                       edit(() => {
                         for (const key of [
                           'startFloorRaw',
@@ -214,7 +227,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
                           'locationTextSnapshot',
                           'note',
                         ] as const)
-                          work[key] = before[key] as never;
+                          current[key] = before[key] as never;
                       });
                       dismiss();
                     }}
@@ -468,6 +481,8 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
 function MaterialEditor() {
   const editor = appState.materialEditor!;
   const value = editor.value;
+  const querying = useRef(new Set<string>());
+  const picking = useRef(new Set<string>());
   const fields = [
     ['materialTypeSnapshot', '材料類型'],
     ['itemName', '品名'],
@@ -479,7 +494,7 @@ function MaterialEditor() {
   return (
     <VStack gap={3} data-material-editor={editor.id}>
       {fields.map(([field, label]) =>
-        field === 'quantity' || field === 'unit' ? (
+        field === 'quantity' ? (
           <TextInput
             key={field}
             label={label}
@@ -508,23 +523,40 @@ function MaterialEditor() {
                           (field === 'supplierNameSnapshot'
                             ? 'supplier'
                             : field) &&
-                        row.materialTypeId === value.materialTypeId,
+                        (field === 'unit' || field === 'supplierNameSnapshot' || !value.materialTypeId || row.materialTypeId === value.materialTypeId),
                     )
                     .map((row) => ({ id: row.id, name: row.value })),
             )}
-            value={selected(value[field])}
+            value={querying.current.has(field) ? null : selected(value[field])}
             hasAutoFocus={field === 'materialTypeSnapshot'}
             isDisabled={locked()}
             onChangeQuery={(text) => {
+              // The Typeahead clears its query after a pick; that is not a
+              // request to erase the selected material field.
+              if (!text && picking.current.has(field)) return;
+              querying.current.add(field);
               value[field] = text;
+              if (field === 'materialTypeSnapshot') value.materialTypeId = appState.materialTypes.find((row) => row.name.trim() === text.trim())?.id ?? null;
             }}
             onChange={(item) => {
+              if (item) picking.current.add(field);
+              else picking.current.delete(field);
+              queueMicrotask(() => { picking.current.delete(field); });
+              querying.current.delete(field);
               value[field] = item?.label ?? '';
-              if (field === 'materialTypeSnapshot')
-                value.materialTypeId =
-                  appState.materialTypes.find(
-                    (row) => row.name === value[field],
-                  )?.id ?? null;
+              if (field === 'materialTypeSnapshot') {
+                const type = appState.materialTypes.find((row) => row.name === value[field]);
+                value.materialTypeId = type?.id ?? null;
+                value.unit = type?.recentUnit ?? '';
+                value.supplierNameSnapshot = type?.recentSupplierName ?? '';
+              }
+              if (field === 'itemName' && item && value.materialTypeId) {
+                const type = appState.materialTypes.find((row) => row.id === value.materialTypeId);
+                const specification = appState.materialMemory.filter((row) => row.materialTypeId === value.materialTypeId && row.fieldType === 'specification').sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0];
+                if (!value.specification) value.specification = specification?.value ?? '';
+                if (!value.unit) value.unit = type?.recentUnit ?? '';
+                if (!value.supplierNameSnapshot) value.supplierNameSnapshot = type?.recentSupplierName ?? '';
+              }
               notifyReact();
             }}
           />
@@ -568,6 +600,8 @@ function MaterialEditor() {
 
 function ContactEditor() {
   const editor = appState.contactEditor!;
+  const vendorQuerying = useRef(false);
+  const vendorPicking = useRef(false);
   const [epoch, setEpoch] = useState(0);
   const reorderable = createReorderable({
     onReorder: ({ key, to }) => {
@@ -602,18 +636,24 @@ function ContactEditor() {
             (row) => row.tradeTypeId === editor.value.tradeTypeId,
           ),
         )}
-        value={selected(editor.value.vendorNameSnapshot)}
+        value={vendorQuerying.current ? null : selected(editor.value.vendorNameSnapshot)}
         isDisabled={locked()}
         onChangeQuery={(text) => {
+          if (!text && vendorPicking.current) return;
+          vendorQuerying.current = true;
           editor.value.vendorNameSnapshot = text;
           editor.vendorQuery = text;
           persistEntryDraft();
         }}
         onChange={(item) => {
+          vendorPicking.current = Boolean(item);
+          queueMicrotask(() => { vendorPicking.current = false; });
+          vendorQuerying.current = false;
           editor.value.vendorNameSnapshot = item?.label ?? '';
           editor.value.vendorId =
             appState.dailyVendors.find((row) => row.id === item?.id)?.id ??
             null;
+          persistEntryDraft();
           notifyReact();
         }}
       />
@@ -876,6 +916,10 @@ export function DailyInputs() {
                       }}
                     />
                   )}
+                  {appState.daily.expandedId !== trade.id && <Text style={{ overflowWrap: 'anywhere' }}>
+                    {trade.workerCount ? `${trade.workerCount} 人` : '人數未填'} · {trade.workItems.find((work) => work.taskTextSnapshot.trim())?.taskTextSnapshot || '尚未填工項'}
+                    {trade.workItems.filter((work) => work.taskTextSnapshot.trim()).length > 1 ? `・另 ${trade.workItems.filter((work) => work.taskTextSnapshot.trim()).length - 1} 項` : ''}
+                  </Text>}
                   {appState.daily.expandedId === trade.id && (
                     <TradeEditor trade={trade} />
                   )}

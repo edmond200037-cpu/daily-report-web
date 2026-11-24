@@ -27,3 +27,9 @@ themes/**/*.pictures.json
 themes/**/*.history.json
 .mobile-test-results.json
 .test-results.json
+
+# Astryx generated preview artifacts
+themes/site-paper/*.png
+themes/site-paper/*.html
+themes/site-paper/*.pictures.json
+themes/site-paper/*.history.json

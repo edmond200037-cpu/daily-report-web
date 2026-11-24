@@ -60,3 +60,20 @@ test('工項頓號拆項保留尾端文字，組字結束才拆項', async ({ pa
   await expect(input).toHaveValue('工項乙');
   await expect(input).toBeFocused();
 });
+
+test('清除工項附加欄位在保存後仍可復原', async ({ page }) => {
+  await page.goto('/#daily');
+  await page.getByRole('button', { name: '新增施工紀錄', exact: true }).click();
+  await page.getByRole('combobox', { name: '選擇工種', exact: true }).fill('復原測試');
+  await page.getByRole('option', { name: '復原測試', exact: true }).click();
+  await page.getByRole('combobox', { name: '搜尋或輸入下一個工項', exact: true }).fill('配管');
+  await page.getByRole('option', { name: '配管', exact: true }).click();
+  await page.getByRole('button', { name: '位置、樓層與備註', exact: true }).click();
+  const note = page.getByRole('textbox', { name: '備註', exact: true });
+  await note.fill('待監造確認');
+  await page.getByRole('button', { name: '移除位置與備註', exact: true }).click();
+  await expect(note).toHaveValue('');
+  await expect(page.locator('[data-save-status]')).toHaveAttribute('data-state', 'saved');
+  await page.getByRole('button', { name: '復原', exact: true }).click();
+  await expect(note).toHaveValue('待監造確認');
+});

@@ -1,50 +1,12 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { dailyMarkup } from './helpers/react-daily';
+import { dailyMarkup, reviewMarkup } from './helpers/react-daily';
+import { createTrade } from '../../src/domain/daily';
 
-const styles = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
-const dailyCss = readFileSync(new URL('../../src/daily/daily.css', import.meta.url), 'utf8');
-
-// These are intentional source-level guardrails: CSS tokens have no runtime export,
-// so a visual-only refactor must explicitly update this contract alongside the design spec.
-describe('日報紙本表單基礎 tokens', () => {
-  it('定義日報限定的紙面、欄線、文字與施工橘 tokens', () => {
-    expect(styles).toContain('--daily-paper: #f6f3ec');
-    expect(styles).toContain('--daily-paper-raised: #fcfaf5');
-    expect(styles).toContain('--daily-ink: #2b2925');
-    expect(styles).toContain('--daily-line: #d7d0c4');
-    expect(styles).toContain('--daily-orange: #b84e16');
-    expect(styles).toContain('--daily-orange-strong: #8f380e');
-  });
-
-  it('將日報文字層級與觸控尺寸集中為可重用 tokens', () => {
-    expect(styles).toContain('--daily-title-size: 1.125rem');
-    expect(styles).toContain('--daily-body-size: .9375rem');
-    expect(styles).toContain('--daily-meta-size: .8125rem');
-    expect(styles).toContain('--daily-touch-target: 44px');
-  });
-
-  it('只在日報範圍套用紙面與欄線語言', () => {
-    expect(dailyCss).toContain('.daily-page { background: var(--daily-paper);');
-    expect(dailyCss).toContain('.daily-page .daily-entry, .daily-page .compact-entry {');
-    expect(dailyCss).toContain('border-color: var(--daily-line);');
-    expect(dailyCss).toContain('.daily-page .work-section__header h2 {');
-  });
-
-  it('讓日報表單與主要觸控控制至少達 44px', () => {
-    // Astryx owns control sizing; browser tests measure the rendered targets.
-    const html = dailyMarkup();
-    expect(html).toContain('astryx-button');
-    expect(html).toContain('data-size="lg"');
-    for (const label of ['新增施工紀錄', '新增聯絡事項', '新增特殊事項']) expect(html).toContain(label);
-  });
-
-  it('把正文 token 實際套用到日報資料內容', () => {
-    expect(dailyCss).toContain('.daily-page .daily-entry-summary__primary, .daily-page .entry-copy strong { font-size: var(--daily-body-size); }');
-  });
-
-  it('主操作按鈕覆蓋日報通用按鈕文字色，維持橘底白字對比', () => {
-    expect(dailyCss).toContain('.daily-page button.primary { border-color: var(--daily-orange); background: var(--daily-orange); color: #fff; }');
-    expect(dailyCss).toContain('.daily-page button.primary:hover { border-color: var(--daily-orange-strong); background: var(--daily-orange-strong); color: #fff; }');
-  });
+describe('React 日報表單基礎', () => {
+ it('四個輸入區使用統一元件', () => { expect((dailyMarkup().match(/class="astryx-heading/g) ?? []).length).toBeGreaterThanOrEqual(4); });
+ it('控制採大型尺寸，實際觸控尺寸由瀏覽器驗證', () => { expect(dailyMarkup()).toContain('data-size="lg"'); });
+ it('資料以 List 呈現', () => { expect(dailyMarkup()).toContain('astryx-list'); expect(dailyMarkup()).not.toContain('astryx-card'); });
+ it('主要新增控制有繁體中文標籤', () => { for (const text of ['新增施工紀錄', '新增進料', '新增聯絡事項', '新增特殊事項']) expect(dailyMarkup()).toContain(text); });
+ it('使用者文字由 React 跳脫', () => { const html = dailyMarkup((daily) => daily.report.tradeSections.push(createTrade('<script>測試</script>', '甲', 0))); expect(html).toContain('&lt;script&gt;測試&lt;/script&gt;'); expect(html).not.toContain('<script>測試'); });
+ it('主操作集中於 BottomSheet 入口', () => { expect(reviewMarkup()).toContain('檢查與預覽'); expect(reviewMarkup()).toContain('定稿並複製'); });
 });

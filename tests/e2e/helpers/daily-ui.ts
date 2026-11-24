@@ -84,7 +84,7 @@ export class DailyUI {
       for (const [index, material] of scenario.materials.entries()) {
         await this.click(this.action('add-normal-material'), '新增進料');
         const labels: Record<string, string> = { materialTypeSnapshot: '材料類型', itemName: '品名', specification: '規格', supplierNameSnapshot: '供應商', quantity: '數量', unit: '單位' };
-        const field = (name: string) => this.page.getByRole(name === 'quantity' || name === 'unit' ? 'textbox' : 'combobox', { name: labels[name], exact: true, includeHidden: true });
+        const field = (name: string) => this.page.getByRole(name === 'quantity' ? 'textbox' : 'combobox', { name: labels[name], exact: true, includeHidden: true });
         await this.type(field('materialTypeSnapshot'), material.type, '材料類型');
         await this.key(field('materialTypeSnapshot'), 'Tab', '提交材料類型');
         await this.type(field('itemName'), material.name, '進料品名');

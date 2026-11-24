@@ -1,12 +1,13 @@
-import { readFileSync } from 'node:fs';
+import { settingsMarkup, settingsState, appState } from './helpers/react-settings';
+import { dailyMarkup } from './helpers/react-daily';
+import { MasterSettings } from '../../src/app/react-settings';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { openDatabase } from '../../src/data/db.js';
 import { createDailyDraft, createTrade, createWorkItem } from '../../src/domain/daily';
 import { saveLocationMemory, listMemories, exportMemories, mergeMemoryBackup, finalizeDailyReport } from '../../src/data/daily-repository';
-import { applyLocationMemory, locationOptions } from '../../src/daily/floor';
+import { applyLocationMemory } from '../../src/daily/floor';
 
-const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 beforeEach(() => { vi.stubGlobal('indexedDB', new IDBFactory()); vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn(), dispatchEvent: vi.fn() }); vi.stubGlobal('document', { activeElement: null }); });
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -51,24 +52,13 @@ describe('日報選定位置帶入樓層', () => {
     const work = createWorkItem(0); work.locationId = 'l1'; work.locationTextSnapshot = '自訂'; applyLocationMemory(work, undefined);
     expect(work).toMatchObject({ locationId: null, locationTextSnapshot: '自訂' });
   });
-  it('datalist 只列正式位置，候選不出現，使用者字串已跳脫', () => {
-    const row = (name: string, status: 'confirmed' | 'candidate') => ({ id: name, name, normalizedName: name, status, startFloorRaw: '3FL', endFloorRaw: '' }) as never;
-    const html = locationOptions([row('東<側', 'confirmed'), row('候選處', 'candidate')]);
-    expect(html).toContain('東&lt;側'); expect(html).not.toContain('候選處'); expect(html).toContain('>3FL</option>');
+  it('位置設定以 React 跳脫使用者字串', () => {
+    const html = settingsMarkup(MasterSettings, () => { settingsState.activeSection = 'locations'; appState.settingsRows = [{ id: 'east', name: '東<側', startFloorRaw: '3FL', endFloorRaw: '', status: 'confirmed' }] as never; });
+    expect(html).toContain('東&lt;側'); expect(html).not.toContain('東<側'); expect(html).toContain('3FL');
   });
 });
 
-describe('位置樓層版面契約', () => {
-  it('設定位置表單順序：起始樓層、結束樓層、位置，使用共用雙欄', () => {
-    const view = read('../../src/settings/views/settings-view.ts');
-    const form = view.slice(view.indexOf('function locationForm'));
-    expect(form.indexOf('name="startFloor"')).toBeLessThan(form.indexOf('name="endFloor"'));
-    expect(form.indexOf('name="endFloor"')).toBeLessThan(form.indexOf('name="name"'));
-    expect(read('../../src/styles.css')).toContain('.settings-page .settings-edit-form .work-floor-fields { display: grid; grid-template-columns: var(--field-grid-columns); gap: var(--field-grid-gap);');
-  });
-  it('日報位置 input 連接 location-options，datalist 全頁只輸出一次', () => {
-    expect(read('../../src/daily/work-input.ts')).toContain('placeholder="例：東側" list="location-options"');
-    const view = read('../../src/daily/views/daily-view.ts');
-    expect(view.split('<datalist id="location-options">').length).toBe(2);
-  });
+describe('位置樓層 React 版面契約', () => {
+ it('設定位置表單順序為起始、結束與位置', () => { const html = settingsMarkup(MasterSettings, () => { settingsState.activeSection = 'locations'; settingsState.adding = true; }); expect(html.indexOf('name="startFloor"')).toBeLessThan(html.indexOf('name="endFloor"')); expect(html.indexOf('name="endFloor"')).toBeLessThan(html.indexOf('name="name"')); });
+ it('日報附加欄位使用按需編輯入口', () => { const html = dailyMarkup((daily) => { const trade = createTrade('水電', '甲', 0); trade.workItems.push(createWorkItem(0)); daily.report.tradeSections.push(trade); daily.expandedId = trade.id; }); expect(html).toContain('位置、樓層與備註'); expect(html).not.toContain('<datalist'); });
 });

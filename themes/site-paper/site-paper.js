@@ -476,73 +476,73 @@ export const sitePaperTheme = {
     "text-input": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "text-area": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "number-input": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "date-input": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "time-input": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "date-time-input": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "date-range-input": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "selector": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "multi-selector": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "complex-selector": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "typeahead": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "tokenizer": {
       "base": {
         "minHeight": "44px",
-        "height": "64px"
+        "height": "auto"
       }
     },
     "tab": {
@@ -555,6 +555,26 @@ export const sitePaperTheme = {
         "position": "sticky",
         "bottom": "0px",
         "backgroundColor": "var(--color-background-surface)"
+      }
+    },
+    "list-item": {
+      "base": {
+        "minHeight": "44px"
+      }
+    },
+    "checkbox-label": {
+      "base": {
+        "minHeight": "44px"
+      }
+    },
+    "date-time-input-date-segment": {
+      "base": {
+        "minHeight": "44px"
+      }
+    },
+    "date-time-input-time-segment": {
+      "base": {
+        "minHeight": "44px"
       }
     }
   },
