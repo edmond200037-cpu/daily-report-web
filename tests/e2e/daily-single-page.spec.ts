@@ -264,6 +264,9 @@ for (const trigger of ['click', 'Enter'])
     await chooseTrade(page, '立即新增測試工種', trigger);
     const trade = page.locator('[data-trade]');
     const id = await trade.getAttribute('data-trade');
+    // 選工種後 App 會延遲捲動並聚焦廠商欄；捲動會讓 Astryx 收起已展開的滑動列，需等它落定再滑。
+    const vendor = trade.locator('[data-daily-field="vendorNameSnapshot"]');
+    await expect(vendor).toBeFocused();
     await trade
       .locator('[data-daily-field="vendorNameSnapshot"]')
       .fill('復原廠商');
