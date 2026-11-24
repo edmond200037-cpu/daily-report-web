@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyMarkup } from './helpers/react-daily';
+import { addBarMarkup, dailyMarkup } from './helpers/react-daily';
 import { appState } from '../../src/app/state';
 import {
   createTrade,
@@ -8,9 +8,9 @@ import {
 } from '../../src/domain/daily';
 
 describe('React 新增及刪除入口契約', () => {
-  it('空畫面保留四種新增入口', () => {
-    const html = dailyMarkup();
-    expect((html.match(/data-daily-action="add-/g) ?? []).length).toBe(4);
+  it('空畫面保留四種新增入口，且只在工具列', () => {
+    expect((addBarMarkup().match(/data-daily-action="add-/g) ?? []).length).toBe(4);
+    expect(dailyMarkup()).not.toContain('data-daily-action="add-');
   });
   it('施工摘要不常駐刪除或取消新增', () => {
     const html = dailyMarkup((daily) => {
@@ -34,9 +34,11 @@ describe('React 新增及刪除入口契約', () => {
     });
     expect(html).not.toContain('cancel-new-entry');
   });
-  it('特殊事項保留明確刪除入口', () => {
+  it('特殊事項編輯 Sheet 保留明確刪除入口', () => {
     const html = dailyMarkup((daily) => {
-      daily.report.specialItems.push(createSpecial(0));
+      const item = createSpecial(0);
+      daily.report.specialItems.push(item);
+      appState.justAddedEntry = { kind: 'special', id: item.id };
     });
     expect(html).toContain('刪除特殊事項');
   });

@@ -18,20 +18,21 @@ import type { FinalizedDailyReport } from '../domain/daily';
 import { themes, defaultThemeSlug } from '../astryx-themes';
 
 // Frame follows shell-top-nav: navigation above one centered content region.
-export function WorkspaceFrame({ selected, children, footer }: { selected: string; children: ReactNode; footer?: ReactNode }) {
+export function WorkspaceFrame({ selected, children, footer, addBar }: { selected: string; children: ReactNode; footer?: ReactNode; addBar?: ReactNode }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   useFooterSafety(contentRef, footerRef, Boolean(footer));
   return <InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={selected === 'water-level' ? waterTheme : themes[defaultThemeSlug]}>
-    <AppShell height="auto" variant="surface" topNav={
+    <AppShell height="auto" variant="surface" topNav={<VStack gap={0}>
       <TabList value={selected} onChange={(value) => { location.hash = value; }} layout="fill" size="lg" role="navigation" hasDivider>
         <Tab value="daily" label="施工日報" href="#daily" />
         <Tab value="water-level" label="水位變化" href="#water-level" />
         <Tab value="settings" label="設定" href="#settings" />
       </TabList>
-    }>
+      {addBar}
+    </VStack>}>
       <Layout height="auto" contentWidth="60rem" content={<LayoutContent ref={contentRef}>{children}</LayoutContent>}
-        footer={footer ? <LayoutFooter ref={footerRef} hasDivider label="日報檢查與複製">{footer}</LayoutFooter> : undefined} />
+        footer={footer ? <LayoutFooter ref={footerRef} hasDivider padding={0} label="日報檢查與複製">{footer}</LayoutFooter> : undefined} />
     </AppShell>
   </Theme></InternationalizationProvider>;
 }

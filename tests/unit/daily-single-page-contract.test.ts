@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyMarkup } from './helpers/react-daily';
+import { addBarMarkup, dailyMarkup } from './helpers/react-daily';
 import { appState } from '../../src/app/state';
 
 describe('React 日報一頁到底契約', () => {
@@ -11,8 +11,8 @@ describe('React 日報一頁到底契約', () => {
       ),
     ).toEqual(['施工紀錄', '進料', '聯絡事項', '特殊事項']);
   });
-  it('每區保留可直接觸達的新增動作', () => {
-    const html = dailyMarkup();
+  it('四種新增動作由黏頂工具列直接觸達', () => {
+    const html = addBarMarkup();
     for (const action of [
       'add-trade',
       'add-normal-material',
@@ -28,7 +28,7 @@ describe('React 日報一頁到底契約', () => {
     );
   });
   it('切換工作區期間停用新增操作', () => {
-    const html = dailyMarkup(() => {
+    const html = addBarMarkup(() => {
       appState.workspaceSwitching = true;
     });
     expect(html).toMatch(

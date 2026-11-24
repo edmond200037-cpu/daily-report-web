@@ -1,21 +1,6 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, type RefObject } from 'react';
 
 const isInput = (target: EventTarget | null): target is HTMLElement => target instanceof HTMLElement && target.matches('input, textarea, select, [contenteditable="true"]');
-
-/** Focus and geometry are UI-only: never notify the report store or persist them. */
-export function useInputFocus(enabled: boolean): boolean {
-  const [focused, setFocused] = useState(false);
-  useEffect(() => {
-    if (!enabled) return;
-    const update = () => setFocused(isInput(document.activeElement));
-    const afterBlur = () => queueMicrotask(update);
-    document.addEventListener('focusin', update);
-    document.addEventListener('focusout', afterBlur);
-    update();
-    return () => { document.removeEventListener('focusin', update); document.removeEventListener('focusout', afterBlur); };
-  }, [enabled]);
-  return enabled && focused;
-}
 
 /** Reserve the measured footer and include it in native nearest-scroll calculations. */
 export function useFooterSafety(content: RefObject<HTMLDivElement | null>, footer: RefObject<HTMLDivElement | null>, enabled: boolean): void {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dailyMarkup } from './helpers/react-daily';
 import { startMaterialEditor } from '../../src/daily/views/material-view';
+import { appState } from '../../src/app/state';
 
 import {
   createTrade,
@@ -85,11 +86,12 @@ describe('React 日報資料列契約', () => {
     expect(html).toContain('不連接');
     expect(html).toContain('astryx-selector');
   });
-  it('特殊事項內容保持為文字輸入', () => {
+  it('特殊事項列顯示內容，編輯時以文字輸入開啟 Sheet', () => {
     const html = dailyMarkup((daily) => {
       const item = createSpecial(0);
       item.content = '下雨停工';
       daily.report.specialItems.push(item);
+      appState.justAddedEntry = { kind: 'special', id: item.id };
     });
     expect(html).toContain('下雨停工');
     expect(html).toContain('textarea');

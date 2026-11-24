@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { dailyMarkup } from './helpers/react-daily';
+import { addBarMarkup, dailyMarkup } from './helpers/react-daily';
 
 describe('React 日報輸入區', () => {
-  it('四區依工作順序呈現，保留四個新增動作', () => {
+  it('四區依工作順序呈現，新增動作在工具列', () => {
     const html = dailyMarkup();
     expect(
       [...html.matchAll(/<section[^>]*aria-label="([^"]+)"/g)].map(
@@ -15,6 +15,6 @@ describe('React 日報輸入區', () => {
       'add-contact',
       'add-special',
     ])
-      expect(html).toContain(`data-daily-action="${action}"`);
+      expect(addBarMarkup()).toContain(`data-daily-action="${action}"`);
   });
 });

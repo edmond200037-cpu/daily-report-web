@@ -32,6 +32,7 @@ vi.mock('../../../src/app/state', () => ({
 import { appState } from '../../../src/app/state';
 import { DailyInputs } from '../../../src/app/react-daily-inputs';
 import { DailyReview } from '../../../src/app/react-daily';
+import { DailyAddBar } from '../../../src/app/react-daily-addbar';
 
 export function dailyMarkup(
   prepare?: (daily: DailyController) => void,
@@ -48,4 +49,10 @@ export function dailyMarkup(
 export function reviewMarkup(): string {
   dailyMarkup();
   return renderToStaticMarkup(<DailyReview />);
+}
+
+export function addBarMarkup(prepare?: () => void): string {
+  dailyMarkup();
+  prepare?.();
+  return renderToStaticMarkup(<DailyAddBar />);
 }

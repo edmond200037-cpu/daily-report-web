@@ -19,6 +19,7 @@ import {
 import { Selector } from '@astryxdesign/core/Selector';
 import { DateInput } from '@astryxdesign/core/DateInput';
 import { Dialog } from '@astryxdesign/core/Dialog';
+import { onDailyAddRequest, scrollToDailySection } from '../daily/add-bar';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { appState } from './state';
@@ -806,6 +807,19 @@ export function DailyInputs() {
   } | null>(null);
   const showToast = useToast();
   const report = appState.daily.report;
+  useEffect(() => onDailyAddRequest((section) => {
+    if (locked()) return;
+    scrollToDailySection(section);
+    appState.justAddedEntry = null;
+    if (section === 'trade') setPicker('trade');
+    else if (section === 'contact') { if (!appState.contactEditor) setPicker('contact'); }
+    else if (section === 'material') {
+      if (!appState.materialEditor) { startMaterialEditor('normal'); notifyReact(); }
+    } else change(() => {
+      appState.daily.addSpecial();
+      appState.justAddedEntry = { kind: 'special', id: appState.daily.report.specialItems.at(-1)!.id };
+    });
+  }), []);
   const remove = async (
     kind: 'trade' | 'material' | 'contact' | 'special',
     id: string,
@@ -947,18 +961,9 @@ export function DailyInputs() {
         as="section"
         className="daily-section"
         aria-label="施工紀錄"
+        data-daily-section="trade"
       >
         <Heading level={2}>施工紀錄</Heading>
-        <Button
-          label="新增施工紀錄"
-          data-daily-action="add-trade"
-          size="lg"
-          isDisabled={locked()}
-          onClick={() => {
-            appState.justAddedEntry = null;
-            setPicker('trade');
-          }}
-        />
         <List hasDividers reorderable={reorder('trade')}>
           {report.tradeSections.map((trade) => {
             const expanded = appState.daily.expandedId === trade.id;
@@ -974,21 +979,8 @@ export function DailyInputs() {
           })}
         </List>
       </VStack>
-      <VStack gap={3} as="section" className="daily-section" aria-label="進料">
+      <VStack gap={3} as="section" className="daily-section" aria-label="進料" data-daily-section="material">
         <Heading level={2}>進料</Heading>
-        <Button
-          label="新增進料"
-          data-daily-action="add-normal-material"
-          size="lg"
-          isDisabled={locked()}
-          onClick={() => {
-            appState.justAddedEntry = null;
-            if (!appState.materialEditor) {
-              startMaterialEditor('normal');
-              notifyReact();
-            }
-          }}
-        />
         {appState.materialEditor && <MaterialEditor connection={appState.materialEditor.originalId ? materialConnection(appState.materialEditor.value) : null} onDelete={() => {
           const id = appState.materialEditor?.originalId;
           if (id) { appState.materialEditor = null; void remove('material', id); }
@@ -1008,15 +1000,9 @@ export function DailyInputs() {
         as="section"
         className="daily-section"
         aria-label="聯絡事項"
+        data-daily-section="contact"
       >
         <Heading level={2}>聯絡事項</Heading>
-        <Button
-          label="新增聯絡事項"
-          data-daily-action="add-contact"
-          size="lg"
-          isDisabled={locked() || Boolean(appState.contactEditor)}
-          onClick={() => setPicker('contact')}
-        />
         {appState.contactEditor && <ContactEditor onDelete={() => {
           const id = appState.contactEditor?.originalId;
           if (id) { appState.contactEditor = null; persistEntryDraft(); void remove('contact', id); }
@@ -1036,23 +1022,9 @@ export function DailyInputs() {
         as="section"
         className="daily-section"
         aria-label="特殊事項"
+        data-daily-section="special"
       >
         <Heading level={2}>特殊事項</Heading>
-        <Button
-          label="新增特殊事項"
-          data-daily-action="add-special"
-          size="lg"
-          isDisabled={locked()}
-          onClick={() =>
-            change(() => {
-              appState.daily.addSpecial();
-              appState.justAddedEntry = {
-                kind: 'special',
-                id: report.specialItems.at(-1)!.id,
-              };
-            })
-          }
-        />
         <List hasDividers reorderable={reorder('special')}>
           {report.specialItems.map((item) => (
             <ListItem
