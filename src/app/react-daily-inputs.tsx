@@ -25,7 +25,7 @@ import { appState } from './state';
 import { useAppVersion, notifyReact } from './react-store';
 import { confirmAction } from './react-confirm';
 import { isReadOnlySite } from './sync-runtime';
-import { handleDailyAction } from '../daily/views/daily-events';
+import { handleDailyAction, scrollAndFocus } from '../daily/views/daily-events';
 import {
   commitInputMemories,
   persistEntryDraft,
@@ -446,6 +446,22 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
         onChange={(item) => {
           if (item) add(item.label);
         }}
+        onKeyDown={(event) => {
+          // Enter without a highlighted suggestion commits the typed text
+          // (pre-React behaviour); a highlighted one is picked by Typeahead.
+          const input = event.target;
+          if (
+            !(input instanceof HTMLInputElement) ||
+            event.key !== 'Enter' ||
+            event.nativeEvent.isComposing ||
+            event.keyCode === 229 ||
+            composing.current ||
+            input.getAttribute('aria-activedescendant')
+          )
+            return;
+          event.preventDefault();
+          add(input.value);
+        }}
         emptySearchText="輸入工項後加入"
       />
       <Button
@@ -637,6 +653,7 @@ function ContactEditor({ onDelete }: { onDelete: () => void }) {
       <Text>{editor.value.tradeNameSnapshot}</Text>
       <Typeahead
         label="聯絡廠商"
+        id="contact-vendor"
         size="lg"
         searchSource={source(
           appState.dailyVendors.filter(
@@ -1115,6 +1132,7 @@ export function DailyInputs() {
               const vendor = memory
                 ? recentTradeVendor(appState.dailyVendors, memory.id)
                 : undefined;
+              let next = '#contact-vendor';
               if (picker === 'contact')
                 startContactEntry(
                   item.label,
@@ -1123,15 +1141,19 @@ export function DailyInputs() {
                   vendor?.id ?? null,
                 );
               else {
-                appState.daily.addTradeEntry(
+                const created = appState.daily.addTradeEntry(
                   item.label,
                   memory?.id ?? null,
                   vendor,
                 );
+                next = `[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`;
                 void save();
               }
               setPicker(null);
               notifyReact();
+              // Pre-React flow: jump to the next field after the Dialog
+              // has returned focus to its trigger.
+              setTimeout(() => scrollAndFocus(next), 0);
             }}
           />
           <Button

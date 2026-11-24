@@ -13,7 +13,7 @@ import { appendPendingContactTask } from './contact-view';
 import { persistEntryDraft, showEntrySaveError, commitInputMemories, capturePendingWork } from './daily-entry';
 import { escapeHtml } from '../../shared/html';
 
-function scrollAndFocus(selector: string): void {
+export function scrollAndFocus(selector: string): void {
   const input = app.querySelector<HTMLElement>(selector);
   input?.scrollIntoView({ block: 'center' });
   input?.focus({ preventScroll: true });

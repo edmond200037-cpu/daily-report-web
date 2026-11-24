@@ -77,3 +77,33 @@ test('清除工項附加欄位在保存後仍可復原', async ({ page }) => {
   await page.getByRole('button', { name: '復原', exact: true }).click();
   await expect(note).toHaveValue('待監造確認');
 });
+
+test('建議清單關閉時 Enter 仍加入單一工項', async ({ page }) => {
+  await page.goto('/#daily');
+  await page.getByRole('button', { name: '新增施工紀錄', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: '選擇工種', exact: true })
+    .fill('單項測試');
+  await page.getByRole('option', { name: '單項測試', exact: true }).click();
+  const input = page.getByRole('combobox', { name: '搜尋或輸入下一個工項' });
+  await input.pressSequentially('鋼板樁打設');
+  await expect(
+    page.getByRole('option', { name: '鋼板樁打設', exact: true }),
+  ).toBeVisible();
+  await input.press('Escape');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await input.press('Enter');
+  await expect(page.locator('[data-inline-work]')).toHaveCount(1);
+  await expect(page.locator('[data-inline-work]')).toHaveValue('鋼板樁打設');
+  await expect(input).toHaveValue('');
+});
+
+test('選完工種後焦點移到廠商欄', async ({ page }) => {
+  await page.goto('/#daily');
+  await page.getByRole('button', { name: '新增施工紀錄', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: '選擇工種', exact: true })
+    .fill('焦點測試');
+  await page.getByRole('option', { name: '焦點測試', exact: true }).click();
+  await expect(page.locator('[data-daily-field="vendorNameSnapshot"]')).toBeFocused();
+});
