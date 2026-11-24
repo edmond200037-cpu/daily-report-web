@@ -14,9 +14,12 @@ for (const scheme of ['light', 'dark'] as const) {
     const scenario = scenarios.find((item) => item.id === 'standard')!;
     await page.goto('/#daily');
     await new DailyUI(page, new Metrics(page, info)).fill(scenario, datesFor(process.env.DAILY_E2E_DATE!));
+    await page.screenshot({ path: `artifacts/screenshots/${label}/${scheme}/daily-preview.png`, fullPage: true });
+    await page.getByRole('button', { name: '關閉預覽' }).click();
     for (const route of routes) {
       await page.goto(`/#${route}`);
       await page.waitForTimeout(600);
+      await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: `artifacts/screenshots/${label}/${scheme}/${route.replace(/\//g, '_')}.png`, fullPage: true });
     }
   });

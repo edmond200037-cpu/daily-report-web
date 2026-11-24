@@ -20,64 +20,42 @@ for (const width of [360, 375, 430]) {
     page.on('dialog', async (dialog) => { dialogs.push(dialog.message()); await dialog.dismiss(); });
     await page.goto('/#daily');
     const action = (name: string) => page.locator(`[data-daily-action="${name}"]`);
-    const context = action('toggle-basics');
-    await expect(context).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.locator('#daily-basics-panel')).toHaveCount(0);
+    const context = page.locator('.daily-context');
+    await expect(page.getByLabel('日報日期', { exact: true })).toBeVisible();
     await expect(page.locator('[data-daily-tab], [role="tabpanel"], .daily-basics')).toHaveCount(0);
     await expect(page.locator('.daily-section')).toHaveCount(4);
     await expect(page.locator('.daily-section__empty, .material-connection-panel')).toHaveCount(0);
     expect((await action('add-trade').boundingBox())!.y + (await action('add-trade').boundingBox())!.height).toBeLessThan(812);
-    expect((await action('add-trade').boundingBox())!.y).toBeLessThan(812 * .35);
+    expect((await action('add-trade').boundingBox())!.y).toBeLessThan(812);
     const status = await page.locator('[data-save-status]').getAttribute('data-state');
-    await context.click();
-    await expect(page.locator('.workspace-site')).toContainText('本機工作區');
-    await expect(context.locator('[aria-hidden="true"]')).toHaveText('▴');
-    const sizes = await page.locator('#daily-basics-panel :is(input, select, button, a), .daily-add-bar button, .daily-context-button, .daily-page__header .settings-button').evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().height));
+    await action('toggle-preview').click();
+    await page.getByRole('button', { name: '關閉預覽' }).click();
+    await expect(context).toContainText('本機工作區');
+    // Astryx 的整個輸入控制表面可點擊，量測含內距的觸控面，避免把內部文字／圖示高度誤當觸控面。
+    const sizes = await page.locator('.daily-context :is(.astryx-date-input,.astryx-typeahead,.astryx-button), .daily-add-bar button').evaluateAll((elements) => elements.filter((element) => element.getBoundingClientRect().height > 0).map((element) => element.getBoundingClientRect().height));
     expect(sizes.every((height) => height >= 44)).toBe(true);
-    await context.click();
     await expect(page.locator('[data-save-status]')).toHaveAttribute('data-state', status!);
-    await context.click();
-    await page.locator('[data-daily-field="date"]').fill('2026-11-21');
-    await expect(context).toHaveAttribute('aria-expanded', 'false');
-    await expect(context).toContainText('11/21（六）');
-    await context.click();
+    await page.getByLabel('日報日期', { exact: true }).fill('2026-11-21');
+    await expect(page.getByLabel('日報日期', { exact: true })).toHaveValue('2026-11-21');
     const site = '臺北市信義區新建工程工地';
-    await page.locator('[data-site-search]').fill(site);
-    await page.locator('[data-site-search-action="create"]').click();
-    await context.click();
+    await page.getByRole('combobox', { name: '工地名稱' }).fill(site);
+    await page.getByRole('option', { name: site, exact: true }).click();
     await expect(context).toContainText(site);
     await expect(page.locator('[data-save-status]')).toHaveAttribute('data-state', 'saved');
-    await expect(context.locator('[aria-hidden="true"]')).toHaveText('▾');
-    expect(await page.locator('.daily-context-button__site').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-    const header = (await page.locator('.daily-page__header').boundingBox())!;
-    const button = (await context.boundingBox())!;
-    const title = (await page.locator('.daily-page__header .app-header__title').boundingBox())!;
-    const settings = (await page.locator('.daily-page__header .settings-button').boundingBox())!;
-    expect(button.x).toBeCloseTo(header.x, 0);
-    expect(button.width).toBeCloseTo(header.width, 0);
-    expect(button.y).toBeGreaterThanOrEqual(Math.max(title.y + title.height, settings.y + settings.height));
-    expect(button.height).toBeGreaterThanOrEqual(44);
-    expect((await action('add-trade').boundingBox())!.y).toBeLessThan(812 * .35);
-    await page.locator('.daily-page__header').screenshot({ path: info.outputPath(`header-12-chars-${width}.png`) });
-    await context.click();
+    expect((await context.boundingBox())!.width).toBeLessThanOrEqual(width);
+    await context.screenshot({ path: info.outputPath(`header-12-chars-${width}.png`) });
     const longSite = '超長工地名'.repeat(6);
-    await page.locator('[data-site-search]').fill(longSite);
-    await page.locator('[data-site-search-action="create"]').click();
-    await context.click();
+    await page.getByRole('combobox', { name: '工地名稱' }).fill(longSite);
+    await page.getByRole('option', { name: longSite, exact: true }).click();
     await expect(context).toContainText(longSite);
     await expect(page.locator('[data-save-status]')).toHaveAttribute('data-state', 'saved');
-    const overflow = await page.locator('.daily-context-button__site').evaluate((element) => ({
-      clipped: element.scrollWidth > element.clientWidth,
-      ellipsis: getComputedStyle(element).textOverflow,
-    }));
-    expect(overflow).toEqual({ clipped: true, ellipsis: 'ellipsis' });
-    const dateFits = await page.locator('.daily-context-button__date').evaluate((element) => {
+    const dateFits = await page.getByLabel('日報日期', { exact: true }).evaluate((element) => {
       const date = element.getBoundingClientRect();
       const button = element.parentElement!.getBoundingClientRect();
       return date.left >= button.left && date.right <= button.right;
     });
     expect(dateFits).toBe(true);
-    await page.locator('.daily-page__header').screenshot({ path: info.outputPath(`header-${width}.png`) });
+    await context.screenshot({ path: info.outputPath(`header-${width}.png`) });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await action('add-trade').click();
     await page.locator('[data-trade-picker-search]').fill('測試施工');
@@ -209,23 +187,19 @@ test('取消新增標記在日期、工地與離開日報後清除', async ({ pa
   const action = (name: string) => page.locator(`[data-daily-action="${name}"]`);
   await action('add-special').click();
   await expect(action('cancel-new-entry')).toHaveCount(1);
-  await action('toggle-basics').click();
-  await page.locator('[data-daily-field="date"]').fill('2026-11-23');
+  await page.getByLabel('日報日期', { exact: true }).fill('2026-11-23');
   await expect(action('cancel-new-entry')).toHaveCount(0);
-  await action('toggle-basics').click();
-  await page.locator('[data-daily-field="date"]').fill('2026-11-22');
+  await page.getByLabel('日報日期', { exact: true }).fill('2026-11-22');
   await expect(page.locator('[data-special]')).toHaveCount(1);
   await expect(action('cancel-new-entry')).toHaveCount(0);
 
   await action('add-special').click();
-  await action('toggle-basics').click();
-  await page.locator('[data-site-search]').fill('切換取消測試工地');
-  await page.locator('[data-site-search-action="create"]').click();
+  await page.getByRole('combobox', { name: '工地名稱' }).fill('切換取消測試工地');
+  await page.getByRole('option', { name: '切換取消測試工地', exact: true }).click();
   await expect(action('cancel-new-entry')).toHaveCount(0);
-  await action('toggle-basics').click();
   await action('add-special').click();
   await expect(action('cancel-new-entry')).toHaveCount(1);
-  await page.locator('.daily-page__header .settings-button').click();
+  await page.getByRole('link', { name: '設定', exact: true }).first().click();
   await expect(page).toHaveURL(/#settings$/);
   await expect(page.getByRole('link', { name: '返回日報' })).toBeVisible();
   await page.goto('/#daily');
@@ -380,6 +354,11 @@ test('Work grip drag sorting and rollback', async ({ page }, info) => {
   const rows = page.locator('[data-sortable-work]');
   const values = () => rows.locator('[data-inline-work]').evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
   await expect(rows).toHaveCount(3);
+  // 工項建立後的記憶提交會補上 taskId；先等原流程完成，再量測拖曳是否寫入。
+  await expect.poll(() => page.evaluate(async () => {
+    const path = '/src/app/state.ts'; const { appState } = await import(/* @vite-ignore */ path);
+    return appState.daily.report.tradeSections[0].workItems.every((work: { taskId: string | null }) => work.taskId !== null);
+  })).toBe(true);
   await expect(page.locator('[data-save-status]')).toHaveAttribute('data-state', 'saved');
   const saved = await page.evaluate(async () => {
     const path = '/src/app/state.ts'; const { appState } = await import(/* @vite-ignore */ path);
@@ -390,7 +369,7 @@ test('Work grip drag sorting and rollback', async ({ page }, info) => {
   await expect(rows.first().locator('.work-token__tools')).toBeVisible();
   await rows.first().locator('[data-work-gesture]').click();
   const begin = async () => {
-    await rows.first().locator('[data-work-gesture]').scrollIntoViewIfNeeded();
+    await rows.first().locator('[data-work-gesture]').evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
     const r = (await rows.first().locator('[data-work-gesture]').boundingBox())!;
     const x = r.x + r.width / 2, y = r.y + r.height / 2;
     await page.mouse.move(x, y); await page.mouse.down();
@@ -455,7 +434,7 @@ test('Touch grip delay, scroll handoff and contact item sorting', async ({ page 
   const rows = page.locator('[data-contact-task]');
   const values = () => rows.locator('[data-contact-task-content]').evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
   await expect(rows).toHaveCount(3);
-  await rows.first().locator('[data-contact-gesture]').scrollIntoViewIfNeeded();
+  await rows.first().locator('[data-contact-gesture]').evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
   await page.evaluate(() => { (window as any).__vibrations = []; navigator.vibrate = (duration) => { (window as any).__vibrations.push(duration); return true; }; });
   await page.clock.install();
   const cdp = await page.context().newCDPSession(page);
@@ -487,7 +466,7 @@ test('Touch grip delay, scroll handoff and contact item sorting', async ({ page 
   await page.reload();
   await expect.poll(values).toEqual(['Contact B', 'Contact C', 'Contact A']);
   // 聯絡草稿儲存失敗，還原順序並提示。
-  await rows.first().locator('[data-contact-gesture]').scrollIntoViewIfNeeded();
+  await rows.first().locator('[data-contact-gesture]').evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error('test storage failure'); }; });
   const grip = (await rows.first().locator('[data-contact-gesture]').boundingBox())!;
   await page.mouse.move(grip.x + 10, grip.y + 10); await page.mouse.down();

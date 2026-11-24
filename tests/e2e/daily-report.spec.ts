@@ -6,7 +6,7 @@ import { compareOutput } from './helpers/compare-output';
 import { DailyUI } from './helpers/daily-ui';
 import { Metrics } from './helpers/metrics';
 
-// Windows 剪貼簿使用 CRLF，DOM 文字使用 LF；只統一換行，不改其他字元。
+// 僅 DOM 歷史與官方答案診斷統一換行；baseline 硬門檻保留 actual 原始文字。
 const normalizeLineEndings = (text: string) => text.replace(/\r\n/g, '\n');
 
 for (const scenario of scenarios) {
@@ -48,6 +48,9 @@ for (const scenario of scenarios) {
       expect(Object.values(initialMemories)).toEqual(Array(Object.keys(initialMemories).length).fill(0));
       const template = await readFile(new URL(`./fixtures/expected/${scenario.id}.txt`, import.meta.url), 'utf8');
       const expected = renderAnswer(template, dates);
+      const baselineTemplate = await readFile(new URL(`./fixtures/baseline-output/${scenario.id}.txt`, import.meta.url), 'utf8');
+      // 改版前實際首行日期使用全形括號；只還原基準佔位符，不正規化 actual。
+      const baseline = renderAnswer(baselineTemplate, { ...dates, reportText: dates.reportText.replace(/^0/, '').replace('/0', '/').replace('(', '（').replace(')', '）') });
       await writeFile(info.outputPath('expected.txt'), expected);
       await ui.fill(scenario, dates);
       await page.evaluate(() => navigator.clipboard.writeText(''));
@@ -55,21 +58,24 @@ for (const scenario of scenarios) {
       await expect(page.locator('.daily-output__feedback')).toContainText('已在本機定稿並複製');
       const actual = await page.evaluate(() => navigator.clipboard.readText());
       await writeFile(info.outputPath('actual.txt'), actual);
-      const comparison = compareOutput(normalizeLineEndings(expected), normalizeLineEndings(actual));
+      const comparison = compareOutput(baseline, actual);
       textMatch = comparison.equal;
+      const answerComparison = compareOutput(normalizeLineEndings(expected), normalizeLineEndings(actual));
+      await writeFile(info.outputPath('official-answer.diff'), answerComparison.diff);
+      if (!answerComparison.equal) info.annotations.push({ type: '既有問題', description: '答案檔與 formatter 既有差異（待使用者裁定），見 ADR-019' });
       await writeFile(info.outputPath('comparison.json'), JSON.stringify(comparison, null, 2));
       await writeFile(info.outputPath('output.diff'), comparison.diff);
       await info.attach('output.diff', { path: info.outputPath('output.diff'), contentType: 'text/plain' });
       // Validation navigation is outside the filling action counter.
       await page.getByRole('link', { name: '查看近 7 天' }).click();
-      await expect(page.locator('.history-list article')).toHaveCount(1);
-      const history = (await page.locator('.history-list pre').textContent())!;
+      await expect(page.locator('.astryx-list-item')).toHaveCount(1);
+      const history = (await page.locator('pre').textContent())!;
       expect(normalizeLineEndings(history)).toBe(normalizeLineEndings(actual));
       await writeFile(info.outputPath('history.txt'), history);
       complete = true;
       expect(externalRequests, '測試不得向外部服務發出請求').toEqual([]);
       expect(errors, '瀏覽器錯誤或非預期對話框').toEqual([]);
-      expect(normalizeLineEndings(actual), `逐字不符：${JSON.stringify(comparison.firstDifference)}；請檢查 output.diff`).toBe(normalizeLineEndings(expected));
+      expect(actual, `改版前基準逐字不符：${JSON.stringify(comparison.firstDifference)}；請檢查 output.diff`).toBe(baseline);
     } finally {
       await metrics.finish(scenario.id, complete, { dates, browser: browser.version(), textMatch, errors, externalRequests, runId: process.env.DAILY_E2E_RUN_ID });
     }

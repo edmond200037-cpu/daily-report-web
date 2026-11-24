@@ -11,7 +11,8 @@ import type { SyncOperation } from '../sync/types';
 import type { MemoryImportPreview } from '../sync/memory-import';
 import type { ConflictReview } from '../sync/conflict-review';
 import type { SyncRecoveryPreview } from '../sync/recovery';
-export const app = document.querySelector<HTMLDivElement>('#app')!;
+export const app = document.createElement('section');
+app.dataset.legacyUi = '';
 class AppState {
   daily!: DailyController;
   workDetailUndo: WorkDetailUndo | undefined;

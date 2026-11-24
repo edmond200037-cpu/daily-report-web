@@ -48,17 +48,15 @@ export class DailyUI {
   }
 
   async fill(scenario: Scenario, dates: ReturnType<typeof datesFor>) {
-    await this.click(this.action('toggle-basics'), '展開日期與工地');
-    await expect(this.page.locator('.workspace-site')).toContainText('本機工作區');
-    await expect(this.page.locator('[data-daily-field="date"]')).toHaveValue(dates.reportISO);
-    await expect(this.page.locator('[data-site-search]')).toHaveValue('');
+    await expect(this.page.locator('.daily-context')).toContainText('本機工作區');
+    await expect(this.page.getByLabel('日報日期', { exact: true })).toHaveValue(dates.reportISO);
+    await expect(this.page.getByRole('combobox', { name: '工地名稱' })).toHaveValue('');
     await expect(this.page.locator('[data-trade]')).toHaveCount(0);
-    await expect(this.page.locator('[data-daily-action="toggle-preview"]')).toContainText('0 筆施工 · 0 人 · 0 筆聯絡');
+    await expect(this.page.locator('.astryx-layout-footer')).toContainText('0 筆施工 · 0 人 · 0 筆聯絡');
     await this.metrics.sample('empty');
-    await this.type(this.page.locator('[data-site-search]'), '鑫天地六期', '工地');
-    await this.click(this.page.locator('[data-site-search-action="create"]'), '新增並使用工地');
+    await this.type(this.page.getByRole('combobox', { name: '工地名稱' }), '鑫天地六期', '工地');
+    await this.click(this.page.getByRole('option', { name: '鑫天地六期', exact: true }), '新增並使用工地');
     await expect(this.page.locator('#site-search-suggestions')).toHaveCount(0);
-    await this.click(this.action('toggle-basics'), '收合日期與工地');
     const tradeIds: string[] = [];
     let longWorkSampled = false;
     for (const [index, trade] of scenario.trades.entries()) {

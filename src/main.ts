@@ -1,3 +1,7 @@
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import { mountReactShell } from './app/react-shell';
+import { notifyReact } from './app/react-store';
 import { bindTradePickerDialog } from './daily/trade-picker-dialog';
 import { registerSW } from 'virtual:pwa-register';
 import { transitionPwaUpdateState, PWA_UPDATE_SUCCESS_MARKER } from './pwa/update-state';
@@ -17,7 +21,7 @@ import { pwaUpdateNotice, clearPwaUpdateTimeout, normalizeSearch } from './app/s
 import { bindBackgroundSync, refreshDailySyncStatus, refreshActiveMemoryCache, scheduleBackgroundSync } from './app/sync-runtime';
 import { bindWorkspaceEvents } from './app/workspace-events';
 import { renderAccountLoading, refreshAccount, renderAccountLoaded, bindAccountEvents } from './account/account-controller';
-import { dailyHistoryView, dailyView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
+import { dailyView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
 import { refreshDailyAddBar } from './daily/add-bar';
 import { bindMaterialConnectionResize, syncMaterialConnectionCurves, discardMaterialEditor, materialDirty } from './daily/views/material-view';
 import { contactDirty } from './daily/views/contact-view';
@@ -36,6 +40,7 @@ import './daily/daily.css';
 import './water-level/water.css';
 import './account/account.css';
 import './daily/input-workflow.css';
+mountReactShell();
 const pickerDialog = bindTradePickerDialog(app, async () => { appState.tradePickerOpen = false; await renderApp(); });
 export function parseRoute(hash: string): AppRoute {
   const normalized = hash || '#daily';
@@ -56,6 +61,7 @@ export function parseRoute(hash: string): AppRoute {
 }
 bindMaterialConnectionResize();
 export async function renderApp(): Promise<void> {
+  try {
   if (location.hash === '#settings/daily' || location.hash === '#daily/settings') { history.replaceState(null, '', '#settings'); return renderApp(); }
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
   if (location.hash === '#settings/daily/vendors') { history.replaceState(null, '', '#settings/daily/trade-tasks'); return renderApp(); }
@@ -86,7 +92,8 @@ export async function renderApp(): Promise<void> {
     if (token !== appState.renderToken) return;
     restoreEntryScope(); persistEntryDraft();
     pickerDialog.beforeRender();
-    app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`;
+    app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? '' : dailyView()}${pwaUpdateNotice()}`;
+    if (route.page === 'main') app.querySelectorAll('.daily-page__header,.daily-basics-panel,.module-page__tabs,.daily-output').forEach((node) => node.remove());
     applyDailyReadOnly();
     refreshDailyAddBar();
     pickerDialog.afterRender();
@@ -94,6 +101,7 @@ export async function renderApp(): Promise<void> {
     return;
   }
   try { await mountWater(route, token); } catch (error) { if (token !== appState.renderToken) return; const summary = error instanceof Error ? error.message : '無法讀取本機水位資料。'; app.innerHTML = `<main class="app-shell"><section class="form-card"><h1>水位功能暫時無法開啟</h1><p>錯誤摘要：${escapeHtml(summary)}</p><p><a href="#water-level">重新載入</a>　<a href="#daily">返回施工日報</a></p></section></main>${pwaUpdateNotice()}`; }
+  } finally { notifyReact(); }
 }
 bindDailyInputEvents();
 bindSettingsShortcutEvents();

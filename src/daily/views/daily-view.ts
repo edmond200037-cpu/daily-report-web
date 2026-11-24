@@ -1,4 +1,5 @@
 import { dropIndicatorMarkup } from '../drag-presentation';
+import { notifyReact } from '../../app/react-store';
 import { formatDate } from '../../format/date-format';
 import { locationOptions } from '../floor';
 import { canRestoreDetails } from '../work-detail-undo';
@@ -123,11 +124,12 @@ export function dailyView(): string {
   return `<main class="app-shell module-page daily-page">${appState.entrySaveError ? `<p data-entry-save-error role="alert">${escapeHtml(appState.entrySaveError)}</p>` : ''}${dailyHeader(saveLabel)}${basicsView()}<div class="module-page__tabs">${moduleTabs('daily')}</div>${dailyAddBar()}${syncControl()}<datalist id="location-options">${locationOptions(appState.dailyLocations)}</datalist><section class="daily-workspace" aria-label="日報內容">${dailySections()}</section><aside class="daily-output ${appState.dailyPreviewOpen ? 'daily-output--open' : ''}"><button type="button" class="daily-output__toggle collapsed-summary" data-daily-action="toggle-preview" aria-expanded="${appState.dailyPreviewOpen}" aria-controls="daily-output-content"><span><strong>${appState.daily.report.tradeSections.length} 筆施工 · ${appState.daily.report.tradeSections.reduce((sum, trade) => sum + (validateWorkerCount(trade.workerCount) ? Number(trade.workerCount) : 0), 0)} 人 · ${appState.daily.report.contacts.length} 筆聯絡</strong><span>${escapeHtml(previewSummary)}</span></span><span>${appState.dailyPreviewOpen ? '收合預覽' : '檢查與預覽'}</span></button><div id="daily-output-content">${previewBody}</div></aside>${connectionNotice}${undoNotice}${detailNotice}${picker}</main>`;
 }
 export function dailyHistoryView(): string { return `<main class="app-shell settings-page"><header class="top app-header"><div><h1>近 7 天日報</h1></div><a class="settings-button" href="#daily">返回日報</a></header>${moduleTabs('daily')}${workspaceSiteView()}<section class="history-list">${appState.finalizedReports.length ? appState.finalizedReports.map((report) => `<article><div><strong>${escapeHtml(report.siteNameSnapshot)}｜${escapeHtml(report.date)}</strong><span>定稿：${escapeHtml(new Date(report.finalizedAt).toLocaleString('zh-TW'))}</span></div><pre>${escapeHtml(report.outputText)}</pre><button type="button" data-daily-action="copy-finalized" data-finalized-id="${escapeHtml(report.id)}">再次複製</button></article>`).join('') : '<p class="empty">近 7 天尚無已定稿日報。</p>'}</section><p class="hint">日報定稿後保留 7 天，超過期限會自動清除。</p></main>`; }
-function dailySyncLabel(): string {
+export function dailySyncLabel(): string {
   const label = appState.dailySaveState === 'saving' ? '儲存中…' : appState.dailySaveState === 'error' ? '儲存失敗，請勿關閉頁面' : appState.dailySyncConflictCount ? `衝突 ${appState.dailySyncConflictCount} 筆${appState.dailySyncPendingCount ? `・待同步 ${appState.dailySyncPendingCount} 筆` : ''}` : appState.dailySyncPendingCount ? `已存本機・待同步 ${appState.dailySyncPendingCount} 筆` : appState.dailySyncStatusUnknown ? '已存本機・同步狀態待確認' : appState.daily.report.shared && appState.lastPulledAt ? '已存本機・目前日報無待送項目' : appState.dailyLastSavedAt ? `已保存本機 ${appState.dailyLastSavedAt}` : '本機自動儲存';
   return label + appState.memoryQueueSummary;
 }
 export function updateDailySaveStatus(): void {
+  notifyReact();
   if (appState.daily) for (const trade of appState.daily.report.tradeSections) {
     const badge = app.querySelector<HTMLElement>(`[data-trade="${CSS.escape(trade.id)}"] .trade-row-summary__status`);
     if (badge) { const issue = validateTrade(trade, appState.daily.linkedMaterialEntries(trade.id))[0]; badge.textContent = trade.status === 'complete' ? '資料齊全' : issue?.message ?? '需檢查'; badge.className = `trade-row-summary__status entry-status--${tradeStatusTone(trade.status)}`; }

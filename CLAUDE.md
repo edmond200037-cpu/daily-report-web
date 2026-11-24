@@ -20,7 +20,7 @@
 
 ## 2. 技術棧與指令
 
-Vite 6 + TypeScript 5（strict）+ vite-plugin-pwa（injectManifest）+ Vitest 4 + IndexedDB（`fake-indexeddb` 測試）+ `@supabase/supabase-js`。**沒有 UI 框架**，`src/main.ts` 直接以字串模板／DOM 操作渲染，Hash Routing。後端為 Supabase（PostgreSQL + RLS + RPC + Realtime）。部署為 GitHub Pages。Node 22。
+Vite 6 + TypeScript 5（strict）+ React 19 + Astryx 0.7.17 + vite-plugin-pwa（injectManifest）+ Vitest 4 + IndexedDB（`fake-indexeddb` 測試）+ `@supabase/supabase-js`。依 ADR-019 漸進遷移，Hash Routing、既有資料及同步控制器保留。後端為 Supabase（PostgreSQL + RLS + RPC + Realtime）。部署為 GitHub Pages。Node 22。
 
 ```sh
 npm ci                  # 安裝（乾淨安裝）
@@ -104,7 +104,7 @@ node scripts/db-behavior-tests.mjs   # 隔離 PostgreSQL 行為測試（見 §7�
 - 「完整性」由內容自動推導，不加逐卡手動「完成」標記。UI 上 `draft` 顯示為「未完成」，但**資料狀態名稱不改**。
 - 獨立進料最多連接**一個**工程條目（單一來源）；連接／解除／改接要原子化，並使受影響工種退回草稿。
 - 工項排序只提供長按 400ms 拖曳握把（無鍵盤替代，ADR-007 已接受）；左滑 ≥72px 且水平為主才刪除，並提供 6 秒復原。
-- 不得重做水位頁或全站導覽（設定導覽依 ADR-015）；不得變更資料模型、備份格式、formatter、驗證規則、定稿快照，除非需求明確要求。
+- 水位頁與全站三入口導覽依 ADR-019 遷移至 React + Astryx；不得變更資料模型、備份格式、formatter、驗證規則、定稿快照，除非需求明確要求。
 
 ## 5. 開發慣例
 

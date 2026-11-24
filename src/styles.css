@@ -72,6 +72,8 @@ body {
   line-height: 1.5;
 }
 
+/* 遷移中的舊樣式只作用於舊頁面 host，避免影響 Astryx 元件。 */
+@scope ([data-legacy-ui]) {
 button, input, textarea, select { font: inherit; }
 
 button {
@@ -386,3 +388,5 @@ p, .hint, .empty, small { text-wrap: pretty; }
 .settings-page .settings-edit-form .work-floor-fields { display: grid; grid-template-columns: var(--field-grid-columns); gap: var(--field-grid-gap); margin: 0 0 var(--space-3); }
 .settings-page .settings-edit-form .work-floor-fields label { margin: 0; }
 .settings-page .settings-edit-form .form-actions--submit { position: static; margin-inline: 0; padding: 0; background: transparent; }
+
+} /* legacy UI scope */

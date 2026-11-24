@@ -1,0 +1,49 @@
+{
+  "sourceRevision": "eba954fac976cf4d61224af6399847e53a95c18a",
+  "reportISO": "2026-11-24",
+  "source": "改版前 HEAD 隔離舊 UI，真實剪貼簿輸出；未以 formatter 生成答案",
+  "platform": "win32",
+  "newline": "保留原始剪貼簿位元組",
+  "records": [
+    {
+      "id": "standard",
+      "sha256": "b5ece63e0c3d0da9c4e7bd12a871280c61812a31bc962393d386cffc4a5b0cb3"
+    },
+    {
+      "id": "same-spec-multiple-loads",
+      "sha256": "b5ece63e0c3d0da9c4e7bd12a871280c61812a31bc962393d386cffc4a5b0cb3"
+    },
+    {
+      "id": "plan-a-today",
+      "sha256": "9f4a83f082bb2bf86b0cfb3e4670d98bb8495ba2760a32e07d9c4c6ef7aa95ac"
+    },
+    {
+      "id": "plan-b-cross-month",
+      "sha256": "d2b9ffdf1d9c3e74f9046eab9cb78d2aff8f39631fe1e53789bf4fd1db91b1fa"
+    },
+    {
+      "id": "plan-c-cross-year",
+      "sha256": "34fd89f1f25e6a1739715c68de404fbd0f6255634ca1143ee8fc31ab11fae2ad"
+    },
+    {
+      "id": "plan-d-no-materials-no-contacts",
+      "sha256": "a12525343927a4abc7b329490fc7efbb91f1111027aa2778278fc0410a00aeff"
+    },
+    {
+      "id": "plan-e-long-day",
+      "sha256": "b52b532e384c9fc636352455dd05554c66b7498a73d2a13f56c7e0ef18e3db98"
+    },
+    {
+      "id": "paste-1120",
+      "sha256": "be9e2e539d15fe98a0621fbc2713cbd59e89325aa15b98c7e48ad5ea655f9567"
+    },
+    {
+      "id": "paste-1117",
+      "sha256": "1c0b52a41d69eeb9eb5454ff29a29e75078ae4ad43426baedd387bb68486e469"
+    },
+    {
+      "id": "paste-1118",
+      "sha256": "db1bea2600c75c5480bc1e4235b0ffe9f985be4b1c9dfc73b30d43cd395f4d3c"
+    }
+  ]
+}

@@ -3,3 +3,5 @@
 
 # E2E answer templates compare literal LF and punctuation.
 tests/e2e/fixtures/expected/*.txt text eol=lf
+# Baseline snapshots preserve the old Windows UI's literal clipboard bytes.
+tests/e2e/fixtures/baseline-output/*.txt -text whitespace=cr-at-eol

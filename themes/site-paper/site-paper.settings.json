@@ -1,0 +1,56 @@
+{
+  "name": "site-paper",
+  "like": "neutral",
+  "mode": "both",
+  "settings": [
+    {
+      "thing": "accent",
+      "value": "#b84e16",
+      "source": "dial"
+    },
+    {
+      "thing": "min-height",
+      "value": "44px",
+      "source": "property",
+      "on": "button"
+    },
+    {
+      "thing": "min-height",
+      "value": "44px",
+      "source": "property",
+      "on": "inputs"
+    },
+    {
+      "thing": "min-height",
+      "value": "44px",
+      "source": "property",
+      "on": "tab"
+    },
+    {
+      "thing": "height",
+      "value": "64px",
+      "source": "property",
+      "on": "inputs"
+    },
+    {
+      "thing": "position",
+      "value": "sticky",
+      "source": "property",
+      "on": "layout-footer"
+    },
+    {
+      "thing": "bottom",
+      "value": "0px",
+      "source": "property",
+      "on": "layout-footer"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-background-surface)",
+      "source": "property",
+      "on": "layout-footer"
+    }
+  ],
+  "palette": "52084763c151c611b9acbce9a599644a21955e0614dd5e35a3934e01d418f60a",
+  "lifted": []
+}

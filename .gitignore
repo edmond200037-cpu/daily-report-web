@@ -18,5 +18,12 @@ dist/
 supabase/.temp/
 artifacts/
 *.zip
+# Astryx theme editor visual review output; source and built app themes stay tracked.
+themes/.astryx-render-*/
+themes/**/preview*.html
+themes/**/sheet*.html
+themes/**/*.png
+themes/**/*.pictures.json
+themes/**/*.history.json
 .mobile-test-results.json
 .test-results.json

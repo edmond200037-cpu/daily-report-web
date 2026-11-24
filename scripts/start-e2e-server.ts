@@ -5,6 +5,8 @@ process.env.VITE_SUPABASE_URL = '';
 process.env.VITE_SUPABASE_PUBLISHABLE_KEY = '';
 const server = await createServer({
   base: '/',
+  // Keep isolated old-UI checkouts from sharing Vite's dependency chunks via node_modules.
+  cacheDir: 'artifacts/vite-e2e-cache',
   resolve: { preserveSymlinks: true },
   define: {
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(''),
