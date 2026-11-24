@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import zhTW from '@astryxdesign/core/locales/zh-TW.json';
+import { astryxOverrides } from './astryx-locale';
 import { Theme } from '@astryxdesign/core/theme';
 import { AppShell } from '@astryxdesign/core/AppShell';
 import { TabList, Tab } from '@astryxdesign/core/TabList';
@@ -15,7 +16,7 @@ import { themes, defaultThemeSlug } from '../astryx-themes';
 
 // Frame follows shell-top-nav: navigation above one centered content region.
 export function WorkspaceFrame({ selected, children, footer }: { selected: string; children: ReactNode; footer?: ReactNode }) {
-  return <InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }}><Theme theme={themes[defaultThemeSlug]}>
+  return <InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={themes[defaultThemeSlug]}>
     <AppShell height="auto" variant="surface" topNav={
       <TabList value={selected} onChange={(value) => { location.hash = value; }} layout="fill" size="lg" role="navigation" hasDivider>
         <Tab value="daily" label="施工日報" href="#daily" />

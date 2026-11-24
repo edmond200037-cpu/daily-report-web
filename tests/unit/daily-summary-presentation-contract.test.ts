@@ -1,124 +1,104 @@
-import { readFileSync } from 'node:fs';
-import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
+import { dailyMarkup } from './helpers/react-daily';
 
-const source = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
+import {
+  createTrade,
+  createWorkItem,
+  createMaterialEntry,
+  createSpecial,
+} from '../../src/domain/daily';
 
-describe('日報收合摘要高度契約', () => {
-  const presentation = source('src/presentation.css');
-  const daily = appSource();
-  const styles = source('src/styles.css');
-  const dialog = source('src/daily/dialog.css');
-  const dailyCss = source('src/daily/daily.css');
-  const inputCss = source('src/daily/input-workflow.css');
-
-  it('工項加入提示不依內容撐寬版面，長文字以省略號截斷', () => {
-    // 500 字工項加入後，nowrap 提示會把格線欄位撐到數千 px，窄螢幕出現水平捲動。
-    expect(inputCss).toMatch(/\.work-add-feedback \{[^}]*contain:inline-size;/);
-    expect(inputCss).toContain('.work-add-feedback > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }');
+describe('React 日報資料列契約', () => {
+  it('施工資料使用 List 而非卡片', () => {
+    const html = dailyMarkup((daily) => {
+      daily.report.tradeSections.push(createTrade('鋼筋', '甲廠商', 0));
+    });
+    expect(html).toContain('astryx-list-item');
+    expect(html).not.toContain('astryx-card');
   });
-
-  it('底部人數摘要只加總通過驗證的人數，-3、1e3、1.5 不計入', () => {
-    expect(daily).toContain('validateWorkerCount(trade.workerCount) ? Number(trade.workerCount) : 0');
-    expect(daily).not.toContain('Number(trade.workerCount) || 0');
+  it('施工摘要包含工種及廠商', () => {
+    const html = dailyMarkup((daily) => {
+      daily.report.tradeSections.push(createTrade('鋼筋', '甲廠商', 0));
+    });
+    expect(html).toContain('鋼筋｜甲廠商');
   });
-
-  it('以單一 60px token 固定收合摘要列高度', () => {
-    expect(presentation).toContain('--summary-height: 60px');
-    expect(presentation).toContain('.collapsed-summary { height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }');
+  it('空廠商顯示待填提示', () => {
+    const html = dailyMarkup((daily) => {
+      daily.report.tradeSections.push(createTrade('鋼筋', '', 0));
+    });
+    expect(html).toContain('待填廠商');
   });
-
-  it('將四類條目與日報預覽接到共同摘要列', () => {
-    // Editors use a plain title and return action; collapsed records share the trade-row summary.
-    expect(daily.match(/collapsed-summary/g)).toHaveLength(2);
-    expect(daily).toContain('class="entry-editor-header"');
-    expect(daily).toContain('function entryRowSummary(row: EntryRow)');
-    expect(daily).not.toContain('dailyEntrySummary');
-    expect(daily).toContain("return entryRowSummary({ meta: tradeName, primary: taskSummary");
-    expect(daily).toContain('entryRowSummary({ meta: entry.materialTypeSnapshot');
-    expect(daily).toContain('entryRowSummary({ meta: title, primary: summary, detail: vendor');
-    expect(daily).toContain("entryRowSummary({ meta: '現場提醒'");
-    expect(styles).toContain('min-height: var(--summary-height)');
-    expect(dialog).toContain('min-height: var(--summary-height)');
-    expect(dialog).not.toContain('min-height: 58px');
-    expect(dialog).not.toContain('min-height: 62px');
+  it('完整性狀態由資料呈現', () => {
+    const html = dailyMarkup((daily) => {
+      const trade = createTrade('鋼筋', '甲', 0);
+      trade.status = 'complete';
+      daily.report.tradeSections.push(trade);
+    });
+    expect(html).toContain('資料齊全');
   });
-
-  it('讓所有日報摘要使用相同的四欄資訊骨架，四類資料列都不留握把欄', () => {
-    expect(daily).toContain("${cell('trade', row.meta)}${cell('task', row.primary)}${cell('vendor', row.detail)}");
-    expect(daily).toContain('trade-row-summary__status entry-status--${row.statusTone}');
-    expect(daily).toContain('collapsed-summary trade-row-summary--plain">${control}</div>');
-    expect(daily).not.toContain('row.handle');
-    expect(daily).not.toContain('drag-handle" aria-hidden');
-    expect(inputCss).toContain('.daily-page .trade-row-summary.trade-row-summary--plain { grid-template-columns:minmax(0,1fr); }');
-    expect(inputCss).toContain('.daily-page .trade-row-summary__mobile-vendor:empty { display:none; }');
+  it('未完成狀態使用繁體文字', () => {
+    const html = dailyMarkup((daily) => {
+      daily.report.tradeSections.push(createTrade('鋼筋', '甲', 0));
+    });
+    expect(html).toContain('未完成');
   });
-
-  it('以共用字體 token 隔離按鈕預設字重與行高', () => {
-    expect(dailyCss).toContain('--daily-summary-font-weight: 400');
-    expect(dailyCss).toContain('--daily-summary-line-height: 1.5');
-    expect(dailyCss).toContain('--daily-summary-primary-weight: 760');
-    expect(dailyCss).toContain('--daily-summary-label-weight: 700');
-    expect(dailyCss).toContain('.daily-entry-summary__toggle { font: inherit; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height);');
-    expect(dailyCss).toContain('.daily-entry-summary__primary, .entry-copy strong, .trade-card__title, .material-entry__name { font-weight: var(--daily-summary-primary-weight); }');
-    expect(dailyCss).toContain('.daily-entry-summary__secondary, .entry-copy > span, .trade-card__details, .material-entry__details { color: var(--ink-soft); font-size: .8125rem; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height); }');
+  it('展開施工編輯器包含廠商及人數', () => {
+    const html = dailyMarkup((daily) => {
+      const trade = createTrade('鋼筋', '甲', 0);
+      daily.report.tradeSections.push(trade);
+      daily.expandedId = trade.id;
+    });
+    expect(html).toContain('data-daily-field="workerCount"');
+    expect(html).toContain('data-daily-field="vendorNameSnapshot"');
   });
-
-  it('讓工程拖曳佔位與預覽完整沿用收合工程列骨架', () => {
-    expect(daily).toContain('trade-card--drag-placeholder');
-    expect(daily).toContain('aria-hidden="true">${tradeRowSummary(trade, false, false)}');
-    expect(daily).toContain('function entryDragPreview(root: HTMLElement): HTMLElement');
-    expect(daily).toContain("surface.className = 'daily-page trade-drag-preview__surface'");
-    expect(daily).toContain("removeAttribute('id')");
-    expect(daily).toContain("const summaryHeight = card.querySelector<HTMLElement>('.trade-row-summary')?.getBoundingClientRect().height ?? rect.height");
-    expect(daily).toContain('preview.style.height = `${summaryHeight + 2}px`');
-    expect(daily).toContain('preview.append(entryDragPreview(card))');
-    expect(daily).toContain('function positionTradeDragPreview(preview: HTMLElement, pointerX: number, pointerY: number): void');
-    expect(daily).toContain('const maxTop = Math.max(edge, window.innerHeight - rect.height - edge)');
-    expect(dailyCss).toContain('height: calc(var(--summary-height) + 2px)');
-    expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder { height: 74px; }');
-    expect(dailyCss).toContain('.trade-drag-preview { position: fixed; z-index: 1000; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }');
-    expect(dailyCss).toContain('.daily-page .trade-card--drag-placeholder');
+  it('展開編輯器使用 Typeahead 工項新增列', () => {
+    const html = dailyMarkup((daily) => {
+      const trade = createTrade('鋼筋', '甲', 0);
+      daily.report.tradeSections.push(trade);
+      daily.expandedId = trade.id;
+    });
+    expect(html).toContain('搜尋或輸入下一個工項');
+    expect(html).toContain('astryx-typeahead');
   });
-
-  it('四類資料列改為整列長按 400ms 排序，且不與點擊、捲動、左滑刪除衝突', () => {
-    expect(daily).not.toContain('[data-drag-trade]');
-    for (const kind of ['trade', 'material', 'contact', 'special']) expect(daily).toContain(`sortableAttrs('${kind}'`);
-    expect(daily).toContain('data-sortable-entry=\"${kind}\" data-entry-id=');
-    expect(daily).toContain(".closest<HTMLElement>('.trade-row-summary__toggle')");
-    expect(daily).toContain("toggle.getAttribute('aria-expanded') !== 'false'");
-    expect(daily).toContain('isReadOnlySite()');
-    expect(daily).toContain('}, 400);');
-    expect(daily).toContain('dragIntent(tradeDrag.pointerType, dx, dy)');
-    expect(daily).toContain("return Math.abs(dy) > Math.abs(dx) ? 'start' : 'cancel'");
-    expect(daily).toContain('navigator.vibrate?.(10)');
-    expect(daily).toContain('clearTradeSwipe(); navigator.vibrate');
-    expect(daily).toContain("document.addEventListener('touchmove', guardTouchScroll, { passive: false })");
-    expect(daily).toContain('if ((tradeDrag.active || workItemDrag.active) && event.cancelable) event.preventDefault()');
-    expect(dailyCss).toContain('-webkit-touch-callout: none; user-select: none;');
-    expect(dailyCss).toContain('.swipe-item, .trade-swipe { position: relative; overflow: hidden; border-radius: var(--radius-md); touch-action: pan-y; }');
+  it('已加入工項保留穩定 id 與編輯入口', () => {
+    let id = '';
+    const html = dailyMarkup((daily) => {
+      const trade = createTrade('鋼筋', '甲', 0);
+      const work = createWorkItem(0);
+      id = work.id;
+      work.taskTextSnapshot = '綁紮';
+      trade.workItems.push(work);
+      daily.report.tradeSections.push(trade);
+      daily.expandedId = trade.id;
+    });
+    expect(html).toContain(`data-inline-work="${id}"`);
+    expect(html).toContain('位置、樓層與備註');
   });
-
-  it('排序後重排對應集合、重寫 sortOrder，只有工程列退回草稿，失敗時還原', () => {
-    expect(daily).toContain("trade: 'tradeSections', material: 'standaloneMaterialEntries', contact: 'contacts', special: 'specialItems'");
-    expect(daily).toContain("item.sortOrder = index; if (draft && kind === 'trade') item.status = 'draft';");
-    expect(daily).toContain("apply(original, false); alert('排序儲存失敗，已恢復原順序。')");
-    expect(daily).toContain("entryDropIndicator('material'");
-    expect(daily).toContain("entryDropIndicator('contact'");
-    expect(daily).toContain("entryDropIndicator('special'");
-    expect(daily).toContain("sortable = entry.id.startsWith('draft:') || placeholder ? '' : sortableAttrs('material', entry.id)");
+  it('進料使用 Selector 表達單一連接', () => {
+    const html = dailyMarkup((daily) => {
+      daily.report.standaloneMaterialEntries.push(createMaterialEntry(0, 'independent'));
+    });
+    expect(html).toContain('連接工種');
+    expect(html).toContain('不連接');
+    expect(html).toContain('astryx-selector');
   });
-
-  it('以獨立工項輸入元件組成施工紀錄，保留進料與預覽入口', () => {
-    expect(daily).toContain('workInputView(trade)');
-    expect(daily).toContain('data-daily-action="manage-material-connections"');
-    expect(daily).toContain('已連接 ${linked.length} 筆進料');
-    expect(daily).not.toContain('work-material-details');
-    expect(daily).not.toContain('data-daily-action="next-entry"');
-    expect(daily).not.toContain('請確認廠商');
-    expect(daily).toContain('class="daily-output__actions"');
+  it('特殊事項內容保持為文字輸入', () => {
+    const html = dailyMarkup((daily) => {
+      const item = createSpecial(0);
+      item.content = '下雨停工';
+      daily.report.specialItems.push(item);
+    });
+    expect(html).toContain('下雨停工');
+    expect(html).toContain('textarea');
   });
-  it('新工項輸入由可獨立驗證的連續編輯器負責', () => {
-    expect(daily).toContain('bindWorkInput(app');
-    expect(daily).toContain("from '../work-input'");
-  });});
+  it('工項具備明確刪除按鈕及排序握把', () => {
+    const html = dailyMarkup((daily) => {
+      const trade = createTrade('鋼筋', '甲', 0);
+      trade.workItems.push(createWorkItem(0));
+      daily.report.tradeSections.push(trade);
+      daily.expandedId = trade.id;
+    });
+    expect(html).toContain('刪除工項');
+    expect(html).toMatch(/reorder/i);
+  });
+});

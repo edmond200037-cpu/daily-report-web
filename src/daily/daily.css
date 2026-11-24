@@ -7,10 +7,6 @@
 .subtabs button.active { border-bottom-color: var(--accent); background: transparent; color: var(--ink); }
 
 
-.swipe-item, .trade-swipe { position: relative; overflow: hidden; border-radius: var(--radius-md); touch-action: pan-y; }
-.swipe-item__delete, .trade-swipe__delete { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 1.9rem; background: #be3131; color: #fff; font-size: 1.25rem; }
-.swipe-item > article, .swipe-item > section, .trade-swipe > .trade-card { position: relative; transform: translateX(var(--trade-swipe-offset, 0px)); transition: transform 160ms ease-out; }
-.trade-swipe__delete span { font-size: 1.25rem; line-height: 1; }
 
 .daily-entry-summary, .entry-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); min-height: var(--entry-height); width: 100%; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height); padding: 0; text-align: left; }
 .daily-entry-summary:hover, .entry-summary:hover { background: var(--surface-muted); }
@@ -22,7 +18,6 @@
 .daily-entry-summary__toggle .daily-entry-summary__copy { grid-column: 1; grid-row: 1 / -1; }
 .trade-card__header.entry-copy { width: 100%; min-height: var(--entry-height); border: 0; border-radius: 0; background: transparent; color: inherit; }
 .trade-card__header.entry-copy:hover { border-color: transparent; background: transparent; }
-.trade-card--drag-placeholder { height: calc(var(--summary-height) + 2px); border-style: dashed; pointer-events: none; }
 .daily-entry-summary__primary, .daily-entry-summary__secondary, .entry-copy strong, .entry-copy > span, .trade-card__title, .trade-card__details, .material-entry__name, .material-entry__details { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .daily-entry-summary__primary, .entry-copy strong, .trade-card__title, .material-entry__name { font-weight: var(--daily-summary-primary-weight); }
 .daily-entry-summary__secondary, .entry-copy > span, .trade-card__details, .material-entry__details { color: var(--ink-soft); font-size: .8125rem; font-weight: var(--daily-summary-font-weight); line-height: var(--daily-summary-line-height); }
@@ -37,9 +32,6 @@
 .work-item { padding: .55rem 0; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--surface-muted) 62%, transparent); }
 .work-item__main-row { display: grid; grid-template-columns: var(--work-item-leading-column) minmax(0, 1fr) var(--work-item-action-column); align-items: center; gap: var(--work-item-column-gap); }
 .work-item__main-row > input { grid-column: 2; min-width: 0; min-height: 42px; box-sizing: border-box; }
-.work-item__drag-handle { align-self: end; margin: 0; }
-.work-item__drag-handle { grid-column: 1; width: 100%; min-height: 32px; justify-content: center; border: 0; background: transparent; color: var(--ink-faint); cursor: grab; font-size: 1rem; padding: .25rem; touch-action: none; }
-.work-item__drag-handle:active { cursor: grabbing; }
 .work-item__actions { position: relative; grid-column: 3; display: block; min-width: 0; }
 .work-item__actions-trigger { width: 100%; min-width: 0; min-height: var(--daily-touch-target); padding-inline: 0; }
 .work-item__aux-menu button, .work-item__aux-summary button { min-height: 32px; border: 0; background: transparent; color: var(--ink-soft); font-size: .8125rem; padding: .25rem; }
@@ -59,10 +51,6 @@
 .work-item-location-row input { min-width: 0; }
 .work-item__aux-menu { position: absolute; top: calc(100% + .2rem); right: 0; z-index: 2; display: grid; min-width: 7rem; gap: .1rem; padding: .25rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); box-shadow: 0 8px 20px rgb(0 0 0 / 12%); }
 .work-item select { border-radius: var(--radius-sm); padding: .55rem; }
-.daily-page .work-item--drag-placeholder { box-sizing: border-box; border: 1px dashed var(--daily-line); background: var(--daily-paper-raised); opacity: .38; }
-.work-item--drag-placeholder * { pointer-events: none; }
-.work-item-drop-indicator { height: 4px; margin: calc(var(--work-item-stack-gap) * -.5) 0; margin-inline: calc(var(--work-item-leading-column) + var(--work-item-column-gap)) 0; border-radius: 2px; background: var(--daily-orange); pointer-events: none; }
-.work-item-drop-indicator--trailing { margin-top: calc(var(--work-item-stack-gap) * -.5); }
 
 .material-tag { font-size: .75rem; }
 .material-entry__divider { height: 0; margin: 0; }
@@ -142,19 +130,13 @@
 .daily-page .entry-status--attention { border-color: var(--daily-orange); background: transparent; color: var(--daily-orange-strong); }
 .daily-page .trade-card__content, .daily-page .material-entry__content, .daily-page .contact-card__content, .daily-page .special-card__content { border-color: var(--daily-line); }
 .daily-page .vendor-card, .daily-page .work-item, .daily-page .work-item__aux-editor, .daily-page .contact-task { border-color: var(--daily-line); border-radius: var(--radius-sm); background: var(--daily-paper-muted); }
-.daily-page .work-item__drag-handle, .daily-page .work-item__aux-menu button, .daily-page .work-item__aux-summary button { min-width: var(--daily-touch-target); min-height: var(--daily-touch-target); color: var(--daily-ink-soft); }
 .daily-page .work-item__main-row > input, .daily-page .contact-search-field__input, .daily-page .contact-task textarea { min-height: var(--daily-touch-target); }
 .daily-page .contact-task__handle, .daily-page .contact-suggestions__option { min-height: var(--daily-touch-target); }
 .daily-page .work-item-composer > button, .daily-page .work-item__actions-trigger { min-height: var(--daily-touch-target); border-color: var(--daily-line-strong); color: var(--daily-ink-soft); }
 .daily-page .work-item-composer > button:hover:not(:disabled), .daily-page .work-item-composer > button:focus-visible, .daily-page .work-item__actions-trigger:hover, .daily-page .work-item__actions-trigger:focus-visible { border-color: var(--daily-orange); background: var(--daily-orange-soft); color: var(--daily-orange-strong); }
-.daily-page .work-item-drop-indicator { background: var(--daily-orange); }
 
 /* Phase 3: engineering remains sortable and expandable in the shared article-card shell. */
 .daily-page .trade-card { background: var(--daily-paper-raised); }
-.daily-page .trade-card--drag-placeholder { border-style: dashed; background: var(--daily-paper-raised); opacity: .38; }
-.trade-drag-preview { position: fixed; z-index: 1000; pointer-events: none; opacity: .88; box-shadow: 0 4px 12px rgb(24 33 38 / 16%); }
-.trade-drag-preview__surface { background: transparent; }
-.trade-drag-preview .trade-card { margin: 0; }
 .daily-page .trade-row-summary { display: grid; grid-template-columns: var(--entry-leading) minmax(0, 1fr); width: 100%; height: var(--summary-height); min-height: var(--summary-height); max-height: var(--summary-height); overflow: hidden; }
 .daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) 10rem; align-items: stretch; min-width: 0; border: 0; border-radius: 0; background: transparent; color: var(--daily-ink); font: inherit; padding: 0; text-align: left; }
 .daily-page .trade-row-summary__mobile-meta { display: none; }
@@ -170,7 +152,6 @@
 .daily-page .trade-row-summary__status.entry-status--attention { border-color: transparent; background: var(--daily-incomplete-bg); box-shadow: inset 0 0 0 1px var(--daily-incomplete-border); color: var(--daily-incomplete-ink); }
 
 @media (max-width: 639px) {
-  .daily-page .trade-card--drag-placeholder { height: 74px; }
   .daily-page .trade-row-summary { height: 72px; min-height: 72px; max-height: 72px; }
   .daily-page .trade-row-summary__toggle { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: repeat(2, minmax(0, 1fr)); }
   .daily-page .trade-row-summary__trade, .daily-page .trade-row-summary__vendor { display: none; }
@@ -218,7 +199,3 @@
 
 .daily-page .cancel-new-entry { display: block; grid-column: 1 / -1; width: 100%; min-height: var(--daily-touch-target); border-radius: 0; background: transparent; color: var(--daily-ink-soft); }
 .daily-page .trade-undo-notice button { min-height: var(--daily-touch-target); }
-
-.work-item-drag-preview { overflow: hidden; }
-.work-item-drag-preview .continuous-work { margin: 0; padding: 0; }
-.work-item--drag-placeholder { pointer-events: none; }

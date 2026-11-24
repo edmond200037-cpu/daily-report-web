@@ -2,6 +2,7 @@ import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import { mountReactShell } from './app/react-shell';
 import { notifyReact } from './app/react-store';
+import { mountDailyInputs, unmountDailyInputs } from './app/react-daily-inputs';
 import { bindTradePickerDialog } from './daily/trade-picker-dialog';
 import { registerSW } from 'virtual:pwa-register';
 import { transitionPwaUpdateState, PWA_UPDATE_SUCCESS_MARKER } from './pwa/update-state';
@@ -23,12 +24,12 @@ import { bindWorkspaceEvents } from './app/workspace-events';
 import { renderAccountLoading, refreshAccount, renderAccountLoaded, bindAccountEvents } from './account/account-controller';
 import { dailyView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
 import { refreshDailyAddBar } from './daily/add-bar';
-import { bindMaterialConnectionResize, syncMaterialConnectionCurves, discardMaterialEditor, materialDirty } from './daily/views/material-view';
+import { discardMaterialEditor, materialDirty } from './daily/views/material-view';
 import { contactDirty } from './daily/views/contact-view';
 import { restoreEntryScope, persistEntryDraft } from './daily/views/daily-entry';
 import { bindMaterialSuggestionEvents } from './daily/views/material-suggestions';
-import { bindDailyInputEvents, bindContactInputEvents, bindSiteSearchEvents, handleDailyAction, bindBackgroundCollapseEvents, bindDailyKeyEvents } from './daily/views/daily-events';
-import { bindDailyGestureEvents } from './daily/views/daily-gestures';
+
+
 import { refreshSettings, dataSystemView, memoryReviewView, dailySettingsView, settingsHomeView, settingsSectionFromHash, prepareNextMemoryGroup, performMemoryReviewWrite, memoryCandidateLabels, rejectMemoryCandidate } from './settings/views/settings-view';
 import { bindSettingsShortcutEvents, bindMaterialDetailEvents, bindSettingsChangeEvents, deleteTradeWithConfirm, bindSettingsFormEvents } from './settings/views/settings-events';
 import { mountWater, bindWaterInputEvents } from './water-level/water-shell';
@@ -39,7 +40,7 @@ import './daily/dialog.css';
 import './daily/daily.css';
 import './water-level/water.css';
 import './account/account.css';
-import './daily/input-workflow.css';
+
 mountReactShell();
 const pickerDialog = bindTradePickerDialog(app, async () => { appState.tradePickerOpen = false; await renderApp(); });
 export function parseRoute(hash: string): AppRoute {
@@ -59,14 +60,14 @@ export function parseRoute(hash: string): AppRoute {
   if (normalized === '#water-level/settings') return { module: 'water-level', page: 'settings' };
   return { module: 'daily', page: 'main' };
 }
-bindMaterialConnectionResize();
+
 export async function renderApp(): Promise<void> {
   try {
   if (location.hash === '#settings/daily' || location.hash === '#daily/settings') { history.replaceState(null, '', '#settings'); return renderApp(); }
   if (location.hash === '#water-level/settings') { history.replaceState(null, '', '#settings/water'); return renderApp(); }
   if (location.hash === '#settings/daily/vendors') { history.replaceState(null, '', '#settings/daily/trade-tasks'); return renderApp(); }
   if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }
-  const token = ++appState.renderToken; const route = parseRoute(location.hash); const previousRoute = appState.renderedRoute; appState.renderedRoute = route; appState.water = undefined;
+  const token = ++appState.renderToken; const route = parseRoute(location.hash); const previousRoute = appState.renderedRoute; if (!(route.module === 'daily' && route.page === 'main')) unmountDailyInputs(); appState.renderedRoute = route; appState.water = undefined;
   if (route.module !== 'daily' || route.page !== 'main') appState.justAddedEntry = null;
   if (route.module === 'settings' && route.page === 'home' && (previousRoute?.module === 'daily' || previousRoute?.module === 'water-level') && previousRoute.page === 'main') appState.settingsReturnModule = previousRoute.module;
   if (route.module === 'account') { if (route.page === 'debug') appState.settingsDebug = await databaseSummary(); if (token !== appState.renderToken) return; renderAccountLoading(); void refreshAccount(() => { if (token !== appState.renderToken || parseRoute(location.hash).module !== 'account') return; if (appState.accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); }); return; }
@@ -91,27 +92,29 @@ export async function renderApp(): Promise<void> {
     else if (route.page === 'history') appState.finalizedReports = await listRecentFinalizedReports();
     if (token !== appState.renderToken) return;
     restoreEntryScope(); persistEntryDraft();
+    if (route.page === 'main') { mountDailyInputs(); return; }
+    unmountDailyInputs();
     pickerDialog.beforeRender();
     app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? '' : dailyView()}${pwaUpdateNotice()}`;
-    if (route.page === 'main') app.querySelectorAll('.daily-page__header,.daily-basics-panel,.module-page__tabs,.daily-output').forEach((node) => node.remove());
+
     applyDailyReadOnly();
     refreshDailyAddBar();
     pickerDialog.afterRender();
-    requestAnimationFrame(syncMaterialConnectionCurves);
+
     return;
   }
   try { await mountWater(route, token); } catch (error) { if (token !== appState.renderToken) return; const summary = error instanceof Error ? error.message : '無法讀取本機水位資料。'; app.innerHTML = `<main class="app-shell"><section class="form-card"><h1>水位功能暫時無法開啟</h1><p>錯誤摘要：${escapeHtml(summary)}</p><p><a href="#water-level">重新載入</a>　<a href="#daily">返回施工日報</a></p></section></main>${pwaUpdateNotice()}`; }
   } finally { notifyReact(); }
 }
-bindDailyInputEvents();
+
 bindSettingsShortcutEvents();
 bindWorkspaceEvents();
 bindAccountEvents();
 bindWaterInputEvents();
-bindContactInputEvents();
+
 bindMaterialSuggestionEvents();
 bindSettingsChangeEvents();
-bindSiteSearchEvents();
+
 app.addEventListener('click', async (event) => {
   const target = event.target as HTMLElement; const route = parseRoute(location.hash);
   const appAction = target.closest<HTMLElement>('[data-app-action]')?.dataset.appAction;
@@ -154,15 +157,15 @@ app.addEventListener('click', async (event) => {
   if (route.module === 'daily' && route.page === 'history') { const finalized = target.closest<HTMLElement>('[data-daily-action="copy-finalized"]'); if (finalized) { const report = appState.finalizedReports.find((item) => item.id === finalized.dataset.finalizedId); if (report) await navigator.clipboard.writeText(report.outputText); return; } }
   if (appState.workAuxMenuId && route.module === 'daily' && route.page === 'main' && !target.closest('[data-work-actions]')) { appState.workAuxMenuId = null; await renderApp(); return; }
   const actionElement = target.closest<HTMLElement>('[data-daily-action]'); if (!actionElement || route.module !== 'daily' || route.page !== 'main') return;
-  await handleDailyAction(target, actionElement);
+
 });
-bindBackgroundCollapseEvents();
-bindDailyGestureEvents();
-bindDailyKeyEvents();
+
+
+
 bindSettingsFormEvents();
 bindMaterialDetailEvents();
 window.addEventListener('beforeunload', (event) => { if (settingsState.dirty || materialDirty() || contactDirty()) { event.preventDefault(); event.returnValue = ''; } });
-window.addEventListener('hashchange', () => { const route = parseRoute(location.hash); if (appState.materialEditor && !discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } appState.activeContactSearch = null; appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null; if (route.module === 'water-level') void appState.daily.flush(); if (route.module === 'daily' && route.page === 'main') { appState.daily.expandedId = null; appState.dailyBasicsExpanded = false; } void renderApp(); });
+window.addEventListener('hashchange', async () => { const route = parseRoute(location.hash); if (appState.materialEditor && !await discardMaterialEditor()) { history.replaceState(null, '', '#daily'); return; } appState.activeContactSearch = null; appState.activeWorkAuxEditor = null; appState.workAuxMenuId = null; if (route.module === 'water-level') void appState.daily.flush(); if (route.module === 'daily' && route.page === 'main') { appState.daily.expandedId = null; appState.dailyBasicsExpanded = false; } void renderApp(); });
 bindBackgroundSync();
 async function bootstrap(): Promise<void> { try { await completeOAuthRedirect(); } catch (error) { appState.accountError = error instanceof Error ? `登入回傳處理失敗：${error.message}` : '登入回傳處理失敗。'; history.replaceState(null, '', `${location.pathname}#settings/account`); } await Promise.all([restoreActiveMemoryPartition(), restoreActiveWaterPartition()]); appState.daily = new DailyController(await loadDailyDraft(), (state) => { appState.dailySaveState = state; if (state === 'saved') { appState.dailyLastSavedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }); void refreshDailySyncStatus(); } updateDailySaveStatus(); }); appState.materialTypes = await listMaterialTypes(); for (const name of [...new Set(appState.daily.report.standaloneMaterialEntries.filter((entry) => !entry.materialTypeId && entry.materialTypeSnapshot.trim()).map((entry) => entry.materialTypeSnapshot.trim()))]) { try { await createMaterialType(name); } catch { /* existing normalized type is safe to reuse */ } } appState.materialTypes = await listMaterialTypes(); let migrated = false; appState.daily.report.standaloneMaterialEntries.forEach((entry) => { if (!entry.materialTypeId) { const type = appState.materialTypes.find((row) => row.normalizedName === normalizeSearch(entry.materialTypeSnapshot)); if (type) { entry.materialTypeId = type.id; entry.materialTypeSnapshot = type.name; migrated = true; } } }); if (migrated) await appState.daily.flush(); await refreshActiveMemoryCache(); await Promise.all([persistActiveMemoryPartition(), persistActiveWaterPartition()]); await refreshDailySyncStatus(); const initialScope = await loadActiveSharedScope().catch(() => null); appState.accountActiveSiteId = initialScope?.siteId ?? null; appState.accountActiveSiteRole = initialScope ? (await loadSharedContext(initialScope.userId)).activeSiteRole ?? null : null; appState.lastPulledAt = initialScope ? await loadLastPulledAt(initialScope) : null; if (!location.hash) location.hash = '#daily'; await renderApp(); if (appState.pwaUpdateState === 'success') window.setTimeout(() => { appState.pwaUpdateState = transitionPwaUpdateState(appState.pwaUpdateState, 'dismiss'); void renderApp(); }, 5_000); if (import.meta.env.PROD) appState.applyPwaUpdate = registerSW({ onNeedRefresh: () => { appState.pwaUpdateState = transitionPwaUpdateState(appState.pwaUpdateState, 'available'); void renderApp(); }, onNeedReload: () => { clearPwaUpdateTimeout(); if (appState.pwaUpdateState === 'applying' || appState.pwaUpdateState === 'waiting') { try { sessionStorage.setItem(PWA_UPDATE_SUCCESS_MARKER, '1'); window.location.reload(); } catch { appState.pwaUpdateState = transitionPwaUpdateState(appState.pwaUpdateState, 'failed'); void renderApp(); } } else window.location.reload(); }, onRegisterError: () => { clearPwaUpdateTimeout(); appState.pwaUpdateState = transitionPwaUpdateState('applying', 'failed'); void renderApp(); } }); }
 void pruneExpiredReports();

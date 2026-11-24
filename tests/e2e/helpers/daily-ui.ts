@@ -34,13 +34,9 @@ export class DailyUI {
   async chooseTrade(name: string) {
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await this.type(this.page.locator('[data-trade-picker-search]'), name, '工種名稱');
-    const create = this.action('create-trade-from-search');
-    const existing = dialog.locator('[data-daily-action="select-trade"]').filter({ has: this.page.locator('strong', { hasText: new RegExp(`^${name}$`) }) });
-    await expect(create.or(existing).first()).toBeVisible();
-    if (await create.isVisible()) await this.click(create, `新增工種：${name}`);
-    else await this.click(existing.first(), `選用既有工種：${name}`);
-    await expect(dialog).toHaveCount(0);
+    await this.type(this.page.getByRole('combobox', { name: '選擇工種', exact: true }), name, '工種名稱');
+    await this.click(this.page.getByRole('option', { name, exact: true }), `選用工種：${name}`);
+    await expect(dialog).not.toBeVisible();
   }
   async section(name: 'engineering' | 'supplies' | 'contacts' | 'special') {
     const labels = { engineering: '施工紀錄', supplies: '進料', contacts: '聯絡事項', special: '特殊事項' };
@@ -71,7 +67,7 @@ export class DailyUI {
       await this.type(card.locator('[data-daily-field="vendorNameSnapshot"]'), trade.vendor, `${label}廠商`);
       await this.type(card.locator('[data-daily-field="workerCount"]'), trade.workers, `${label}人數`);
       for (const [taskIndex, task] of trade.tasks.entries()) {
-        await this.type(card.locator('[data-continuous-work]'), task, `${label}工項${taskIndex + 1}`);
+        await this.type(card.getByRole('combobox', { name: '搜尋或輸入下一個工項' }), task, `${label}工項${taskIndex + 1}`);
         await this.click(card.locator('[data-work-commit]'), '加入施工工項');
         await expect(card.locator('[data-inline-work]')).toHaveCount(taskIndex + 1);
         await expect(card.locator('[data-inline-work]').last()).toHaveValue(task);
@@ -87,12 +83,10 @@ export class DailyUI {
       const materialIds: string[] = [];
       for (const [index, material] of scenario.materials.entries()) {
         await this.click(this.action('add-normal-material'), '新增進料');
-        const field = (name: string) => this.page.locator(`[data-material-field="${name}"]`);
+        const labels: Record<string, string> = { materialTypeSnapshot: '材料類型', itemName: '品名', specification: '規格', supplierNameSnapshot: '供應商', quantity: '數量', unit: '單位' };
+        const field = (name: string) => this.page.getByRole(name === 'quantity' || name === 'unit' ? 'textbox' : 'combobox', { name: labels[name], exact: true, includeHidden: true });
         await this.type(field('materialTypeSnapshot'), material.type, '材料類型');
-        // Tab commits the type and triggers a full render; wait for that exact old DOM to detach.
-        const oldType = await field('materialTypeSnapshot').elementHandle();
         await this.key(field('materialTypeSnapshot'), 'Tab', '提交材料類型');
-        await expect.poll(() => oldType!.evaluate((element) => element.isConnected)).toBe(false);
         await this.type(field('itemName'), material.name, '進料品名');
         await this.key(field('itemName'), 'Tab', '提交品名');
         if (material.spec) { await this.type(field('specification'), material.spec, '規格'); await this.key(field('specification'), 'Tab', '提交規格'); }
@@ -105,7 +99,7 @@ export class DailyUI {
         if (index === 0) await this.metrics.sample('material-editor');
         await this.click(this.action('save-material'), '儲存進料');
         await expect(this.page.locator('[data-material-editor]')).toHaveCount(0);
-        const cards = this.page.locator('.material-list [data-material]');
+        const cards = this.page.locator('[data-material]');
         await expect(cards).toHaveCount(index + 1);
         const saved = cards.last();
         await expect(saved).toContainText(material.name);
@@ -116,11 +110,10 @@ export class DailyUI {
       }
       for (const [index, id] of materialIds.entries()) {
         const target = scenario.trades[scenario.materials[index].trade];
-        const source = this.page.locator(`[data-daily-action="select-connection-material"][data-material-id="${id}"]`);
-        await this.click(source, '選取進料端口');
-        await expect(source).toHaveAttribute('aria-pressed', 'true');
-        await this.click(this.page.locator(`[data-daily-action="select-connection-trade"][data-trade-id="${tradeIds[scenario.materials[index].trade]}"]`), `連接${target.name}`);
-        await expect(source).toContainText(`已接至 ${target.name}`);
+        const source = this.page.locator(`[data-material="${id}"]`).getByRole('combobox', { name: '連接工種' });
+        await this.click(source, '選擇連接工種');
+        await this.click(this.page.getByRole('option', { name: `${target.name}｜${target.vendor}`, exact: true }), `連接${target.name}`);
+        await expect(source).toContainText(target.name);
       }
       await this.metrics.sample('connection-board');
       await this.section('engineering');
@@ -137,19 +130,19 @@ export class DailyUI {
       for (const [index, contact] of scenario.contacts.entries()) {
         await this.click(this.action('add-contact'), '新增聯絡事項');
         await this.chooseTrade(contact.trade);
-        await this.type(this.page.locator('#contact-vendor'), contact.vendor, '聯絡廠商');
+        await this.type(this.page.getByRole('combobox', { name: '聯絡廠商' }), contact.vendor, '聯絡廠商');
         if (contact.dateOffset !== undefined) {
           const planned = shiftISO(dates.reportISO, contact.dateOffset);
-          await this.metrics.action('input', '聯絡預定日期（原生 date）', planned, () => this.page.locator('[data-contact-date]').fill(planned));
+          await this.metrics.action('input', '聯絡預定日期（原生 date）', planned, () => this.page.getByLabel('聯絡預定日期', { exact: true }).fill(planned));
         }
         for (const [taskIndex, task] of contact.tasks.entries()) {
-          await this.type(this.page.locator('#contact-task'), task, `聯絡工項${taskIndex + 1}`);
+          await this.type(this.page.getByRole('combobox', { name: '聯絡工項' }), task, `聯絡工項${taskIndex + 1}`);
           await this.click(this.action('contact-add-task'), '加入聯絡工項');
-          await expect(this.page.locator('[data-contact-task]')).toHaveCount(taskIndex + 1);
+          await expect(this.page.getByRole('textbox', { name: '聯絡內容', exact: true })).toHaveCount(taskIndex + 1);
         }
         if (index === 0) await this.metrics.sample('contact-editor');
         await this.click(this.action('save-contact'), '完成聯絡事項');
-        await expect(this.page.locator('#contact-task')).toHaveCount(0);
+        await expect(this.page.getByRole('combobox', { name: '聯絡工項' })).toHaveCount(0);
         await expect(this.page.locator('[data-contact-card]')).toHaveCount(index + 1);
       }
     }

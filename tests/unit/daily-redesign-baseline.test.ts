@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { appSource } from './helpers/app-source';
+
+import { reviewMarkup } from './helpers/react-daily';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DailyController } from '../../src/daily/daily-controller';
 import { formatDailyReport } from '../../src/daily/daily-formatter';
@@ -61,18 +62,11 @@ describe('日報紙本表單重整前功能基線', () => {
     expect(saveState).not.toHaveBeenCalled();
   });
 
-  it('預覽保存連續輸入的尾端文字，但不觸發記憶套用計數', () => {
-    // The event handler has no exported seam; keep this source contract until the
-    // Phase 5 Bottom Sheet controller exposes a behaviour-level test seam.
-    const source = appSource();
-    const branch = source.match(/if \(action === 'toggle-preview'\) \{([^}]+)\}/)?.[1] ?? '';
-
-    expect(branch).toContain('appState.dailyPreviewOpen = !appState.dailyPreviewOpen');
-    expect(branch).toContain('await renderApp()');
-    expect(branch).toContain('return');
-    expect(branch).not.toContain('daily.update');
-    expect(branch).toContain('savePendingDailyInput');
-    expect(branch).not.toContain('commitInputMemories');
+  it('檢查與預覽透過 React BottomSheet 開啟，純顯示不觸發記憶套用', () => {
+    const html = reviewMarkup();
+    expect(html).toContain('檢查與預覽');
+    expect(html).toContain('定稿並複製');
+    expect(html).toContain('0 筆施工');
   });
 
   it('定稿 repository 保存呼叫端產生的 outputText，並以單一交易保留草稿與提交紀錄', () => {

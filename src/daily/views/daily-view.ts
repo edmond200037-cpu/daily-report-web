@@ -17,10 +17,10 @@ import { renderApp } from '../../main';
 import { appState, workItemComposerByTrade, app, tradeDrag, type EntryDragKind } from '../../app/state';
 import { normalizeSearch, moduleTabs, syncControl } from '../../app/shell';
 import { isReadOnlySite } from '../../app/sync-runtime';
-import { materialConnectionPanel, materialEntryView } from './material-view';
+import { materialEntryView } from './material-view';
 import { contactCard } from './contact-view';
 import { specialCard } from './special-view';
-import { pruneTradeUndoQueue } from './daily-gestures';
+import { pruneTradeUndoQueue } from './delete-undo';
 type EntryRow = { meta: string; primary: string; detail: string; status: string; statusTone: EntryStatusTone; control?: string };
 const field = (label: string, name: string, value: string, type = 'text') => `<label>${label}<input data-daily-field="${name}" type="${type}" value="${escapeHtml(value)}"></label>`;
 function sitePickerField(): string {
@@ -85,7 +85,7 @@ function dailySections(): string {
   const materialDraft = appState.materialEditor && !appState.materialEditor.originalId ? [appState.materialEditor.value] : [];
   const contactDraft: ContactItem[] = appState.contactEditor && !appState.contactEditor.originalId ? [appState.contactEditor.value] : [];
   return `<section class="daily-section" aria-label="施工紀錄" data-daily-section="trade"><div class="daily-section__list trade-list">${report.tradeSections.map(tradeCard).join('')}${entryDropIndicator('trade', report.tradeSections.map((item) => item.id))}</div></section>
-    <section class="daily-section" aria-label="進料" data-daily-section="material">${report.standaloneMaterialEntries.length || appState.materialEditor || appState.materialConnectionFocusTradeId ? materialConnectionPanel() : ''}<div class="daily-section__list material-list">${[...materialDraft, ...report.standaloneMaterialEntries].map(materialEntryView).join('')}${entryDropIndicator('material', report.standaloneMaterialEntries.map((item) => item.id))}</div></section>
+    <section class="daily-section" aria-label="進料" data-daily-section="material"><div class="daily-section__list material-list">${[...materialDraft, ...report.standaloneMaterialEntries].map(materialEntryView).join('')}${entryDropIndicator('material', report.standaloneMaterialEntries.map((item) => item.id))}</div></section>
     <section class="daily-section" aria-label="聯絡事項" data-daily-section="contact"><div class="daily-section__list contact-list">${[...contactDraft, ...report.contacts].map(contactCard).join('')}${entryDropIndicator('contact', report.contacts.map((item) => item.id))}</div></section>
     <section class="daily-section" aria-label="特殊事項" data-daily-section="special"><div class="daily-section__list special-list">${report.specialItems.map(specialCard).join('')}${entryDropIndicator('special', report.specialItems.map((item) => item.id))}</div></section>`;
 }

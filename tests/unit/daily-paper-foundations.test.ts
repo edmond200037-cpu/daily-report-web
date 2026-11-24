@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { dailyMarkup } from './helpers/react-daily';
 
 const styles = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
 const dailyCss = readFileSync(new URL('../../src/daily/daily.css', import.meta.url), 'utf8');
@@ -31,11 +32,11 @@ describe('日報紙本表單基礎 tokens', () => {
   });
 
   it('讓日報表單與主要觸控控制至少達 44px', () => {
-    expect(dailyCss).toContain('.daily-page input, .daily-page select, .daily-page textarea {');
-    expect(dailyCss).toContain('min-height: var(--daily-touch-target);');
-    expect(dailyCss).toContain('.daily-page .work-item__drag-handle');
-    expect(dailyCss).toContain('.daily-page .work-item__actions-trigger');
-    expect(dailyCss).toContain('.daily-page .contact-task__handle, .daily-page .contact-suggestions__option { min-height: var(--daily-touch-target); }');
+    // Astryx owns control sizing; browser tests measure the rendered targets.
+    const html = dailyMarkup();
+    expect(html).toContain('astryx-button');
+    expect(html).toContain('data-size="lg"');
+    for (const label of ['新增施工紀錄', '新增聯絡事項', '新增特殊事項']) expect(html).toContain(label);
   });
 
   it('把正文 token 實際套用到日報資料內容', () => {

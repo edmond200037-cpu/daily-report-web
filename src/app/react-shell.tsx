@@ -5,6 +5,7 @@ import { WorkspaceFrame, ReportHistoryList } from './react-presentation';
 import { app, appState } from './state';
 import { useAppVersion } from './react-store';
 import { DailyContext, DailyReview } from './react-daily';
+import { ConfirmationDialog } from './react-confirm';
 
 // Frame follows shell-top-nav: navigation above one centered content region.
 function Shell() {
@@ -17,6 +18,7 @@ function Shell() {
   const selected = location.hash.startsWith('#settings') ? 'settings'
     : route?.module === 'water-level' ? 'water-level' : 'daily';
   return <WorkspaceFrame selected={selected} footer={daily ? <DailyReview /> : undefined}>
+        <ConfirmationDialog />
         {daily && <DailyContext />}
         {history && <ReportHistoryList reports={appState.finalizedReports} />}
         <section ref={host} hidden={history} aria-label="工作內容" />
