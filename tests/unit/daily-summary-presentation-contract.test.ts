@@ -86,6 +86,34 @@ describe('React 日報資料列契約', () => {
     expect(html).toContain('不連接');
     expect(html).toContain('astryx-selector');
   });
+  it('進料編輯 Sheet 兩欄並排，備註預設收合', () => {
+    const html = dailyMarkup(() => {
+      startMaterialEditor('normal');
+    });
+    expect(html).toContain('data-material-editor=');
+    expect(html).toContain('data-columns="2"');
+    expect(html).toContain('＋加備註');
+    expect(html).not.toContain('進料備註');
+    expect(html).not.toContain('刪除進料');
+  });
+  it('進料已有備註時預設展開，編輯既有進料才有刪除', () => {
+    const html = dailyMarkup((daily) => {
+      const entry = createMaterialEntry(0, 'independent');
+      entry.note = '備註內容';
+      daily.report.standaloneMaterialEntries.push(entry);
+      startMaterialEditor('independent', entry);
+    });
+    expect(html).toContain('進料備註');
+    expect(html).not.toContain('＋加備註');
+    expect(html).toContain('刪除進料');
+  });
+  it('沒有編輯狀態時不渲染任何 Sheet 內容，開關不改草稿', () => {
+    const html = dailyMarkup((daily) => {
+      daily.report.tradeSections.push(createTrade('鋼筋', '甲', 0));
+    });
+    expect(html).not.toContain('data-trade-editor=');
+    expect(html).not.toContain('data-material-editor=');
+  });
   it('特殊事項列顯示內容，編輯時以文字輸入開啟 Sheet', () => {
     const html = dailyMarkup((daily) => {
       const item = createSpecial(0);

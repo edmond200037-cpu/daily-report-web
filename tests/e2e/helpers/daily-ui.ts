@@ -5,7 +5,7 @@ import { Metrics } from './metrics';
 
 export class DailyUI {
   constructor(readonly page: Page, readonly metrics: Metrics) {}
-  action(name: string) { return this.page.locator(`[data-daily-action="${name}"]`); }
+  action(name: string) { return this.page.locator(`[data-daily-action="${name}"]:visible`); }
   async click(locator: Locator, label: string) {
     await this.metrics.action('click', label, undefined, () => locator.click());
   }
@@ -32,7 +32,8 @@ export class DailyUI {
   }
   /** Picks the trade if it already exists (e.g. a second vendor of 雜工工程), otherwise creates it. */
   async chooseTrade(name: string) {
-    const dialog = this.page.getByRole('dialog');
+    // Editors open in their own sheets once a trade is chosen; only the picker holds this combobox.
+    const dialog = this.page.getByRole('dialog').filter({ has: this.page.getByRole('combobox', { name: '選擇工種', exact: true }) });
     await expect(dialog).toBeVisible();
     await this.type(this.page.getByRole('combobox', { name: '選擇工種', exact: true }), name, '工種名稱');
     await this.click(this.page.getByRole('option', { name, exact: true }), `選用工種：${name}`);
@@ -60,23 +61,28 @@ export class DailyUI {
       await this.click(this.action('add-trade'), '新增施工紀錄');
       await this.chooseTrade(trade.name);
       await expect(this.page.locator('[data-trade]')).toHaveCount(index + 1);
-      const card = this.page.locator('[data-trade]').last();
-      const id = await card.getAttribute('data-trade');
+      const row = this.page.locator('[data-trade]').last();
+      const id = await row.getAttribute('data-trade');
       if (!id) throw new Error('新增工程沒有識別碼');
       tradeIds.push(id);
+      // The editor lives in the trade sheet; the list row only carries the summary.
+      const card = this.page.locator(`[data-trade-editor="${id}"]`);
       await this.type(card.locator('[data-daily-field="vendorNameSnapshot"]'), trade.vendor, `${label}廠商`);
       await this.type(card.locator('[data-daily-field="workerCount"]'), trade.workers, `${label}人數`);
       for (const [taskIndex, task] of trade.tasks.entries()) {
-        await this.type(card.getByRole('combobox', { name: '搜尋或輸入下一個工項' }), task, `${label}工項${taskIndex + 1}`);
+        const composer = card.getByRole('combobox', { name: '搜尋或輸入下一個工項' });
+        await this.type(composer, task, `${label}工項${taskIndex + 1}`);
+        // In the sheet the suggestion list opens over the add button; close it so the button itself is pressed.
+        if ((await composer.getAttribute('aria-expanded')) === 'true') await this.key(composer, 'Escape', '關閉建議清單');
         await this.click(card.locator('[data-work-commit]'), '加入施工工項');
         await expect(card.locator('[data-inline-work]')).toHaveCount(taskIndex + 1);
         await expect(card.locator('[data-inline-work]').last()).toHaveValue(task);
       }
       if (index === 0) await this.metrics.sample('engineering');
       if (trade.tasks.length > 1 && !longWorkSampled) { longWorkSampled = true; await this.metrics.sample('long-work'); }
-      await this.click(card.locator('[data-daily-action="finish-entry"]'), `完成：${label}`);
-      await expect(card).toBeVisible();
-      await expect(card).toContainText('資料齊全');
+      await this.click(this.action('finish-entry'), `完成：${label}`);
+      await expect(row).toBeVisible();
+      await expect(row).toContainText('資料齊全');
     }
     if (scenario.materials.length) {
       await this.section('supplies');
@@ -125,7 +131,7 @@ export class DailyUI {
       for (const tradeIndex of new Set(scenario.materials.map((material) => material.trade))) {
         const trade = this.page.locator(`[data-trade="${tradeIds[tradeIndex]}"]`);
         await this.click(trade, `確認${scenario.trades[tradeIndex].name}`);
-        await this.click(trade.locator('[data-daily-action="finish-entry"]'), `完成已連接進料的${scenario.trades[tradeIndex].name}`);
+        await this.click(this.action('finish-entry'), `完成已連接進料的${scenario.trades[tradeIndex].name}`);
         await expect(trade).toContainText('資料齊全');
       }
     }

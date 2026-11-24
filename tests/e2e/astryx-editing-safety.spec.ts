@@ -48,7 +48,7 @@ test('已選工地仍可定稿並保留原文字內容', async ({ page, context 
   expect(text).toContain('順立12工-地樑鋼筋、柱筋綁紮。');
 });
 
-for (const width of [360, 390, 430]) test(`編輯聚焦工項不被摘要列遮擋 ${width}`, async ({ page }) => {
+for (const width of [360, 390, 430]) test(`編輯聚焦工項不被 Sheet 固定操作列遮擋 ${width}`, async ({ page }) => {
   await page.setViewportSize({ width, height: 844 });
   await page.goto('/#daily');
   await page.getByRole('button', { name: '新增施工紀錄', exact: true }).click();
@@ -58,7 +58,7 @@ for (const width of [360, 390, 430]) test(`編輯聚焦工項不被摘要列遮�
   await page.evaluate(() => window.scrollTo(0, 0));
   await input.evaluate((node: HTMLInputElement) => node.focus({ preventScroll: true }));
   await expect(input).toBeFocused();
-  const footer = page.getByLabel('日報檢查與複製', { exact: true });
+  const footer = page.getByLabel('施工紀錄操作', { exact: true });
   await expect.poll(async () => {
     const field = (await input.boundingBox())!, bar = (await footer.boundingBox())!;
     return field.y + field.height < bar.y;

@@ -1,7 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 
 const action = (page: Page, name: string) =>
-  page.locator(`[data-daily-action="${name}"]`);
+  page.locator(`[data-daily-action="${name}"]:visible`);
 async function chooseTrade(page: Page, name: string, trigger = 'click') {
   const input = page.getByRole('combobox', { name: '選擇工種', exact: true });
   await input.fill(name);
@@ -12,8 +12,11 @@ async function chooseTrade(page: Page, name: string, trigger = 'click') {
     await input.press('ArrowDown');
     await input.press('Enter');
   }
-  await expect(page.getByRole('dialog')).not.toBeVisible();
+  // The editor sheet opens right after the picker closes, so only the picker is checked.
+  await expect(page.getByRole('dialog').filter({ has: input })).not.toBeVisible();
 }
+const closeSheet = (page: Page) =>
+  page.getByRole('button', { name: '關閉', exact: true }).click();
 async function addTrade(page: Page, name: string) {
   await action(page, 'add-trade').click();
   await chooseTrade(page, name);
@@ -92,11 +95,16 @@ for (const width of [360, 390, 430]) {
     await addTrade(page, '測試施工');
     const work = page.getByRole('combobox', { name: '搜尋或輸入下一個工項' });
     await work.fill('尚未提交的施工輸入');
+    await closeSheet(page);
     await action(page, 'add-normal-material').click();
     await expect(
       page.getByRole('combobox', { name: '材料類型', exact: true }),
     ).toBeFocused();
-    await expect(work).toHaveValue('尚未提交的施工輸入');
+    await page.getByRole('button', { name: '取消進料輸入', exact: true }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: '確認', exact: true })
+      .click();
     await page.evaluate(async () => {
       const p = '/src/app/state.ts',
         m = '/src/main.ts';
@@ -110,11 +118,14 @@ for (const width of [360, 390, 430]) {
       );
       await renderApp();
     });
-    await expect(page.locator('[data-trade]')).toContainText('已連接 1 筆進料');
     await expect(
       page.locator('[data-material]'),
     ).toContainText('測試施工');
+    // The unsubmitted work text survives the sheet closing and reopening.
+    await page.locator('[data-trade]').click();
+    await expect(page.locator('[data-trade-editor]')).toContainText('已連接 1 筆進料');
     await expect(work).toHaveValue('尚未提交的施工輸入');
+    await closeSheet(page);
     await action(page, 'add-special').click();
     await page
       .getByRole('textbox', { name: '特殊事項內容' })
@@ -156,7 +167,7 @@ for (const width of [360, 390, 430]) {
     await expect(undo).toBeVisible();
     expect((await undo.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await undo.click();
-    await expect(page.locator(`[data-special="${id}"] textarea`)).toHaveValue(
+    await expect(page.locator(`[data-special="${id}"]`)).toContainText(
       '取消後仍可復原的事項',
     );
     await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
@@ -182,7 +193,7 @@ for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 812 });
     await page.goto('/#daily');
     await addTrade(page, '精簡測試工種');
-    const trade = page.locator('[data-trade]');
+    const trade = page.locator('[data-trade-editor]');
     expect((await trade.boundingBox())!.height).toBeLessThanOrEqual(450);
     await expect(trade).not.toContainText('取消新增');
     await addWork(page, '鋼筋綁紮');
@@ -226,22 +237,34 @@ for (const width of [360, 390, 430]) {
           .map((el) => el.getBoundingClientRect().height),
       );
     expect(sizes.every((h) => h >= 44)).toBe(true);
-    await trade.screenshot({ path: info.outputPath(`compact-${width}.png`) });
+    await page
+      .getByRole('dialog', { name: '施工紀錄' })
+      .screenshot({ path: info.outputPath(`compact-${width}.png`) });
   });
 }
 test('取消新增標記在日期、工地與離開日報後清除', async ({ page }) => {
   await page.goto('/#daily');
+  // The open special-item sheet is modal, so the switches run programmatically instead of through the covered page.
+  const switchDate = (date: string) =>
+    page.evaluate(async (next) => {
+      const p = '/src/app/workspace-events.ts';
+      const { switchDailyDate } = await import(/* @vite-ignore */ p);
+      await switchDailyDate(next);
+    }, date);
   await action(page, 'add-special').click();
   await expect(action(page, 'cancel-new-entry')).toHaveCount(1);
-  await page.getByLabel('日報日期', { exact: true }).fill('2026-11-22');
+  await switchDate('2026-11-22');
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
   await action(page, 'add-special').click();
-  await page.getByRole('combobox', { name: '工地名稱' }).fill('切換工地');
-  await page.getByRole('option', { name: '切換工地', exact: true }).click();
+  await page.evaluate(async () => {
+    const p = '/src/daily/views/daily-entry.ts';
+    const { selectDailySite } = await import(/* @vite-ignore */ p);
+    await selectDailySite('切換工地');
+  });
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
   await action(page, 'add-special').click();
-  await page.getByRole('link', { name: '設定', exact: true }).first().click();
-  await page.getByRole('link', { name: '施工日報', exact: true }).click();
+  await page.evaluate(() => { location.hash = '#settings'; });
+  await page.evaluate(() => { location.hash = '#daily'; });
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
 });
 test('施工卡沒有取消新增，按完成有缺漏時提示並聚焦', async ({ page }) => {
@@ -264,12 +287,12 @@ for (const trigger of ['click', 'Enter'])
     await chooseTrade(page, '立即新增測試工種', trigger);
     const trade = page.locator('[data-trade]');
     const id = await trade.getAttribute('data-trade');
+    const editor = page.locator('[data-trade-editor]');
     // 選工種後 App 會延遲捲動並聚焦廠商欄；捲動會讓 Astryx 收起已展開的滑動列，需等它落定再滑。
-    const vendor = trade.locator('[data-daily-field="vendorNameSnapshot"]');
+    const vendor = editor.locator('[data-daily-field="vendorNameSnapshot"]');
     await expect(vendor).toBeFocused();
-    await trade
-      .locator('[data-daily-field="vendorNameSnapshot"]')
-      .fill('復原廠商');
+    await vendor.fill('復原廠商');
+    await closeSheet(page);
     await swipeTrade(page, trade);
     await expect(trade).toHaveCount(0);
     await page.getByRole('button', { name: '復原', exact: true }).click();
@@ -278,7 +301,7 @@ for (const trigger of ['click', 'Enter'])
     );
     await action(page, 'toggle-trade').click();
     await expect(
-      trade.locator('[data-daily-field="vendorNameSnapshot"]'),
+      editor.locator('[data-daily-field="vendorNameSnapshot"]'),
     ).toHaveValue('復原廠商');
   });
 test('Work grip drag sorting and rollback', async ({ page }, info) => {
@@ -305,8 +328,8 @@ test('Work grip drag sorting and rollback', async ({ page }, info) => {
     await page.mouse.move(x, y + 12);
     return { x, y };
   };
+  // Escape would also dismiss the editor sheet, so the aborted drag is released where it started.
   await begin();
-  await page.keyboard.press('Escape');
   await page.mouse.up();
   expect(await values(page)).toEqual(['Work A', 'Work B', 'Work C']);
   expect(await reportJSON(page)).toBe(before);
@@ -363,6 +386,7 @@ test('鍵盤握把排序與聯絡工項排序', async ({ page }) => {
   await expect(page.locator('[data-inline-work]').first()).toHaveValue(
     '工項乙',
   );
+  await closeSheet(page);
   await action(page, 'add-contact').click();
   await chooseTrade(page, '排序測試');
   for (const value of ['聯絡甲', '聯絡乙']) {

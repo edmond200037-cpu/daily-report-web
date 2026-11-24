@@ -19,6 +19,8 @@ import {
 import { Selector } from '@astryxdesign/core/Selector';
 import { DateInput } from '@astryxdesign/core/DateInput';
 import { Dialog } from '@astryxdesign/core/Dialog';
+import { BottomSheet } from '@astryxdesign/core/BottomSheet';
+import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
 import { onDailyAddRequest, scrollToDailySection } from '../daily/add-bar';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { List, ListItem } from '@astryxdesign/core/List';
@@ -293,8 +295,14 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
     queueMicrotask(() => {
       const input = composerInput.current;
       if (!input?.isConnected || composing.current) return;
+      const previous = document.activeElement;
       input.click();
       input.setSelectionRange(input.value.length, input.value.length);
+      // The first resume runs as the sheet opens: give focus back so the field being fixed keeps it.
+      if (epoch === 0) {
+        if (previous instanceof HTMLElement && previous !== document.body) previous.focus({ preventScroll: true });
+        else input.blur();
+      }
     });
   }, [epoch, seed]);
   const reorderable = createReorderable({
@@ -367,6 +375,7 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
   return (
     <VStack
       gap={3}
+      data-trade-editor={trade.id}
       onCompositionStart={() => {
         composing.current = true;
         appState.entryComposing = true;
@@ -489,22 +498,17 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
           已連接 {appState.daily.linkedMaterialEntries(trade.id).length} 筆進料
         </Text>
       )}
-      <Button
-        label="完成施工紀錄"
-        data-daily-action="finish-entry"
-        size="lg"
-        isDisabled={locked()}
-        clickAction={() => action('finish-entry', { id: trade.id })}
-      />
     </VStack>
   );
 }
 
-function MaterialEditor({ connection, onDelete }: { connection: ReactNode; onDelete: () => void }) {
+function MaterialEditor({ connection }: { connection: ReactNode }) {
   const editor = appState.materialEditor!;
   const value = editor.value;
   const querying = useRef(new Set<string>());
   const picking = useRef(new Set<string>());
+  // The note stays folded until asked for, unless the entry already has one.
+  const [noteOpen, setNoteOpen] = useState(Boolean(value.note));
   const fields = [
     ['materialTypeSnapshot', '材料類型'],
     ['itemName', '品名'],
@@ -515,6 +519,7 @@ function MaterialEditor({ connection, onDelete }: { connection: ReactNode; onDel
   ] as const;
   return (
     <VStack gap={3} data-material-editor={editor.id}>
+      <Grid columns={2} gap={2}>
       {fields.map(([field, label]) =>
         field === 'quantity' ? (
           <TextInput
@@ -584,45 +589,30 @@ function MaterialEditor({ connection, onDelete }: { connection: ReactNode; onDel
           />
         ),
       )}
+      </Grid>
       {connection}
-      {editor.originalId && <Button label="刪除進料" size="lg" variant="destructive" isDisabled={locked()} onClick={onDelete} />}
-      <TextArea
-        label="進料備註"
-        size="lg"
-        value={value.note}
-        onChange={(text) => {
-          value.note = text;
-          notifyReact();
-        }}
-        isDisabled={locked()}
-      />
+      {noteOpen ? (
+        <TextArea
+          label="進料備註"
+          size="lg"
+          value={value.note}
+          onChange={(text) => {
+            value.note = text;
+            notifyReact();
+          }}
+          isDisabled={locked()}
+        />
+      ) : (
+        <Button label="＋加備註" size="lg" variant="ghost" onClick={() => setNoteOpen(true)} />
+      )}
       {editor.errors.map((error) => (
         <Text key={error}>{error}</Text>
       ))}
-      <Button
-        label="儲存進料"
-        data-daily-action="save-material"
-        size="lg"
-        isDisabled={locked()}
-        clickAction={() => action('save-material')}
-      />
-      <Button
-        label="取消進料輸入"
-        size="lg"
-        clickAction={async () => {
-          if (
-            !(await confirmAction('目前進料內容尚未儲存，是否放棄這次修改？'))
-          )
-            return;
-          appState.materialEditor = null;
-          notifyReact();
-        }}
-      />
     </VStack>
   );
 }
 
-function ContactEditor({ onDelete }: { onDelete: () => void }) {
+function ContactEditor() {
   const editor = appState.contactEditor!;
   const vendorQuerying = useRef(false);
   const vendorPicking = useRef(false);
@@ -776,30 +766,23 @@ function ContactEditor({ onDelete }: { onDelete: () => void }) {
       {editor.errors.map((error) => (
         <Text key={error}>{error}</Text>
       ))}
-      <Button
-        label="完成聯絡事項"
-        data-daily-action="save-contact"
-        size="lg"
-        clickAction={() => action('save-contact')}
-        isDisabled={locked()}
-      />
-      {editor.originalId && <Button label="刪除聯絡事項" size="lg" variant="destructive" isDisabled={locked()} onClick={onDelete} />}
-      <Button
-        label="取消聯絡輸入"
-        size="lg"
-        clickAction={async () => {
-          if (!(await confirmAction('放棄未儲存的聯絡事項變更？'))) return;
-          appState.contactEditor = null;
-          persistEntryDraft();
-          notifyReact();
-        }}
-      />
     </VStack>
+  );
+}
+
+/** Editors live in a bottom sheet so a long form never pushes the lists out of view; the actions stay pinned below it. */
+function EditorSheet({ label, isOpen, onClose, footer, children }: { label: string; isOpen: boolean; onClose: () => void; footer: ReactNode; children: ReactNode }) {
+  return (
+    <BottomSheet label={label} isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} purpose="form" height="tall" padding={0}>
+      <Layout height="fill" content={<LayoutContent padding={4} label={label}>{children}</LayoutContent>}
+        footer={<LayoutFooter hasDivider padding={4} label={`${label}操作`}>{footer}</LayoutFooter>} />
+    </BottomSheet>
   );
 }
 
 export function DailyInputs() {
   useAppVersion();
+  const [specialId, setSpecialId] = useState<string | null>(null);
   const [picker, setPicker] = useState<'trade' | 'contact' | null>(null);
   const [confirmation, setConfirmation] = useState<{
     text: string;
@@ -807,6 +790,23 @@ export function DailyInputs() {
   } | null>(null);
   const showToast = useToast();
   const report = appState.daily.report;
+  const editingTrade = report.tradeSections.find((trade) => trade.id === appState.daily.expandedId);
+  const specialOpenId = appState.justAddedEntry?.kind === 'special' ? appState.justAddedEntry.id : specialId;
+  const editingSpecial = report.specialItems.find((item) => item.id === specialOpenId);
+  // Sheet visibility is derived from existing state; closing never marks the report dirty.
+  const closeTrade = () => { if (!appState.daily.expandedId) return; appState.daily.expandedId = null; notifyReact(); };
+  const closeSpecial = () => { appState.justAddedEntry = null; setSpecialId(null); notifyReact(); };
+  const cancelMaterial = async () => {
+    if (!appState.materialEditor || !(await confirmAction('目前進料內容尚未儲存，是否放棄這次修改？'))) return;
+    appState.materialEditor = null;
+    notifyReact();
+  };
+  const cancelContact = async () => {
+    if (!appState.contactEditor || !(await confirmAction('放棄未儲存的聯絡事項變更？'))) return;
+    appState.contactEditor = null;
+    persistEntryDraft();
+    notifyReact();
+  };
   useEffect(() => onDailyAddRequest((section) => {
     if (locked()) return;
     scrollToDailySection(section);
@@ -956,35 +956,21 @@ export function DailyInputs() {
       {appState.entrySaveError && (
         <Text role="alert">{appState.entrySaveError}</Text>
       )}
-      <VStack
-        gap={3}
-        as="section"
-        className="daily-section"
-        aria-label="施工紀錄"
-        data-daily-section="trade"
-      >
+      <VStack gap={3} as="section" className="daily-section" aria-label="施工紀錄" data-daily-section="trade">
         <Heading level={2}>施工紀錄</Heading>
         <List hasDividers reorderable={reorder('trade')}>
           {report.tradeSections.map((trade) => {
-            const expanded = appState.daily.expandedId === trade.id;
             const works = trade.workItems.filter((work) => work.taskTextSnapshot.trim());
             return <ListItem key={trade.id} itemKey={trade.id} data-trade={trade.id}
-              data-daily-action={expanded ? undefined : 'toggle-trade'} swipe={swipe('trade')}
-              isDisabled={!expanded && locked()} align="start"
-              onClick={expanded ? undefined : () => { appState.daily.toggle(trade.id); notifyReact(); }}
-              label={expanded ? <VStack gap={3}><TradeEditor trade={trade} />
-                <Button label="刪除施工紀錄" size="lg" variant="destructive" isDisabled={locked()} onClick={() => { void remove('trade', trade.id); }} />
-              </VStack> : `${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot || '待填廠商'}`}
-              description={expanded ? undefined : `${trade.status === 'complete' ? '資料齊全' : '未完成'} · ${trade.workerCount ? `${trade.workerCount} 人` : '人數未填'} · ${works[0]?.taskTextSnapshot || '尚未填工項'}${works.length > 1 ? `・另 ${works.length - 1} 項` : ''}`} />;
+              data-daily-action="toggle-trade" swipe={swipe('trade')} isDisabled={locked()} align="start"
+              onClick={() => { appState.daily.expandedId = trade.id; notifyReact(); }}
+              label={`${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot || '待填廠商'}`}
+              description={`${trade.status === 'complete' ? '資料齊全' : '未完成'} · ${trade.workerCount ? `${trade.workerCount} 人` : '人數未填'} · ${works[0]?.taskTextSnapshot || '尚未填工項'}${works.length > 1 ? `・另 ${works.length - 1} 項` : ''}`} />;
           })}
         </List>
       </VStack>
       <VStack gap={3} as="section" className="daily-section" aria-label="進料" data-daily-section="material">
         <Heading level={2}>進料</Heading>
-        {appState.materialEditor && <MaterialEditor connection={appState.materialEditor.originalId ? materialConnection(appState.materialEditor.value) : null} onDelete={() => {
-          const id = appState.materialEditor?.originalId;
-          if (id) { appState.materialEditor = null; void remove('material', id); }
-        }} />}
         <List hasDividers reorderable={reorder('material')}>
           {report.standaloneMaterialEntries.map((entry) => {
             const trade = entry.connectedTradeSectionId ? appState.daily.trade(entry.connectedTradeSectionId) : null;
@@ -995,18 +981,8 @@ export function DailyInputs() {
           })}
         </List>
       </VStack>
-      <VStack
-        gap={3}
-        as="section"
-        className="daily-section"
-        aria-label="聯絡事項"
-        data-daily-section="contact"
-      >
+      <VStack gap={3} as="section" className="daily-section" aria-label="聯絡事項" data-daily-section="contact">
         <Heading level={2}>聯絡事項</Heading>
-        {appState.contactEditor && <ContactEditor onDelete={() => {
-          const id = appState.contactEditor?.originalId;
-          if (id) { appState.contactEditor = null; persistEntryDraft(); void remove('contact', id); }
-        }} />}
         <List hasDividers reorderable={reorder('contact')}>
           {report.contacts.map((contact) => <ListItem key={contact.id} itemKey={contact.id} data-contact-card={contact.id}
             swipe={swipe('contact')} label={`${contact.tradeNameSnapshot}｜${contact.vendorNameSnapshot}`}
@@ -1017,70 +993,79 @@ export function DailyInputs() {
             }} />)}
         </List>
       </VStack>
-      <VStack
-        gap={3}
-        as="section"
-        className="daily-section"
-        aria-label="特殊事項"
-        data-daily-section="special"
-      >
+      <VStack gap={3} as="section" className="daily-section" aria-label="特殊事項" data-daily-section="special">
         <Heading level={2}>特殊事項</Heading>
         <List hasDividers reorderable={reorder('special')}>
           {report.specialItems.map((item) => (
-            <ListItem
-              key={item.id}
-              itemKey={item.id}
-              swipe={swipe('special')}
-              label={
-                <VStack gap={2} data-special={item.id}>
-                  <TextArea
-                    label="特殊事項內容"
-                    size="lg"
-                    value={item.content}
-                    onChange={(text) =>
-                      change(() =>
-                        appState.daily.update(() => {
-                          item.content = text;
-                        }),
-                      )
-                    }
-                    isDisabled={locked()}
-                  />
-                  {appState.justAddedEntry?.kind === 'special' &&
-                    appState.justAddedEntry.id === item.id && (
-                      <Button
-                        label="取消新增"
-                        data-daily-action="cancel-new-entry"
-                        size="lg"
-                        onClick={() => {
-                          appState.justAddedEntry = null;
-                          void remove('special', item.id);
-                        }}
-                      />
-                    )}
-                  <Button
-                    label="完成特殊事項"
-                    data-daily-action="toggle-special"
-                    size="lg"
-                    onClick={() => {
-                      appState.justAddedEntry = null;
-                      notifyReact();
-                    }}
-                  />
-                  <Button
-                    label="刪除特殊事項"
-                    size="lg"
-                    onClick={() => {
-                      void remove('special', item.id);
-                    }}
-                    isDisabled={locked()}
-                  />
-                </VStack>
-              }
-            />
+            <ListItem key={item.id} itemKey={item.id} data-special={item.id} swipe={swipe('special')} isDisabled={locked()}
+              label={item.content.trim() || '（尚未填寫）'} onClick={() => setSpecialId(item.id)} />
           ))}
         </List>
       </VStack>
+      <EditorSheet label="施工紀錄" isOpen={Boolean(editingTrade)} onClose={closeTrade}
+        footer={editingTrade && <Grid columns={2} gap={2}>
+          <Button label="完成施工紀錄" data-daily-action="finish-entry" variant="primary" size="lg" isDisabled={locked()}
+            clickAction={() => action('finish-entry', { id: editingTrade.id })} />
+          <Button label="關閉" size="lg" onClick={closeTrade} />
+        </Grid>}>
+        {editingTrade && <VStack gap={4}>
+          <TradeEditor key={editingTrade.id} trade={editingTrade} />
+          <Button label="刪除施工紀錄" size="lg" variant="destructive" isDisabled={locked()} onClick={() => { void remove('trade', editingTrade.id); }} />
+        </VStack>}
+      </EditorSheet>
+      <EditorSheet label="進料" isOpen={Boolean(appState.materialEditor)} onClose={cancelMaterial}
+        footer={<Grid columns={2} gap={2}>
+          <Button label="儲存進料" data-daily-action="save-material" variant="primary" size="lg" isDisabled={locked()}
+            clickAction={() => action('save-material')} />
+          <Button label="取消進料輸入" size="lg" clickAction={cancelMaterial} />
+        </Grid>}>
+        {appState.materialEditor && <VStack gap={4}>
+          <MaterialEditor key={appState.materialEditor.id} connection={appState.materialEditor.originalId ? materialConnection(appState.materialEditor.value) : null} />
+          {appState.materialEditor.originalId && <Button label="刪除進料" size="lg" variant="destructive" isDisabled={locked()} onClick={() => {
+            const id = appState.materialEditor?.originalId;
+            if (id) { appState.materialEditor = null; void remove('material', id); }
+          }} />}
+        </VStack>}
+      </EditorSheet>
+      <EditorSheet label="聯絡事項" isOpen={Boolean(appState.contactEditor)} onClose={cancelContact}
+        footer={<Grid columns={2} gap={2}>
+          <Button label="完成聯絡事項" data-daily-action="save-contact" variant="primary" size="lg" isDisabled={locked()}
+            clickAction={() => action('save-contact')} />
+          <Button label="取消聯絡輸入" size="lg" clickAction={cancelContact} />
+        </Grid>}>
+        {appState.contactEditor && <VStack gap={4}>
+          <ContactEditor key={appState.contactEditor.id} />
+          {appState.contactEditor.originalId && <Button label="刪除聯絡事項" size="lg" variant="destructive" isDisabled={locked()} onClick={() => {
+            const id = appState.contactEditor?.originalId;
+            if (id) { appState.contactEditor = null; persistEntryDraft(); void remove('contact', id); }
+          }} />}
+        </VStack>}
+      </EditorSheet>
+      <EditorSheet label="特殊事項" isOpen={Boolean(editingSpecial)} onClose={closeSpecial}
+        footer={editingSpecial && <Grid columns={2} gap={2}>
+          <Button label="完成特殊事項" data-daily-action="toggle-special" variant="primary" size="lg" onClick={closeSpecial} />
+          {appState.justAddedEntry?.kind === 'special' && appState.justAddedEntry.id === editingSpecial.id
+            ? <Button label="取消新增" data-daily-action="cancel-new-entry" size="lg" onClick={() => {
+              appState.justAddedEntry = null;
+              void remove('special', editingSpecial.id);
+            }} />
+            : <Button label="關閉" size="lg" onClick={closeSpecial} />}
+        </Grid>}>
+        {editingSpecial && <VStack gap={4} data-special-editor={editingSpecial.id}>
+          <TextArea
+            label="特殊事項內容"
+            size="lg"
+            hasAutoFocus
+            value={editingSpecial.content}
+            onChange={(text) => change(() => appState.daily.update(() => { editingSpecial.content = text; }))}
+            isDisabled={locked()}
+          />
+          <Button label="刪除特殊事項" size="lg" variant="destructive" isDisabled={locked()} onClick={() => {
+            appState.justAddedEntry = null;
+            void remove('special', editingSpecial.id);
+          }} />
+        </VStack>}
+      </EditorSheet>
       <Dialog
         isOpen={picker !== null}
         onOpenChange={(open) => {
@@ -1118,7 +1103,7 @@ export function DailyInputs() {
                   memory?.id ?? null,
                   vendor,
                 );
-                next = `[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`;
+                next = `[data-trade-editor="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`;
                 void save();
               }
               setPicker(null);
