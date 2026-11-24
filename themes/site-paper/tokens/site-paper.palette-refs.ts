@@ -7,6 +7,10 @@ export const sitePaperPaletteRefs = {
     light: {40: '#9b360c', 50: '#b84e16', 85: '#e8cec3'},
     dark: {30: '#7e2200', 70: '#f08e63', 80: '#f7b599'},
   },
+  danger: {
+    light: {25: '#750018', 40: '#b3002c', 50: '#dc143c', 80: '#e9b9b7', 85: '#eecbca'},
+    dark: {50: '#dc143c', 65: '#f9686e', 75: '#ff9797', 80: '#f5b3b2'},
+  },
   white: '#ffffff',
   black: '#000000',
 };

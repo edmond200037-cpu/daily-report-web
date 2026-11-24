@@ -133,7 +133,7 @@ export const sitePaperTheme = {
     "--color-on-light": "#111111",
     "--color-on-accent": "light-dark(#ffffff, #000000)",
     "--color-on-success": "light-dark(#ffffff, #111111)",
-    "--color-on-error": "light-dark(#ffffff, #111111)",
+    "--color-on-error": "light-dark(#ffffff, #ffffff)",
     "--color-on-warning": "#111111",
     "--color-info": "light-dark(#183531, #a4d4c8)",
     "--color-info-muted": "light-dark(#b9d7ff, #88bcff3D)",
@@ -141,20 +141,20 @@ export const sitePaperTheme = {
     "--color-text-info": "light-dark(#0067ce, #a1caff)",
     "--color-text-success": "light-dark(#2f7d33, #90ca90)",
     "--color-text-warning": "light-dark(#836700, #eec448)",
-    "--color-text-error": "light-dark(#c0262c, #ffaea7)",
+    "--color-text-error": "light-dark(#b3002c, #f5b3b2)",
     "--color-on-info-muted": "light-dark(#003978, #a1caff)",
     "--color-on-success-muted": "light-dark(#00490b, #90ca90)",
     "--color-on-warning-muted": "light-dark(#4b3900, #eec448)",
-    "--color-on-error-muted": "light-dark(#76000c, #ffaea7)",
+    "--color-on-error-muted": "light-dark(#750018, #f5b3b2)",
     "--color-icon-accent": "light-dark(#9b360c, #f7b599)",
     "--color-icon-primary": "light-dark(#000000, #ffffff)",
     "--color-icon-secondary": "light-dark(#6a6a6a, #9e9e9e)",
     "--color-icon-disabled": "light-dark(#919191, #525252)",
     "--color-success": "light-dark(#198100, #64af4c)",
     "--color-warning": "#ffce2f",
-    "--color-error": "light-dark(#c9303a, #ff705d)",
+    "--color-error": "light-dark(#dc143c, #dc143c)",
     "--color-success-muted": "light-dark(#bce0bb, #90ca903D)",
-    "--color-error-muted": "light-dark(#ffc4be, #ff98903D)",
+    "--color-error-muted": "light-dark(#eecbca, #ff97973d)",
     "--color-warning-muted": "light-dark(#fae19e, #e2b6233D)",
     "--color-border": "light-dark(#00000014, #ffffff1A)",
     "--color-border-emphasized": "light-dark(#d4d4d4, #525252)",
@@ -216,7 +216,9 @@ export const sitePaperTheme = {
     "--shadow-inset-success": "inset 0px 0px 0px 2px #2f7d334D",
     "--shadow-inset-warning": "inset 0px 0px 0px 2px #f8d36a4D",
     "--shadow-inset-error": "inset 0px 0px 0px 2px #de47454D",
-    "--focus-outline-color": "light-dark(#b84e16, #f08e63)"
+    "--focus-outline-color": "light-dark(#b84e16, #f08e63)",
+    "--color-icon-error": "light-dark(#b3002c, #f5b3b2)",
+    "--color-border-error": "light-dark(#e9b9b7, #f9686e)"
   },
   localTokens: {
     "--astryx-theme-neutral-color-status-fill-accent": "light-dark(#0074e2, #6d9cfe)"
@@ -343,8 +345,8 @@ export const sitePaperTheme = {
     },
     "button": {
       "variant:destructive": {
-        "backgroundColor": "var(--color-error-muted)",
-        "color": "var(--color-on-error-muted)"
+        "backgroundColor": "var(--color-error)",
+        "color": "var(--color-on-error)"
       },
       "base": {
         "minHeight": "44px"

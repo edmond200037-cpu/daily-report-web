@@ -105,8 +105,27 @@
       "source": "property",
       "on": "button",
       "when": "variant:primary"
+    },
+    {
+      "thing": "danger",
+      "value": "crimson",
+      "source": "dial"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-error)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:destructive"
+    },
+    {
+      "thing": "color",
+      "value": "var(--color-on-error)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:destructive"
     }
   ],
-  "palette": "52084763c151c611b9acbce9a599644a21955e0614dd5e35a3934e01d418f60a",
+  "palette": "77c71ebf067d860a18982a5493924b7fc9d27f7b2a1bc5902807c6e3fe7cfa7a",
   "lifted": []
 }

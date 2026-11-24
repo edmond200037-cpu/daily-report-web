@@ -14,6 +14,25 @@
           "policy": "exact"
         }
       ]
+    },
+    {
+      "id": "danger",
+      "name": "Danger",
+      "seed": "#dc143c",
+      "anchors": [
+        {
+          "mode": "light",
+          "stop": 50,
+          "color": "#dc143c",
+          "policy": "exact"
+        },
+        {
+          "mode": "dark",
+          "stop": 50,
+          "color": "#dc143c",
+          "policy": "exact"
+        }
+      ]
     }
   ]
 }

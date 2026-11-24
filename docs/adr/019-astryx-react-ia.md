@@ -93,3 +93,11 @@
 - 截圖另包含 daily-swipe 與 material-editor 深淺色狀態；驗證結果與前後頁長見本機交付報告。
 
 本輪驗證：tsc、56 檔／305 項單元測試、兩種部署路徑建置、62 項 E2E、E2E 型別、doctor 24 pass／0 warn／0 fail 及禁用內容掃描通過；保留 1 項既定 IME fixme。34 張最終原圖逐張檢視，日報 3693→1909px、設定首頁 874→844px、水位 844→844px（390×844、同一 standard 情境）。本機已驗證；隔離 DB：N/A；線上與實機尚未驗證。
+
+## 刪除動作對比補正
+
+- 使用 Astryx 主題編輯器將 site-paper 的 danger 設為 CSS 命名色 crimson；生成的 --color-error 在兩種模式保留同一深紅，--color-on-error 皆為白。destructive Button（包含 AlertDialog）改讀此不透明填色與前景，水位衍生主題同步重建；頁面沒有寫入 hex 或覆寫核心手勢。
+- 新增真實左滑與井位刪除確認流程的深淺色測試，以 WCAG 相對亮度計算實際背景／前景色，並確認祖先透明度乘積為 1；四組對比皆為 4.989973:1（約 4.99:1）。
+- Reduce Motion 下 Astryx 在手指放開後會短暫淡入；量測與截圖等待動畫回到不透明的穩定露出狀態，不移除該無障礙行為。既有 E2E 的 daily-swipe 回歸額外驗證對比。依使用者追加裁定，人工瀏覽器驗證與交付截圖改由 agent-browser 0.44.0 執行：npm run dev、390×844、淺深色左滑與刪除確認共四張，存於 artifacts/screenshots/agent-browser/；四組計算後顏色與對比 JSON 一併保留。既有 npm run test:e2e 僅標示為回歸測試，不把其截圖列為本輪交付證據。
+
+本輪本機關卡：tsc、305 項單元測試與兩種建置、E2E 型別、doctor 24 pass／0 warn／0 fail、TSX 掃描皆通過；最終 E2E 以 2 workers 完整跑出 64 通過、0 失敗、1 既定 fixme。首輪 4 workers 的兩項點擊時機失敗紀錄另存 artifacts/danger-e2e-first.log，未更改其行為或輸出斷言。
