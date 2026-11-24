@@ -1,3 +1,4 @@
+import { HStack } from '@astryxdesign/core/HStack';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { mountContent, unmountContent } from './react-content';
 import { createReorderable } from '@astryxdesign/core';
@@ -101,6 +102,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
     <VStack gap={2} data-work={work.id}>
       <TextInput
         label="工項"
+        isLabelHidden
         data-inline-work={work.id}
         value={work.taskTextSnapshot}
         size="lg"
@@ -112,12 +114,42 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
           })
         }
       />
-      <Button
+      <HStack gap={2} hAlign="start" vAlign="center"><Button
         label="位置、樓層與備註"
         size="lg"
         variant="ghost"
         onClick={() => setDetails(!details)}
-      />
+      /><Button
+        label="刪除工項"
+        size="lg"
+        variant="ghost"
+        isDisabled={locked()}
+        onClick={() => {
+          const restore = appState.daily.removeWorkItemForUndo(
+            trade.id,
+            work.id,
+          );
+          if (!restore) return;
+          notifyReact();
+          void save();
+          const dismiss = showToast({
+            body: '已刪除工項',
+            autoHideDuration: 6000,
+            endContent: (
+              <Button
+                label="復原"
+                size="lg"
+                onClick={() => {
+                  if (locked()) return;
+                  restore();
+                  dismiss();
+                  void save();
+                }}
+              />
+            ),
+          });
+        }}
+      /></HStack>
       {details && (
         <VStack gap={2}>
           <TextInput
@@ -238,37 +270,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
           />
         </VStack>
       )}
-      <Button
-        label="刪除工項"
-        size="lg"
-        variant="ghost"
-        isDisabled={locked()}
-        onClick={() => {
-          const restore = appState.daily.removeWorkItemForUndo(
-            trade.id,
-            work.id,
-          );
-          if (!restore) return;
-          notifyReact();
-          void save();
-          const dismiss = showToast({
-            body: '已刪除工項',
-            autoHideDuration: 6000,
-            endContent: (
-              <Button
-                label="復原"
-                size="lg"
-                onClick={() => {
-                  if (locked()) return;
-                  restore();
-                  dismiss();
-                  void save();
-                }}
-              />
-            ),
-          });
-        }}
-      />
+
     </VStack>
   );
 }
@@ -458,6 +460,9 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
           <ListItem
             key={work.id}
             itemKey={work.id}
+            align="start"
+            // Keep the native handle centered on the touch-sized input, above the action row.
+            endContent={<VStack aria-hidden style={{ height: 'calc(var(--spacing-8) + var(--spacing-3))' }} />}
             label={<WorkEditor trade={trade} work={work} />}
           />
         ))}

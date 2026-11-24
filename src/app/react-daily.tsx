@@ -56,7 +56,7 @@ export function DailyContext() {
   </VStack>;
 }
 
-export function DailyReview() {
+export function DailyReview({ isCompact = false }: { isCompact?: boolean }) {
   const [open, setOpen] = useState(false);
   const finalFocusRef = useRef<HTMLElement | null>(null);
   const report = appState.daily.report;
@@ -65,9 +65,9 @@ export function DailyReview() {
   const locked = appState.workspaceSwitching || appState.dateSwitching;
   const unavailable = Boolean(drafts.length || appState.contactEditor);
   const changeOpen = (value: boolean) => { if (value) finalFocusRef.current = null; setOpen(value); appState.dailyPreviewOpen = value; };
-  return <VStack padding={4} gap={3}>
-    <Text>{report.tradeSections.length} 筆施工 · {report.tradeSections.reduce((sum, trade) => sum + (validateWorkerCount(trade.workerCount) ? Number(trade.workerCount) : 0), 0)} 人 · {report.contacts.length} 筆聯絡</Text>
-    <Text>{unavailable ? `尚有 ${drafts.length + Number(Boolean(appState.contactEditor))} 筆需補填` : complete ? '資料齊全，可檢查日報' : '填寫施工紀錄後即可預覽'}</Text>
+  return <VStack padding={isCompact ? 2 : 4} gap={isCompact ? 0 : 3}>
+    {!isCompact && <Text>{report.tradeSections.length} 筆施工 · {report.tradeSections.reduce((sum, trade) => sum + (validateWorkerCount(trade.workerCount) ? Number(trade.workerCount) : 0), 0)} 人 · {report.contacts.length} 筆聯絡</Text>}
+    {!isCompact && <Text>{unavailable ? `尚有 ${drafts.length + Number(Boolean(appState.contactEditor))} 筆需補填` : complete ? '資料齊全，可檢查日報' : '填寫施工紀錄後即可預覽'}</Text>}
     <Button label="檢查與預覽" variant="primary" size="lg" data-daily-action="toggle-preview" isDisabled={locked} onClick={() => changeOpen(true)} />
     <BottomSheet label="檢查與預覽" isOpen={open} onOpenChange={changeOpen} finalFocusRef={finalFocusRef} height="hug" padding={0}>
       <Layout height="fill" style={{ height: '70dvh' }} content={<LayoutContent padding={4} label="日報預覽文字"><VStack gap={4}>

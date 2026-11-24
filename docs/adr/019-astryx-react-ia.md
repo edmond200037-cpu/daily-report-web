@@ -101,3 +101,14 @@
 - Reduce Motion 下 Astryx 在手指放開後會短暫淡入；量測與截圖等待動畫回到不透明的穩定露出狀態，不移除該無障礙行為。既有 E2E 的 daily-swipe 回歸額外驗證對比。依使用者追加裁定，人工瀏覽器驗證與交付截圖改由 agent-browser 0.44.0 執行：npm run dev、390×844、淺深色左滑與刪除確認共四張，存於 artifacts/screenshots/agent-browser/；四組計算後顏色與對比 JSON 一併保留。既有 npm run test:e2e 僅標示為回歸測試，不把其截圖列為本輪交付證據。
 
 本輪本機關卡：tsc、305 項單元測試與兩種建置、E2E 型別、doctor 24 pass／0 warn／0 fail、TSX 掃描皆通過；最終 E2E 以 2 workers 完整跑出 64 通過、0 失敗、1 既定 fixme。首輪 4 workers 的兩項點擊時機失敗紀錄另存 artifacts/danger-e2e-first.log，未更改其行為或輸出斷言。
+
+## 無工地定稿與編輯可視性修復
+
+- 舊版 eba954fa 的 daily-validator 在工地名稱空白時回報「請填寫工地名稱。」，daily-events 先提示再 return，不寫定稿。本輪保留驗證與定稿規則；將日報事件共用的原生 alert 改為 React 非阻塞提示佇列，避免 BottomSheet 開啟時原生 modal 阻塞 renderer。提示、確認均只存 UI 佇列。
+- 編輯條目或輸入框取得焦點時，底部摘要只保留「檢查與預覽」。LayoutFooter 的 ResizeObserver 按實際高度保留內容底部空間與 scroll padding；聚焦及 visualViewport 改變時以 nearest 捲動，全部為 UI 暫態，不進資料 mutation 或儲存。
+- 工項的兩個動作以 HStack 靠左並排；ListItem 的 endContent 使用輸入控制項等高的 token 空間，使原生排序握把對準首行輸入框，不重作手勢。
+- 共用提示佇列在 modal 卸載、解除背景不可互動及回復焦點後才完成 Promise，讓呼叫端能照舊聚焦缺漏欄位；避免在對話框仍存在時提早 focus 而失效。
+- 先補未填工地、已填工地對照及 360／390／430 寬度遮擋回歸，再修介面。既有缺漏提示測試僅改為操作 React 提示，保留提示、紀錄筆數及聚焦斷言；工項動作同行與握把對齊也納入三寬度檢查。
+- 人工操作及交付截圖使用 agent-browser；既有 npm run test:e2e 僅作回歸，輸出仍與 baseline-output 逐字比較。未修改 formatter、資料、同步、SQL 或答案檔；本機關卡細節與 agent-browser 量測見 artifacts/astryx-bug3-report.md，線上與實機另待驗證。
+
+本輪最終本機關卡：tsc、56 檔／305 項單元測試、兩種建置、E2E 型別、doctor 24 pass／0 warn／0 fail、TSX 掃描與 diff 檢查皆通過；完整 E2E 69 通過／0 失敗／1 既定 IME fixme。隔離 DB：N/A（未動 SQL）；線上與實機尚未驗證。

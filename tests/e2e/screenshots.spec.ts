@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { DailyUI } from './helpers/daily-ui';
 import { Metrics } from './helpers/metrics';
 import { datesFor } from './helpers/report-date';
-import { readContrast } from './helpers/contrast';
+import { readSettledContrast } from './helpers/contrast';
 import { scenarios } from './fixtures/daily-scenarios';
 
 // 改版前後截圖：SHOT_LABEL=before|after npx playwright test screenshots
@@ -48,8 +48,7 @@ for (const scheme of ['light', 'dark'] as const) {
     const deleteAction = row.getByRole('button', { name: '刪除', exact: true });
     await expect(deleteAction).toBeVisible();
     // Reduce Motion uses a brief opacity dip after release; capture the resting state.
-    await expect.poll(async () => (await readContrast(deleteAction)).opacity).toBe(1);
-    expect((await readContrast(deleteAction)).ratio).toBeGreaterThanOrEqual(4.5);
+    expect((await readSettledContrast(deleteAction)).ratio).toBeGreaterThanOrEqual(4.5);
     await page.mouse.move(0, 0);
     await page.screenshot({ path: `artifacts/screenshots/${label}/${scheme}/daily-swipe.png` });
     await page.reload();

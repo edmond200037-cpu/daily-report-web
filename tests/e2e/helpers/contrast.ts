@@ -1,4 +1,26 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
+
+/** Sample after the reveal/entrance has settled, including its ancestor opacity. */
+export async function readSettledContrast(target: Locator) {
+  let sample: Awaited<ReturnType<typeof readContrast>> | undefined;
+  await expect.poll(async () => {
+    const settled = await target.evaluate(async (node) => {
+      const ancestors: Element[] = [];
+      for (let element: Element | null = node; element; element = element.parentElement) ancestors.push(element);
+      const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const stable = () => ancestors.every((element) => Number(getComputedStyle(element).opacity) === 1
+        && element.getAnimations().every((animation) => !animation.pending && animation.playState !== 'running'));
+      await frame(); await frame();
+      if (!stable()) return false;
+      await frame(); await frame();
+      return stable();
+    });
+    if (!settled) return false;
+    sample = await readContrast(target);
+    return sample.opacity === 1;
+  }).toBe(true);
+  return sample!;
+}
 
 export async function readContrast(target: Locator) {
   return target.evaluate((node) => {

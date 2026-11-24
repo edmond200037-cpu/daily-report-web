@@ -245,16 +245,13 @@ test('取消新增標記在日期、工地與離開日報後清除', async ({ pa
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
 });
 test('施工卡沒有取消新增，按完成有缺漏時提示並聚焦', async ({ page }) => {
-  const dialogs: string[] = [];
-  page.on('dialog', async (d) => {
-    dialogs.push(d.message());
-    await d.dismiss();
-  });
   await page.goto('/#daily');
   await addTrade(page, '完成測試');
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
   await action(page, 'finish-entry').click();
-  await expect.poll(() => dialogs.length).toBe(1);
+  const notice = page.getByRole('dialog', { name: '提示', exact: true });
+  await expect(notice).toHaveCount(1);
+  await notice.getByRole('button', { name: '知道了', exact: true }).click();
   await expect(page.locator('[data-trade]')).toHaveCount(1);
   await expect(
     page.locator('[data-daily-field="vendorNameSnapshot"]'),

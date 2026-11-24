@@ -1,3 +1,4 @@
+import { useInputFocus } from './react-editing-safety';
 import { useLayoutEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
@@ -14,10 +15,12 @@ function Shell() {
   useLayoutEffect(() => { host.current?.append(app); }, []);
   const route = appState.renderedRoute;
   const daily = route?.module === 'daily' && route.page === 'main';
+  const inputFocused = useInputFocus(daily);
+  const editing = Boolean(appState.daily?.expandedId || appState.materialEditor || appState.contactEditor || inputFocused);
   const history = route?.module === 'daily' && route.page === 'history';
   const selected = location.hash.startsWith('#settings') ? 'settings'
     : route?.module === 'water-level' ? 'water-level' : 'daily';
-  return <WorkspaceFrame selected={selected} footer={daily ? <DailyReview /> : undefined}>
+  return <WorkspaceFrame selected={selected} footer={daily ? <DailyReview isCompact={editing} /> : undefined}>
         <ConfirmationDialog />
         {daily && <DailyContext />}
         {history && <ReportHistoryList reports={appState.finalizedReports} />}

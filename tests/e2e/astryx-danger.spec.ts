@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { readContrast } from './helpers/contrast';
+import { readSettledContrast } from './helpers/contrast';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 for (const colorScheme of ['light', 'dark'] as const) test(`左滑與刪除確認白字 AA 對比 ${colorScheme}`, async ({ page }, info) => {
@@ -24,8 +24,7 @@ for (const colorScheme of ['light', 'dark'] as const) test(`左滑與刪除確�
   await row.dispatchEvent('pointerup', { ...touch, buttons: 0, clientX: x - 90 });
   const swipe = row.getByRole('button', { name: '刪除', exact: true });
   await expect(swipe).toBeVisible();
-  await expect.poll(async () => (await readContrast(swipe)).opacity).toBe(1);
-  const swipeColor = await readContrast(swipe);
+  const swipeColor = await readSettledContrast(swipe);
   await info.attach('swipe-colors', { body: JSON.stringify(swipeColor, null, 2), contentType: 'application/json' });
   await mkdir('artifacts/danger-contrast', { recursive: true });
   await writeFile(`artifacts/danger-contrast/swipe-${colorScheme}.json`, JSON.stringify(swipeColor, null, 2));
@@ -41,8 +40,7 @@ for (const colorScheme of ['light', 'dark'] as const) test(`左滑與刪除確�
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toContainText('不會刪除歷史讀值');
   const confirm = dialog.getByRole('button', { name: '確認', exact: true });
-  await expect.poll(async () => (await readContrast(confirm)).opacity).toBe(1);
-  const dialogColor = await readContrast(confirm);
+  const dialogColor = await readSettledContrast(confirm);
   expect(dialogColor.opacity).toBe(1);
   expect(dialogColor.foreground).toEqual([255, 255, 255]);
   expect(dialogColor.ratio).toBeGreaterThanOrEqual(4.5);
