@@ -1,7 +1,8 @@
 import { loadAuthSnapshot, signInWithGoogle, signOut } from '../auth/auth-service';
 import { listAccessibleSites, listPendingJoinRequests, listSiteMembers, approveSiteMember, rejectSiteMember, updateSiteMemberRole, removeSiteMember, createSharedSite, requestSiteAccess } from '../data/remote/site-repository';
 import { selectActiveSharedSite, loadSharedContext, cacheActiveSiteRole } from '../data/local/shared-context';
-import { renderAccountPage } from './account-view';
+import { mountSettingsPage } from '../app/react-settings-route';
+import { confirmAction } from '../app/react-confirm';
 import { withAccountDeadline, AccountLoadTimeoutError } from './load-timeout';
 import { listAllOperations, retryMissingRpcOperations } from '../sync/outbox';
 import { runSyncOnce, refreshCloudMemoryLibrary } from '../sync/engine';
@@ -10,12 +11,9 @@ import { previewMemoryImport } from '../sync/memory-import';
 import { persistActiveWaterPartition } from '../data/water-partition';
 import { listConflictReviews, exportConflictBackups, queueConflictResolution } from '../sync/conflict-review';
 import { previewSyncRecovery, applySyncRecovery } from '../sync/recovery';
-import { escapeHtml } from '../shared/html';
 import { renderApp, parseRoute } from '../main';
 import { appState, type AccountLoadStage, app } from '../app/state';
-import { settingsHeader, pwaUpdateNotice } from '../app/shell';
 import { switchActiveDataPartition, scheduleBackgroundSync, readCloudMemoryEntries, cloudMemorySignature, syncActiveSiteNow, isReadOnlySite } from '../app/sync-runtime';
-import { debugPanel } from '../settings/views/settings-view';
 export async function selectSharedSiteFromWorkspace(siteId: string): Promise<void> {
   if (!appState.accountAuth.user || siteId === appState.accountActiveSiteId || !appState.accountSites.some((site) => site.id === siteId)) return;
   const role = appState.accountSites.find((site) => site.id === siteId)?.role ?? null;
@@ -99,20 +97,8 @@ export async function refreshAccount(onProgress?: () => void): Promise<void> {
     onProgress?.();
   }
 }
-function accountModuleMarkup(content: string): string {
-  const isDebug = parseRoute(location.hash).page === 'debug';
-  return `<main class="app-shell settings-page account-page-shell">${settingsHeader(isDebug ? '同步診斷' : '共用工地')}${content}${isDebug ? debugPanel() : ''}</main>${pwaUpdateNotice()}`;
-}
-export function renderAccountLoading(): void {
-  const content = appState.accountError
-    ? `<section class="account-content"><section class="form-card account-status" role="alert"><strong>${escapeHtml(appState.accountError)}</strong><p>最後階段：${escapeHtml(appState.accountLoadEvents.at(-1)?.stage ?? '尚未開始')}</p><button type="button" data-account-action="retry-load-account">重新讀取</button></section></section>`
-    : `<section class="account-content"><section class="form-card account-status" aria-busy="true"><strong>正在載入共用工地…</strong><p>目前階段：${escapeHtml(appState.accountLoadStage ?? '準備中')}。超過 15 秒將顯示錯誤與重試。</p></section></section>`;
-  app.innerHTML = accountModuleMarkup(content);
-}
-export function renderAccountLoaded(): void {
-  const progress = appState.accountLoadExtrasPending ? '<p class="hint" role="status">工地已可使用，成員與同步診斷仍在載入…</p>' : '';
-  app.innerHTML = accountModuleMarkup(progress + renderAccountPage({ view: parseRoute(location.hash).page === 'debug' ? 'debug' : 'account', syncing: appState.syncInFlight, auth: appState.accountAuth, sites: appState.accountSites, activeSiteId: appState.accountActiveSiteId, pendingCount: appState.accountPendingCount, requests: appState.accountRequests, members: appState.accountMembers, feedback: appState.accountFeedback, error: appState.accountError, diagnostics: appState.accountSyncDiagnostics, operations: appState.accountSyncOperations, operationsStatus: appState.accountQueueStatus, conflicts: appState.accountConflictReviews, importPreview: appState.memoryImportSiteId === appState.accountActiveSiteId ? appState.memoryImportPreview : null, recoveryPreview: appState.syncRecoverySiteId === appState.accountActiveSiteId ? appState.syncRecoveryPreview : null }));
-}
+export function renderAccountLoading(): void { mountSettingsPage(); }
+export function renderAccountLoaded(): void { mountSettingsPage(); }
 export function bindAccountEvents(): void {
   app.addEventListener('click', (event) => {
     const jump = (event.target as HTMLElement).closest<HTMLElement>('[data-account-jump]');
@@ -196,7 +182,7 @@ export function bindAccountEvents(): void {
       if (button.dataset.accountAction === 'apply-sync-recovery' && appState.accountAuth.user && appState.accountActiveSiteId) {
         const site = appState.accountSites.find((row) => row.id === appState.accountActiveSiteId);
         if (site?.role !== 'owner' || appState.syncRecoverySiteId !== appState.accountActiveSiteId || !appState.syncRecoveryPreview) throw new Error('請先由管理員重新預覽修復內容。');
-        if (!window.confirm('執行前請先下載處理前備份。修復會封存舊操作、接管雲端同名記憶並重新排列可安全送出的項目，Supabase 現有資料不會刪除。是否繼續？')) return;
+        if (!await confirmAction('執行前請先下載處理前備份。修復會封存舊操作、接管雲端同名記憶並重新排列可安全送出的項目，Supabase 現有資料不會刪除。是否繼續？')) return;
         const scope = { userId: appState.accountAuth.user.id, siteId: appState.accountActiveSiteId };
         const result = await applySyncRecovery(scope, appState.syncRecoveryPreview.fingerprint);
         appState.syncRecoveryPreview = null; appState.syncRecoverySiteId = null;
@@ -238,7 +224,7 @@ export function bindAccountEvents(): void {
         const entries = [...appState.memoryImportPreview.add, ...selectedConflicts];
         const count = entries.length;
         if (!count && appState.memoryImportSource !== 'legacy') throw new Error('沒有需要新增的舊記憶。');
-        if (!window.confirm(`將 ${count} 筆舊本機記憶加入目前共用工地？原始本機資料會保留；未勾選的衝突不會匯入。`)) return;
+        if (!await confirmAction(`將 ${count} 筆舊本機記憶加入目前共用工地？原始本機資料會保留；未勾選的衝突不會匯入。`)) return;
         const scope = { userId: appState.accountAuth.user.id, siteId: appState.accountActiveSiteId };
         await queueMemoryImport(scope, entries, appState.memoryImportSource === 'legacy');
         if (appState.memoryImportSource === 'legacy') await refreshCloudMemoryLibrary(scope);
@@ -256,7 +242,7 @@ export function bindAccountEvents(): void {
       if (button.dataset.accountAction === 'resolve-conflict' && appState.accountAuth.user && appState.accountActiveSiteId && button.dataset.conflictId) {
         const review = appState.accountConflictReviews.find((row) => row.id === button.dataset.conflictId); const form = button.closest<HTMLFormElement>('[data-conflict-review]');
         if (review && form) {
-          const localPaths = [...form.querySelectorAll<HTMLSelectElement>('[data-conflict-choice]')].filter((row) => row.value === 'local').map((row) => row.dataset.conflictChoice!).filter(Boolean);
+          const localPaths = [...form.querySelectorAll<HTMLInputElement>('[data-conflict-choice]')].filter((row) => row.value === 'local').map((row) => row.dataset.conflictChoice!).filter(Boolean);
           try { await queueConflictResolution({ userId: appState.accountAuth.user.id, siteId: appState.accountActiveSiteId }, review, localPaths); const result = await syncActiveSiteNow(); appState.accountFeedback = result?.failed ? '新同步操作送出失敗；原衝突與備份已保留，可再次重試。' : '已建立並送出新的同步操作；原衝突僅在雲端成功寫入後結案。'; }
           catch (error) { appState.accountError = error instanceof Error ? error.message : '衝突審核建立失敗，原始資料未變更。'; }
         }
@@ -275,7 +261,7 @@ export function bindAccountEvents(): void {
       const role = button.dataset.accountAction?.replace('role-', '') as 'owner' | 'editor' | 'viewer' | undefined;
       if (memberSiteId && memberUserId && role && ['owner', 'editor', 'viewer'].includes(role)) { await updateSiteMemberRole(memberSiteId, memberUserId, role); appState.accountFeedback = '成員角色已更新。'; }
       if (memberSiteId && memberUserId && button.dataset.accountAction === 'remove-member') {
-        if (!window.confirm('確定移除此工地成員？對方下次連線後將無法存取雲端資料。')) return;
+        if (!await confirmAction('確定移除此工地成員？對方下次連線後將無法存取雲端資料。')) return;
         await removeSiteMember(memberSiteId, memberUserId); appState.accountFeedback = '成員已移除。';
       }
     } catch (error) { appState.accountError = error instanceof Error ? error.message : '帳號操作失敗。'; }

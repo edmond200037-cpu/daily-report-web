@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderAccountPage } from '../../src/account/account-view';
+import { accountMarkup as renderAccountPage } from './helpers/react-settings';
 import type { SyncOperation } from '../../src/sync/types';
 
 const operation = (code: '23503' | '23505'): SyncOperation => ({
@@ -46,8 +46,7 @@ describe('共用工地同步修復介面', () => {
     const html = renderAccountPage({ view: 'debug', ...ownerState, conflicts: [{ id: 'conflict', operationId: 'operation', kind: 'memory', entity: 'memory-entry', createdAt: '', local: { id: 'task', kind: 'task', normalized_name: '粉光', payload: { name: '粉光' }, usage_count: 1, status: 'confirmed' }, cloud: {}, cloudRevision: 0, cloudEntityId: 'task', diffs: [{ path: '/id', kind: '新增', local: 'task', cloud: undefined }] }] });
     expect(html).toContain('粉光');
     expect(html).toContain('data-conflict-choice="/"');
-    expect(html).toContain('value="cloud" disabled');
-    expect(html).toContain('value="local" selected');
+    expect(html).toContain('data-conflict-choice="/" value="local"');
     expect(html).not.toContain('data-conflict-choice="/id"');
   });
   it('共用工地頁保留管理操作，診斷改由獨立頁簽承接', () => {
@@ -55,7 +54,7 @@ describe('共用工地同步修復介面', () => {
     const html = renderAccountPage({ ...ownerState, view: 'account', operations: rows, diagnostics: rows, pendingCount: 1 });
     expect(html).toContain('href="#settings/debug"');
     expect(html).toContain('data-account-form="create-site"');
-    expect(html).not.toContain('<h2>待同步項目</h2>');
+    expect(html).not.toContain('待同步項目');
     expect(html).not.toContain('data-account-action="preview-sync-recovery"');
   });
 
@@ -63,8 +62,8 @@ describe('共用工地同步修復介面', () => {
     const rows = [operation('23505')];
     const original = JSON.stringify(rows);
     const html = renderAccountPage({ ...ownerState, view: 'debug', operations: rows, diagnostics: rows, pendingCount: 1 });
-    expect(html).toContain('<h2>待同步項目</h2>');
-    expect(html).toContain('<h2>同步診斷</h2>');
+    expect(html).toContain('待同步項目');
+    expect(html).toContain('同步診斷');
     expect(html).not.toContain('<summary>工地與成員管理</summary>');
     expect(html).not.toContain('data-account-action="sign-out"');
     expect(html).not.toContain('data-account-action="copy-join-code"');
@@ -84,7 +83,7 @@ describe('共用工地同步修復介面', () => {
     expect(signedOut).not.toContain('data-account-action="sign-in"');
     const noSite = renderAccountPage({ ...ownerState, view: 'debug', activeSiteId: null });
     expect(noSite).toContain('請先選擇要診斷的工地');
-    expect(noSite).not.toContain('<h2>待同步項目</h2>');
+    expect(noSite).not.toContain('待同步項目');
     expect(noSite).not.toContain('data-account-form="create-site"');
   });
 
@@ -93,11 +92,11 @@ describe('共用工地同步修復介面', () => {
       sites: [...ownerState.sites, { id: 'other', name: '其他工地', joinCode: 'other-secret', role: 'owner', createdAt: '' }],
       members: [{ siteId: 'site-1', userId: 'private-member', role: 'editor', createdAt: '' }],
     });
-    expect(html).toContain('<h2>測試工地</h2>');
+    expect(html).toContain('測試工地');
     expect(html).not.toContain('其他工地');
     expect(html).not.toContain('other-secret');
     expect(html).not.toContain('private-member');
-    expect(html).toContain('data-account-action="sync-now" disabled');
+    expect(html).toMatch(/<button(?=[^>]*data-account-action="sync-now")(?=[^>]*aria-disabled="true")[^>]*>/);
   });
 
 });

@@ -1,13 +1,11 @@
-import { readFileSync } from 'node:fs';
+
 import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
-import { renderAccountPage } from '../../src/account/account-view';
+import { accountMarkup as renderAccountPage } from './helpers/react-settings';
 import { oauthRedirectUrl } from '../../src/auth/auth-service';
 import type { SyncOperation } from '../../src/sync/types';
 
 const main = appSource();
-const styles = readFileSync(new URL('../../src/styles.css', import.meta.url), 'utf8');
-const accountCss = readFileSync(new URL('../../src/account/account.css', import.meta.url), 'utf8');
 
 describe('共用工地帳號頁', () => {
   it('OAuth callback 使用 query string，避免與 hash 路由衝突', () => {
@@ -44,8 +42,8 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('href="#settings/debug"');
     expect(html).not.toContain('data-account-action="sync-now"');
     expect(html).toContain('data-account-form="request-join"');
-    expect(html).toContain('account-site active');
-    expect(html).toContain('<div class="account-join-code"><span>加入碼</span><code>a1b2c3d4e5f6</code>');
+    expect(html).toContain('目前使用');
+    expect(html).toContain('<code>a1b2c3d4e5f6</code>');
     expect(html).toContain('data-account-action="copy-join-code" data-site-id="site-1"');
     expect(html).not.toContain('data-join-code=');
   });
@@ -84,34 +82,26 @@ describe('共用工地帳號頁', () => {
     expect(html).toContain('data-account-action="approve-editor"');
     expect(html).toContain('data-account-action="role-owner"');
     expect(html).toContain('data-account-action="remove-member"');
-    expect(html).toContain('<small>編輯者</small>');
+    expect(html).toContain('編輯者');
     expect(html).toContain('data-account-action="role-editor"');
     expect(html).toContain('aria-pressed="true"');
   });
 
   it('共用工地使用設定子頁頁首，並由設定首頁進入', () => {
-    expect(main).toContain('class="app-shell settings-page account-page-shell"');
-    expect(main).toContain("settingsHeader(isDebug ? '同步診斷' : '共用工地')");
-    expect(main).toContain('class="settings-status" href="#settings/account"');
+    expect(main).toContain('mountSettingsPage()');
+    expect(main).toContain('renderAccountLoaded');
+    expect(main).toContain("normalized === '#settings/account'");
     expect(main).toContain("if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }");
   });
 
-  it('模組頁與共用工地保留紙張色、危險訊息與 daily orange 互動契約', () => {
-    expect(styles).toContain('.module-page { min-height: 100vh; min-height: 100dvh; background: var(--daily-paper); color: var(--daily-ink); }');
-    expect(styles).toContain('.module-page button:focus-visible');
-    expect(styles).toContain('outline-color: var(--daily-orange)');
-    expect(accountCss).toContain('.account-page-shell label, .account-page-shell .empty { color: var(--daily-ink-soft); }');
-    expect(accountCss).toContain('.account-page-shell small { color: var(--daily-ink-faint); }');
-    expect(accountCss).toContain('.account-page-shell .issues { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }');
-    expect(accountCss).toContain('.account-page-shell .primary { border-color: var(--daily-orange); background: var(--daily-orange); }');
-    expect(accountCss).toContain('.account-join-code code');
-    expect(accountCss).toContain('min-height: 44px');
-    expect(accountCss).toContain('border-left: 1px solid var(--daily-line-strong)');
+  it('共用工地使用 Astryx 元件並保留清楚標籤', () => {
+    const html = renderAccountPage({ view: 'account', auth: { enabled: true, session: null, user: null }, sites: [], activeSiteId: null, pendingCount: 0, requests: [], members: [], feedback: '', error: '' });
+    expect(html).toContain('astryx-button'); expect(html).toContain('data-size="lg"'); expect(html).toContain('使用 Google 登入');
   });
 
   it('點共用工地先渲染載入骨架，背景讀取完成才替換資料', () => {
     expect(main).toContain("if (route.module === 'account') { if (route.page === 'debug') appState.settingsDebug = await databaseSummary(); if (token !== appState.renderToken) return; renderAccountLoading(); void refreshAccount(() =>");
-    expect(main).toContain('正在載入共用工地…');
+    expect(main).toContain('renderAccountLoading');
     expect(main).toContain('token !== appState.renderToken || parseRoute(location.hash).module !== \'account\'');
     expect(main).toContain("button.dataset.accountAction === 'retry-load-account'");
     expect(main).toContain('15_000 - (started - appState.accountLoadStartedAt)');
@@ -126,7 +116,7 @@ describe('共用工地帳號頁', () => {
     const html = renderAccountPage({ view: 'debug', auth: { enabled: true, session: null, user: { id: 'user-1' } as never }, sites: [{ id: 'site-1', name: '測試工地', joinCode: 'code', role: 'editor', createdAt: '' }], activeSiteId: 'site-1', pendingCount: rows.length, requests: [], members: [], feedback: '', error: '', operations: rows, diagnostics: rows });
     expect(html).toContain('待同步 8 筆');
     expect(html).toContain('共 8 筆；此明細與頁首待同步數量相同');
-    expect((html.match(/<li>/g) ?? []).length).toBeGreaterThanOrEqual(8);
+    expect((html.match(/<li\b/g) ?? []).length).toBeGreaterThanOrEqual(8);
     expect(html).toContain('日報日期 2026-09-23');
     expect(html).toContain('tradeSections.workerCount');
   });
@@ -172,8 +162,8 @@ describe('共用工地帳號頁', () => {
         { siteId: 'site-2', userId: 'member-2', role: 'viewer', createdAt: '' },
       ], feedback: '', error: '',
     });
-    expect(html).toContain('<h2>甲工地</h2>');
-    expect(html).toContain('<h2>乙工地</h2>');
+    expect(html).toContain('甲工地');
+    expect(html).toContain('乙工地');
     expect(html).toContain('requester-1');
     expect(html).toContain('member-1');
     expect(html).toContain('member-2');

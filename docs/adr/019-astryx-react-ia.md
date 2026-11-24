@@ -1,6 +1,6 @@
 # ADR-019：React 19 與 Astryx 資訊架構遷移
 
-狀態：6a、6b 本機關卡通過；7、8 尚未完成。
+狀態：6a、6b、7 本機關卡通過；8 尚未完成。
 
 ## 決策
 
@@ -23,17 +23,17 @@
 | 全站外框 | 已遷移 | React AppShell 與三入口，6a 本機關卡通過 |
 | #daily | 已遷移 | 日期／工地、BottomSheet 及四區 React 輸入 |
 | #daily/history | 已遷移 | React List，6a 本機關卡通過 |
-| #settings | 未遷移 | 舊 host |
-| #settings/memory | 未遷移 | 舊 host |
-| #settings/daily/sites | 未遷移 | 舊 host |
-| #settings/daily/trade-tasks | 未遷移 | 舊 host |
-| #settings/daily/locations | 未遷移 | 舊 host |
-| #settings/daily/materials | 未遷移 | 舊 host |
-| #settings/daily/templates | 未遷移 | 舊 host |
-| #settings/water | 未遷移 | 舊 host |
-| #settings/data | 未遷移 | 舊 host |
-| #settings/account | 未遷移 | 舊 host |
-| #settings/debug | 未遷移 | 舊 host |
+| #settings | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/memory | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/daily/sites | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/daily/trade-tasks | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/daily/locations | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/daily/materials | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/daily/templates | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/water | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/data | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/account | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
+| #settings/debug | 已遷移 | React Astryx 清單、表單及原有寫入流程 |
 | #water-level | 未遷移 | 舊 host |
 
 ## 已知限制與驗證邊界
@@ -59,3 +59,12 @@
 - 四區、取消新增、摘要契約改為 React SSR；舊拖曳預覽、曲線接線盤、自製 work-gestures rollback 專屬測試移除，改由新瀏覽器拖曳／鍵盤／復原測試覆蓋。手機流程測試保留非介面斷言，刪除已移除手勢模組的斷言；資料、同步、formatter、記憶斷言未修改。
 - Typeahead 自行管理查詢；已消耗頓號後的尾字透過元件自己的已選值編輯操作恢復，不自行寫入 input value，不在組字期間重建輸入。
 - 隔離 DB：N/A（未動 SQL）；線上與實機：尚未驗證。
+
+## 7 驗證
+
+- tsc、check:release（56 檔／304 項）、兩種 BASE_PATH 建置通過；使用 Node 22。
+- npm run test:e2e -- --fully-parallel --workers=4：41 通過、0 失敗、1 個既定 IME fixme。新增設定全部 11 個路由在 360／390／430 的無水平捲動與元件控制高度檢查、工地 CRUD／取消刪除／備份下載、井位新增改名及 AlertDialog 刪除。
+- Astryx doctor：24 pass、0 warn、0 fail，exit 0。新的 TSX 禁用內容掃描與 git diff --check 通過。
+- 設定導覽 12 項、格線 3 項、工種管理 4 項改為 React SSR；帳號與同步修復的輸出改從 React SSR 取得，保留角色、載入未知數量、全部待同步明細、衝突整筆選擇、未修改原操作等行為。OAuth、資料、同步及記憶邏輯的斷言未修改。
+- 設定、記憶、帳號原事件寫入流程保留；確認框改為共用 AlertDialog 佇列。井位頁直接呼叫既有 loadPoints／savePoint／deletePoint；普通表單與切換鎖不另建業務狀態。
+- 隔離 DB：N/A（未動 SQL）；線上 OAuth、Realtime 與實機：尚未驗證。

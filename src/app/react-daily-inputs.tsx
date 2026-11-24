@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { mountContent, unmountContent } from './react-content';
 import { createReorderable } from '@astryxdesign/core';
 import { createSwipe } from '@astryxdesign/core/Swipe';
 import { useToast } from '@astryxdesign/core/Toast';
-import { Theme } from '@astryxdesign/core/theme';
-import { InternationalizationProvider } from '@astryxdesign/core/i18n';
-import zhTW from '@astryxdesign/core/locales/zh-TW.json';
-import { astryxOverrides } from './astryx-locale';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Grid } from '@astryxdesign/core/Grid';
 import { Button } from '@astryxdesign/core/Button';
@@ -24,8 +20,7 @@ import { DateInput } from '@astryxdesign/core/DateInput';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { List, ListItem } from '@astryxdesign/core/List';
-import { themes, defaultThemeSlug } from '../astryx-themes';
-import { app, appState } from './state';
+import { appState } from './state';
 import { useAppVersion, notifyReact } from './react-store';
 import { confirmAction } from './react-confirm';
 import { isReadOnlySite } from './sync-runtime';
@@ -1194,18 +1189,9 @@ export function DailyInputs() {
   );
 }
 
-let root: Root | undefined;
 export function mountDailyInputs() {
-  root ??= createRoot(app);
-  root.render(
-    <InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}>
-      <Theme theme={themes[defaultThemeSlug]}>
-        <DailyInputs />
-      </Theme>
-    </InternationalizationProvider>,
-  );
+  mountContent(<DailyInputs />);
 }
 export function unmountDailyInputs() {
-  root?.unmount();
-  root = undefined;
+  unmountContent();
 }
