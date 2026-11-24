@@ -58,7 +58,6 @@ export async function renderApp(): Promise<void> {
   if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }
   const token = ++appState.renderToken; const route = parseRoute(location.hash); const previousRoute = appState.renderedRoute; if (!(route.module === 'daily' && route.page === 'main')) unmountDailyInputs(); appState.renderedRoute = route; appState.water = undefined;
   if (route.module !== 'daily' || route.page !== 'main') appState.justAddedEntry = null;
-  if (route.module === 'settings' && route.page === 'home' && (previousRoute?.module === 'daily' || previousRoute?.module === 'water-level') && previousRoute.page === 'main') appState.settingsReturnModule = previousRoute.module;
   if (route.module === 'account') { if (route.page === 'debug') appState.settingsDebug = await databaseSummary(); if (token !== appState.renderToken) return; renderAccountLoading(); void refreshAccount(() => { if (token !== appState.renderToken || parseRoute(location.hash).module !== 'account') return; if (appState.accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); }); return; }
   if (!appState.accountAuth.enabled) await refreshAccount();
   if (token !== appState.renderToken) return;

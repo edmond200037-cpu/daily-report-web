@@ -22,7 +22,7 @@ export const preStyle = { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', font
 export function SettingsFrame({ title, children, home = false }: { title: string; children: ReactNode; home?: boolean }) {
   return <VStack as="main" padding={4} gap={4} inert={appState.workspaceSwitching || appState.dateSwitching}>
     <Heading level={1}>{title}</Heading>
-    <Button size="lg" label={home ? appState.settingsReturnModule === 'water-level' ? '返回水位' : '返回日報' : '返回設定'} href={home ? appState.settingsReturnModule === 'water-level' ? '#water-level' : '#daily' : '#settings'} />
+    {!home && <Button size="lg" label="返回設定" href="#settings" />}
     {children}
   </VStack>;
 }

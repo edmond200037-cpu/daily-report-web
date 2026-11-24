@@ -1,3 +1,4 @@
+import { siteWaterTheme as waterTheme } from '../themes/site-water.js';
 import type { ReactNode } from 'react';
 import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import zhTW from '@astryxdesign/core/locales/zh-TW.json';
@@ -16,7 +17,7 @@ import { themes, defaultThemeSlug } from '../astryx-themes';
 
 // Frame follows shell-top-nav: navigation above one centered content region.
 export function WorkspaceFrame({ selected, children, footer }: { selected: string; children: ReactNode; footer?: ReactNode }) {
-  return <InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={themes[defaultThemeSlug]}>
+  return <InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={selected === 'water-level' ? waterTheme : themes[defaultThemeSlug]}>
     <AppShell height="auto" variant="surface" topNav={
       <TabList value={selected} onChange={(value) => { location.hash = value; }} layout="fill" size="lg" role="navigation" hasDivider>
         <Tab value="daily" label="施工日報" href="#daily" />

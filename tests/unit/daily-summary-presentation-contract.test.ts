@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dailyMarkup } from './helpers/react-daily';
+import { startMaterialEditor } from '../../src/daily/views/material-view';
 
 import {
   createTrade,
@@ -76,7 +77,9 @@ describe('React 日報資料列契約', () => {
   });
   it('進料使用 Selector 表達單一連接', () => {
     const html = dailyMarkup((daily) => {
-      daily.report.standaloneMaterialEntries.push(createMaterialEntry(0, 'independent'));
+      const entry = createMaterialEntry(0, 'independent');
+      daily.report.standaloneMaterialEntries.push(entry);
+      startMaterialEditor('independent', entry);
     });
     expect(html).toContain('連接工種');
     expect(html).toContain('不連接');

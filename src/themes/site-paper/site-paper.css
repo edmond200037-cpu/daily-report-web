@@ -444,6 +444,11 @@
     min-height: 44px;
   }
 
+  .astryx-button[data-variant="primary"] {
+    color: var(--color-on-accent);
+    background-color: var(--color-accent);
+  }
+
   .astryx-badge[data-variant="neutral"] {
     background-color: var(--color-background-gray);
     color: var(--color-text-gray);

@@ -48,7 +48,7 @@ export class DailyUI {
     await expect(this.page.getByLabel('日報日期', { exact: true })).toHaveValue(dates.reportISO);
     await expect(this.page.getByRole('combobox', { name: '工地名稱' })).toHaveValue('');
     await expect(this.page.locator('[data-trade]')).toHaveCount(0);
-    await expect(this.page.locator('.astryx-layout-footer')).toContainText('0 筆施工 · 0 人 · 0 筆聯絡');
+    await expect(this.page.getByLabel('日報檢查與複製', { exact: true })).toContainText('0 筆施工 · 0 人 · 0 筆聯絡');
     await this.metrics.sample('empty');
     await this.type(this.page.getByRole('combobox', { name: '工地名稱' }), '鑫天地六期', '工地');
     await this.click(this.page.getByRole('option', { name: '鑫天地六期', exact: true }), '新增並使用工地');
@@ -75,7 +75,7 @@ export class DailyUI {
       if (index === 0) await this.metrics.sample('engineering');
       if (trade.tasks.length > 1 && !longWorkSampled) { longWorkSampled = true; await this.metrics.sample('long-work'); }
       await this.click(card.locator('[data-daily-action="finish-entry"]'), `完成：${label}`);
-      await expect(card.locator('[data-daily-action="toggle-trade"]')).toBeVisible();
+      await expect(card).toBeVisible();
       await expect(card).toContainText('資料齊全');
     }
     if (scenario.materials.length) {
@@ -110,17 +110,21 @@ export class DailyUI {
       }
       for (const [index, id] of materialIds.entries()) {
         const target = scenario.trades[scenario.materials[index].trade];
-        const source = this.page.locator(`[data-material="${id}"]`).getByRole('combobox', { name: '連接工種' });
+        await this.click(this.page.locator(`[data-material="${id}"]`), '編輯進料連接');
+        const source = this.page.getByRole('combobox', { name: '連接工種' });
         await this.click(source, '選擇連接工種');
         await this.click(this.page.getByRole('option', { name: `${target.name}｜${target.vendor}`, exact: true }), `連接${target.name}`);
         await expect(source).toContainText(target.name);
+        await this.click(this.action('save-material'), '儲存已連接進料');
+        await expect(this.page.locator('[data-material-editor]')).toHaveCount(0);
+        await expect(this.page.locator(`[data-material="${id}"]`)).toContainText(`已連接：${target.name}｜${target.vendor}`);
       }
       await this.metrics.sample('connection-board');
       await this.section('engineering');
       // Connecting returns the receiving trade to draft; confirm each one again.
       for (const tradeIndex of new Set(scenario.materials.map((material) => material.trade))) {
         const trade = this.page.locator(`[data-trade="${tradeIds[tradeIndex]}"]`);
-        await this.click(trade.locator('[data-daily-action="toggle-trade"]'), `確認${scenario.trades[tradeIndex].name}`);
+        await this.click(trade, `確認${scenario.trades[tradeIndex].name}`);
         await this.click(trade.locator('[data-daily-action="finish-entry"]'), `完成已連接進料的${scenario.trades[tradeIndex].name}`);
         await expect(trade).toContainText('資料齊全');
       }

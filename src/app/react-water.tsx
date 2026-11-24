@@ -1,3 +1,5 @@
+import { Theme } from '@astryxdesign/core/theme';
+import { siteWaterTheme as waterTheme } from '../themes/site-water.js';
 import { useState, type ComponentProps } from 'react';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -72,5 +74,5 @@ export function WaterContent({ controller }: { controller: WaterViewController }
 }
 export function WaterPage() {
   useAppVersion();
-  return appState.water ? <WaterContent controller={appState.water as unknown as WaterViewController} /> : <Text role="status">正在載入水位資料…</Text>;
+  return appState.water ? <Theme theme={waterTheme}><WaterContent controller={appState.water as unknown as WaterViewController} /></Theme> : <Text role="status">正在載入水位資料…</Text>;
 }

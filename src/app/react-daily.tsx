@@ -7,6 +7,7 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
 import { List, ListItem } from '@astryxdesign/core/List';
+import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
 import { BottomSheet } from '@astryxdesign/core/BottomSheet';
 import { app, appState } from './state';
 import { switchDailyDate } from './workspace-events';
@@ -67,9 +68,9 @@ export function DailyReview() {
   return <VStack padding={4} gap={3}>
     <Text>{report.tradeSections.length} 筆施工 · {report.tradeSections.reduce((sum, trade) => sum + (validateWorkerCount(trade.workerCount) ? Number(trade.workerCount) : 0), 0)} 人 · {report.contacts.length} 筆聯絡</Text>
     <Text>{unavailable ? `尚有 ${drafts.length + Number(Boolean(appState.contactEditor))} 筆需補填` : complete ? '資料齊全，可檢查日報' : '填寫施工紀錄後即可預覽'}</Text>
-    <Button label="檢查與預覽" size="lg" data-daily-action="toggle-preview" isDisabled={locked} onClick={() => changeOpen(true)} />
-    <BottomSheet label="檢查與預覽" isOpen={open} onOpenChange={changeOpen} finalFocusRef={finalFocusRef} padding={4}>
-      <VStack gap={4}>
+    <Button label="檢查與預覽" variant="primary" size="lg" data-daily-action="toggle-preview" isDisabled={locked} onClick={() => changeOpen(true)} />
+    <BottomSheet label="檢查與預覽" isOpen={open} onOpenChange={changeOpen} finalFocusRef={finalFocusRef} height="hug" padding={0}>
+      <Layout height="fill" style={{ height: '70dvh' }} content={<LayoutContent padding={4} label="日報預覽文字"><VStack gap={4}>
         <Heading level={2}>檢查與預覽</Heading>
         <List hasDividers>{drafts.map((trade) => <ListItem key={trade.id} label={trade.tradeNameSnapshot || '施工紀錄'}
           description={validateTrade(trade, appState.daily.linkedMaterialEntries(trade.id))[0]?.message ?? '請整理重複廠商'}
@@ -83,14 +84,14 @@ export function DailyReview() {
         {duplicateVendorTradeIds(report).size > 0 && <Text>同一工種存在重複廠商施工卡；預覽保留原內容，但不能定稿。</Text>}
         {groupOutputTrades(report, false).some((group) => new Set(group.sections.map((trade) => trade.tradeNameSnapshot.trim())).size > 1) && <Text>同一工種的名稱快照不一致；預覽採最前施工卡名稱。</Text>}
         <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', font: 'inherit' }}>{formatDailyReport(report) || '填寫施工紀錄後，這裡會顯示日報預覽。'}</pre>
-        <Button label="僅複製" size="lg" isDisabled={unavailable || !complete || locked} clickAction={() => dispatchDailyAction('copy')} data-daily-action="copy" />
-        <Button label="定稿並複製" size="lg" variant="primary" data-daily-action="finalize" isDisabled={unavailable || !complete || locked || isReadOnlySite()}
-          clickAction={() => dispatchDailyAction('finalize')} />
-        <Text>定稿會保留 7 天；草稿保留供繼續編輯。</Text>
-        <output className="daily-output__feedback">{appState.dailyCopyFeedback}</output>
         <Button label="查看近 7 天" href="#daily/history" size="lg" />
+      </VStack></LayoutContent>} footer={<LayoutFooter hasDivider padding={4} label="預覽固定操作"><VStack gap={2}>
+        <Button label="複製日報文字" size="lg" isDisabled={unavailable || !complete || locked} clickAction={() => dispatchDailyAction('copy')} data-daily-action="copy" />
+        <Button label="定稿並複製（草稿保留）" size="lg" variant="primary" data-daily-action="finalize" isDisabled={unavailable || !complete || locked || isReadOnlySite()}
+          clickAction={() => dispatchDailyAction('finalize')} />
+        <output className="daily-output__feedback">{appState.dailyCopyFeedback}</output>
         <Button label="關閉預覽" size="lg" onClick={() => changeOpen(false)} />
-      </VStack>
+      </VStack></LayoutFooter>} />
     </BottomSheet>
   </VStack>;
 }

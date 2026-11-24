@@ -14,7 +14,7 @@
 
 6b 以 createReorderable、createSwipe 與 Toast 取代 ADR-007 的自製手勢：左滑露出刪除按鈕，刪除後提供 6 秒 Toast 復原，沿用 DailyDeleteUndo；長按握把時間由 Astryx 決定，新增鍵盤排序。每列使用穩定識別，並提供可直接觸達的操作。工項及聯絡工項同樣使用穩定識別排序；取消拖曳不寫入，工項排序保存失敗恢復原順序。
 
-進料曲線接線盤改為每筆進料一個「連接工種」Selector，含「不連接」，沿用原子化連接、解除及改接方法。保留原先普通進料連接後轉為獨立進料、解除後轉回普通進料的既有資料契約；沒有改動 controller 語意。改接使用 AlertDialog。
+進料曲線接線盤改為每筆進料編輯狀態內的一個「連接工種」Selector，含「不連接」，沿用原子化連接、解除及改接方法。保留原先普通進料連接後轉為獨立進料、解除後轉回普通進料的既有資料契約；沒有改動 controller 語意。改接使用 AlertDialog。
 
 ## 頁面遷移狀態
 
@@ -82,3 +82,14 @@
 - 最後看圖後透過 Astryx 主題編輯器把清單列、Checkbox 標籤及 DateTimeInput 日期／時間區段補至至少 44px；主題深淺色預覽已檢視。輸入器高度改由內容撐開，避免窄螢幕日期／時間換列時與下一個欄位重疊；三種寬度均直接檢查下一欄標籤位於時間區段下方。尺寸測試涵蓋實際區段與清單整列，並在觸控環境點擊列邊緣確認可導頁。
 
 - `SHOT_LABEL=after npx playwright test screenshots --workers=2`：2 通過、0 失敗。15 個畫面 × 深淺色共 30 張原圖，以原始解析度分成 21 張並排圖逐張檢視；未見文字溢出、不可讀深色內容或水位標籤重疊。日報整頁截圖中的固定摘要與 Sheet 只覆蓋當時視窗範圍，屬全頁截圖的固定定位呈現；Sheet 定稿／複製另有操作測試通過。
+
+## 協調者視覺審查第 1 輪
+
+- 施工、進料及聯絡摘要使用 ListItem 的 label／description／onClick，標題靠左、一行次要文字、Astryx 握把；點列進入既有編輯狀態。刪除只在左滑或編輯區提供，進料連接 Selector 只在編輯區提供，摘要顯示已連接對象或未連接。
+- Selector 仍呼叫原子化 controller；編輯草稿同步讀回 controller 的 entryType 與 connectedTradeSectionId，避免儲存時以舊快照覆蓋連接種類。既有 formatter、資料及同步未變。
+- 日報主要操作使用施工橘，水位以官方巢狀 Theme 覆寫 accent 為既有量測綠 --color-info；產出 site-water 的建置 JS／CSS，深色按鈕採相應前景色。新增深淺色 AA 對比測試。
+- 設定首頁移除重複返回按鈕及 settingsReturnModule；子頁返回設定保留。首頁同步診斷列沒有 selected 狀態，截圖先移開滑鼠，避免捕到 hover。
+- BottomSheet 使用有界 LayoutContent 與 LayoutFooter，預覽可捲動、操作固定在底部；390×844 初次開啟即可看到兩顆複製按鈕。「查看近 7 天」保留在預覽區。
+- 截圖另包含 daily-swipe 與 material-editor 深淺色狀態；驗證結果與前後頁長見本機交付報告。
+
+本輪驗證：tsc、56 檔／305 項單元測試、兩種部署路徑建置、62 項 E2E、E2E 型別、doctor 24 pass／0 warn／0 fail 及禁用內容掃描通過；保留 1 項既定 IME fixme。34 張最終原圖逐張檢視，日報 3693→1909px、設定首頁 874→844px、水位 844→844px（390×844、同一 standard 情境）。本機已驗證；隔離 DB：N/A；線上與實機尚未驗證。

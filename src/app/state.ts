@@ -80,7 +80,6 @@ class AppState {
   tradeSearchKeyword = '';
   tradeSearchComposing = false;
   memoryCandidates: MemoryCandidate[] = [];
-  settingsReturnModule: SettingsReturnModule = 'daily';
   renderedRoute: AppRoute | null = null;
   accountAuth: AuthSnapshot = { enabled: false, session: null, user: null };
   accountActionBusy = false;
@@ -132,7 +131,6 @@ export type AppRoute =
   | { module: 'settings'; page: 'home' | 'memory' | 'data' }
   | { module: 'account'; page: 'main' | 'debug' };
 export type WaterController = { root: HTMLElement; initialize(): Promise<void>; refresh(): Promise<void>; render(): void; renderSettings(): void; handleInput(target: HTMLElement): Promise<void>; handleAction(action: string, id?: string, extra?: string): Promise<void>; preview(): string; mode: string };
-type SettingsReturnModule = 'daily' | 'water-level';
 export const waterEditors = new Map<string, WaterController>();
 export type MaterialConnectionUndoNotice = { materialId: string; tradeId: string; expiresAt: number; timer: number };
 type MaterialEditor = { id: string; originalId: string | null; value: MaterialEntry; errors: string[] };

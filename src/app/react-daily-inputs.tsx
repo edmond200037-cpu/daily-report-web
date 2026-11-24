@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { mountContent, unmountContent } from './react-content';
 import { createReorderable } from '@astryxdesign/core';
 import { createSwipe } from '@astryxdesign/core/Swipe';
@@ -478,7 +478,7 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
   );
 }
 
-function MaterialEditor() {
+function MaterialEditor({ connection, onDelete }: { connection: ReactNode; onDelete: () => void }) {
   const editor = appState.materialEditor!;
   const value = editor.value;
   const querying = useRef(new Set<string>());
@@ -528,7 +528,7 @@ function MaterialEditor() {
                     .map((row) => ({ id: row.id, name: row.value })),
             )}
             value={querying.current.has(field) ? null : selected(value[field])}
-            hasAutoFocus={field === 'materialTypeSnapshot'}
+            hasAutoFocus={field === 'materialTypeSnapshot' && !editor.originalId}
             isDisabled={locked()}
             onChangeQuery={(text) => {
               // The Typeahead clears its query after a pick; that is not a
@@ -562,6 +562,8 @@ function MaterialEditor() {
           />
         ),
       )}
+      {connection}
+      {editor.originalId && <Button label="刪除進料" size="lg" variant="destructive" isDisabled={locked()} onClick={onDelete} />}
       <TextArea
         label="進料備註"
         size="lg"
@@ -598,7 +600,7 @@ function MaterialEditor() {
   );
 }
 
-function ContactEditor() {
+function ContactEditor({ onDelete }: { onDelete: () => void }) {
   const editor = appState.contactEditor!;
   const vendorQuerying = useRef(false);
   const vendorPicking = useRef(false);
@@ -758,6 +760,7 @@ function ContactEditor() {
         clickAction={() => action('save-contact')}
         isDisabled={locked()}
       />
+      {editor.originalId && <Button label="刪除聯絡事項" size="lg" variant="destructive" isDisabled={locked()} onClick={onDelete} />}
       <Button
         label="取消聯絡輸入"
         size="lg"
@@ -867,6 +870,44 @@ export function DailyInputs() {
         });
       },
     });
+  const materialConnection = (entry: NonNullable<typeof appState.materialEditor>['value']) => (<Selector
+                    label="連接工種"
+                    size="lg"
+                    value={entry.connectedTradeSectionId ?? ''}
+                    options={[
+                      { value: '', label: '不連接' },
+                      ...report.tradeSections.map((trade) => ({
+                        value: trade.id,
+                        label: `${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot}`,
+                      })),
+                    ]}
+                    isDisabled={locked()}
+                    onChange={(value) => {
+                      const run = () => {
+                        if (locked()) return;
+                        if (value)
+                          appState.daily.connectMaterial(value, entry.id);
+                        else appState.daily.disconnectMaterial(entry.id);
+                        const connected = appState.daily.materialEntry(entry.id);
+                        if (connected) {
+                          entry.entryType = connected.entryType;
+                          entry.connectedTradeSectionId = connected.connectedTradeSectionId;
+                        }
+                        notifyReact();
+                        void save();
+                      };
+                      if (
+                        entry.connectedTradeSectionId &&
+                        value &&
+                        value !== entry.connectedTradeSectionId
+                      )
+                        setConfirmation({
+                          text: `改接「${entry.itemName || entry.materialTypeSnapshot}」？\n\n${appState.daily.trade(entry.connectedTradeSectionId)?.tradeNameSnapshot ?? '原工種'} → ${appState.daily.trade(value)?.tradeNameSnapshot ?? '新工種'}\n\n兩個工種都會退回草稿。`,
+                          run,
+                        });
+                      else run();
+                    }}
+                  />);
   return (
     <VStack
       gap={6}
@@ -897,45 +938,18 @@ export function DailyInputs() {
           }}
         />
         <List hasDividers reorderable={reorder('trade')}>
-          {report.tradeSections.map((trade) => (
-            <ListItem
-              key={trade.id}
-              itemKey={trade.id}
-              swipe={swipe('trade')}
-              label={
-                <VStack gap={2} data-trade={trade.id}>
-                  {appState.daily.expandedId !== trade.id && (
-                    <Button
-                      label={`${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot || '待填廠商'}｜${trade.status === 'complete' ? '資料齊全' : '未完成'}`}
-                      data-daily-action="toggle-trade"
-                      size="lg"
-                      variant="ghost"
-                      onClick={() => {
-                        appState.daily.toggle(trade.id);
-                        notifyReact();
-                      }}
-                    />
-                  )}
-                  {appState.daily.expandedId !== trade.id && <Text style={{ overflowWrap: 'anywhere' }}>
-                    {trade.workerCount ? `${trade.workerCount} 人` : '人數未填'} · {trade.workItems.find((work) => work.taskTextSnapshot.trim())?.taskTextSnapshot || '尚未填工項'}
-                    {trade.workItems.filter((work) => work.taskTextSnapshot.trim()).length > 1 ? `・另 ${trade.workItems.filter((work) => work.taskTextSnapshot.trim()).length - 1} 項` : ''}
-                  </Text>}
-                  {appState.daily.expandedId === trade.id && (
-                    <TradeEditor trade={trade} />
-                  )}
-                  <Button
-                    label="刪除施工紀錄"
-                    size="lg"
-                    variant="ghost"
-                    onClick={() => {
-                      void remove('trade', trade.id);
-                    }}
-                    isDisabled={locked()}
-                  />
-                </VStack>
-              }
-            />
-          ))}
+          {report.tradeSections.map((trade) => {
+            const expanded = appState.daily.expandedId === trade.id;
+            const works = trade.workItems.filter((work) => work.taskTextSnapshot.trim());
+            return <ListItem key={trade.id} itemKey={trade.id} data-trade={trade.id}
+              data-daily-action={expanded ? undefined : 'toggle-trade'} swipe={swipe('trade')}
+              isDisabled={!expanded && locked()} align="start"
+              onClick={expanded ? undefined : () => { appState.daily.toggle(trade.id); notifyReact(); }}
+              label={expanded ? <VStack gap={3}><TradeEditor trade={trade} />
+                <Button label="刪除施工紀錄" size="lg" variant="destructive" isDisabled={locked()} onClick={() => { void remove('trade', trade.id); }} />
+              </VStack> : `${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot || '待填廠商'}`}
+              description={expanded ? undefined : `${trade.status === 'complete' ? '資料齊全' : '未完成'} · ${trade.workerCount ? `${trade.workerCount} 人` : '人數未填'} · ${works[0]?.taskTextSnapshot || '尚未填工項'}${works.length > 1 ? `・另 ${works.length - 1} 項` : ''}`} />;
+          })}
         </List>
       </VStack>
       <VStack gap={3} as="section" className="daily-section" aria-label="進料">
@@ -953,73 +967,18 @@ export function DailyInputs() {
             }
           }}
         />
-        {appState.materialEditor && <MaterialEditor />}
+        {appState.materialEditor && <MaterialEditor connection={appState.materialEditor.originalId ? materialConnection(appState.materialEditor.value) : null} onDelete={() => {
+          const id = appState.materialEditor?.originalId;
+          if (id) { appState.materialEditor = null; void remove('material', id); }
+        }} />}
         <List hasDividers reorderable={reorder('material')}>
-          {report.standaloneMaterialEntries.map((entry) => (
-            <ListItem
-              key={entry.id}
-              itemKey={entry.id}
-              swipe={swipe('material')}
-              label={
-                <VStack gap={2} data-material={entry.id}>
-                  <Text>
-                    {entry.materialTypeSnapshot} {entry.itemName}{' '}
-                    {entry.quantity} {entry.unit} {entry.supplierNameSnapshot}
-                  </Text>
-                  <Selector
-                    label="連接工種"
-                    size="lg"
-                    value={entry.connectedTradeSectionId ?? ''}
-                    options={[
-                      { value: '', label: '不連接' },
-                      ...report.tradeSections.map((trade) => ({
-                        value: trade.id,
-                        label: `${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot}`,
-                      })),
-                    ]}
-                    isDisabled={locked()}
-                    onChange={(value) => {
-                      const run = () => {
-                        if (locked()) return;
-                        if (value)
-                          appState.daily.connectMaterial(value, entry.id);
-                        else appState.daily.disconnectMaterial(entry.id);
-                        notifyReact();
-                        void save();
-                      };
-                      if (
-                        entry.connectedTradeSectionId &&
-                        value &&
-                        value !== entry.connectedTradeSectionId
-                      )
-                        setConfirmation({
-                          text: `改接「${entry.itemName || entry.materialTypeSnapshot}」？\n\n${appState.daily.trade(entry.connectedTradeSectionId)?.tradeNameSnapshot ?? '原工種'} → ${appState.daily.trade(value)?.tradeNameSnapshot ?? '新工種'}\n\n兩個工種都會退回草稿。`,
-                          run,
-                        });
-                      else run();
-                    }}
-                  />
-                  <Button
-                    label="編輯進料"
-                    size="lg"
-                    onClick={() => {
-                      startMaterialEditor(entry.entryType ?? 'normal', entry);
-                      notifyReact();
-                    }}
-                    isDisabled={locked()}
-                  />
-                  <Button
-                    label="刪除進料"
-                    size="lg"
-                    onClick={() => {
-                      void remove('material', entry.id);
-                    }}
-                    isDisabled={locked()}
-                  />
-                </VStack>
-              }
-            />
-          ))}
+          {report.standaloneMaterialEntries.map((entry) => {
+            const trade = entry.connectedTradeSectionId ? appState.daily.trade(entry.connectedTradeSectionId) : null;
+            return <ListItem key={entry.id} itemKey={entry.id} data-material={entry.id} swipe={swipe('material')}
+              label={`${entry.materialTypeSnapshot} ${entry.itemName} ${entry.quantity} ${entry.unit} ${entry.supplierNameSnapshot}`}
+              description={trade ? `已連接：${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot}` : '未連接'}
+              isDisabled={locked()} align="start" onClick={() => { startMaterialEditor(entry.entryType ?? 'normal', entry); notifyReact(); }} />;
+          })}
         </List>
       </VStack>
       <VStack
@@ -1036,54 +995,18 @@ export function DailyInputs() {
           isDisabled={locked() || Boolean(appState.contactEditor)}
           onClick={() => setPicker('contact')}
         />
-        {appState.contactEditor && <ContactEditor />}
+        {appState.contactEditor && <ContactEditor onDelete={() => {
+          const id = appState.contactEditor?.originalId;
+          if (id) { appState.contactEditor = null; persistEntryDraft(); void remove('contact', id); }
+        }} />}
         <List hasDividers reorderable={reorder('contact')}>
-          {report.contacts.map((contact) => (
-            <ListItem
-              key={contact.id}
-              itemKey={contact.id}
-              swipe={swipe('contact')}
-              label={
-                <VStack gap={2} data-contact-card={contact.id}>
-                  <Text>
-                    {contact.tradeNameSnapshot}｜{contact.vendorNameSnapshot}
-                  </Text>
-                  {contact.items.map((item) => (
-                    <Text key={item.id}>{item.content}</Text>
-                  ))}
-                  <Button
-                    label="編輯聯絡事項"
-                    size="lg"
-                    onClick={() => {
-                      const run = () => {
-                        appState.contactEditor = editContactEntry(
-                          contact,
-                          report.date,
-                        );
-                        persistEntryDraft();
-                        notifyReact();
-                      };
-                      if (appState.contactEditor)
-                        setConfirmation({
-                          text: '目前聯絡事項尚未儲存，是否放棄這次修改？',
-                          run,
-                        });
-                      else run();
-                    }}
-                    isDisabled={locked()}
-                  />
-                  <Button
-                    label="刪除聯絡事項"
-                    size="lg"
-                    onClick={() => {
-                      void remove('contact', contact.id);
-                    }}
-                    isDisabled={locked()}
-                  />
-                </VStack>
-              }
-            />
-          ))}
+          {report.contacts.map((contact) => <ListItem key={contact.id} itemKey={contact.id} data-contact-card={contact.id}
+            swipe={swipe('contact')} label={`${contact.tradeNameSnapshot}｜${contact.vendorNameSnapshot}`}
+            description={contact.items.map((item) => item.content).join('；')} align="start" isDisabled={locked()}
+            onClick={() => {
+              const run = () => { appState.contactEditor = editContactEntry(contact, report.date); persistEntryDraft(); notifyReact(); };
+              if (appState.contactEditor) setConfirmation({ text: '目前聯絡事項尚未儲存，是否放棄這次修改？', run }); else run();
+            }} />)}
         </List>
       </VStack>
       <VStack

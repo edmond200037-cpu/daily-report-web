@@ -91,6 +91,20 @@
       "value": "auto",
       "source": "property",
       "on": "date-time-input"
+    },
+    {
+      "thing": "color",
+      "value": "var(--color-on-accent)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:primary"
+    },
+    {
+      "thing": "background-color",
+      "value": "var(--color-accent)",
+      "source": "property",
+      "on": "button",
+      "when": "variant:primary"
     }
   ],
   "palette": "52084763c151c611b9acbce9a599644a21955e0614dd5e35a3934e01d418f60a",

@@ -348,6 +348,10 @@ export const sitePaperTheme = {
       },
       "base": {
         "minHeight": "44px"
+      },
+      "variant:primary": {
+        "color": "var(--color-on-accent)",
+        "backgroundColor": "var(--color-accent)"
       }
     },
     "badge": {

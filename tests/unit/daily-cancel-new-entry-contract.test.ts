@@ -12,11 +12,11 @@ describe('React 新增及刪除入口契約', () => {
     const html = dailyMarkup();
     expect((html.match(/data-daily-action="add-/g) ?? []).length).toBe(4);
   });
-  it('施工列不顯示取消新增，以刪除入口取代', () => {
+  it('施工摘要不常駐刪除或取消新增', () => {
     const html = dailyMarkup((daily) => {
       daily.report.tradeSections.push(createTrade('測試', '', 0));
     });
-    expect(html).toContain('刪除施工紀錄');
+    expect(html).not.toContain('刪除施工紀錄');
     expect(html).not.toContain('取消新增');
   });
   it('只有目前新增特殊事項顯示取消', () => {
@@ -40,11 +40,11 @@ describe('React 新增及刪除入口契約', () => {
     });
     expect(html).toContain('刪除特殊事項');
   });
-  it('進料保留明確刪除入口', () => {
+  it('進料摘要不常駐刪除入口', () => {
     const html = dailyMarkup((daily) => {
       daily.report.standaloneMaterialEntries.push(createMaterialEntry(0));
     });
-    expect(html).toContain('刪除進料');
+    expect(html).not.toContain('刪除進料');
   });
   it('已儲存進料與新增表單分開', () => {
     const html = dailyMarkup((daily) => {

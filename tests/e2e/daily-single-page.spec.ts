@@ -23,7 +23,7 @@ async function addWork(page: Page, text: string) {
   await page.getByRole('option', { name: text, exact: true }).click();
 }
 const rows = (page: Page) =>
-  page.locator('[data-work]').locator('xpath=ancestor::li[1]');
+  page.locator('[data-work]').locator('xpath=ancestor-or-self::li[1]');
 const grip = (row: Locator) =>
   row.getByRole('button', { name: /^(Reorder|重新排序|排序)/ });
 const values = (page: Page) =>
@@ -31,7 +31,7 @@ const values = (page: Page) =>
     .locator('[data-inline-work]')
     .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
 async function swipeTrade(_page: Page, trade: Locator) {
-  const row = trade.locator('xpath=ancestor::li[1]');
+  const row = trade.locator('xpath=ancestor-or-self::li[1]');
   await row.scrollIntoViewIfNeeded();
   const r = (await row.boundingBox())!;
   const x = r.x + r.width - 35,
@@ -112,7 +112,7 @@ for (const width of [360, 390, 430]) {
     });
     await expect(page.locator('[data-trade]')).toContainText('已連接 1 筆進料');
     await expect(
-      page.getByRole('combobox', { name: '連接工種' }),
+      page.locator('[data-material]'),
     ).toContainText('測試施工');
     await expect(work).toHaveValue('尚未提交的施工輸入');
     await action(page, 'add-special').click();
@@ -241,7 +241,7 @@ test('取消新增標記在日期、工地與離開日報後清除', async ({ pa
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
   await action(page, 'add-special').click();
   await page.getByRole('link', { name: '設定', exact: true }).first().click();
-  await page.getByRole('link', { name: '返回日報' }).click();
+  await page.getByRole('link', { name: '施工日報', exact: true }).click();
   await expect(action(page, 'cancel-new-entry')).toHaveCount(0);
 });
 test('施工卡沒有取消新增，按完成有缺漏時提示並聚焦', async ({ page }) => {
@@ -371,7 +371,7 @@ test('鍵盤握把排序與聯絡工項排序', async ({ page }) => {
   }
   const contacts = page
     .getByRole('textbox', { name: '聯絡內容', exact: true })
-    .locator('xpath=ancestor::li[1]');
+    .locator('xpath=ancestor-or-self::li[1]');
   await grip(contacts.first()).focus();
   await grip(contacts.first()).press('Enter');
   await page.keyboard.press('ArrowDown');
