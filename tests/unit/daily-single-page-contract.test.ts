@@ -17,6 +17,18 @@ describe('ADR-017 日報一頁到底契約', () => {
     expect(view + main).not.toMatch(/data-daily-tab|role="tab(?:list|panel)?"|daily-tabs/);
   });
 
+  it('各區段新增按鈕以不透明背景置頂，施工新增保留 primary 樣式', () => {
+    const css = read('src/daily/daily.css');
+    const add = css.match(/\.daily-page \.daily-section__add\s*\{([^}]+)\}/)?.[1];
+    expect(add).toMatch(/position:\s*sticky;/);
+    expect(add).toMatch(/top:\s*0;/);
+    expect(add).toMatch(/z-index:\s*10;/);
+    expect(add).toMatch(/background:\s*var\(--daily-paper\);/);
+    expect(css).toContain('.daily-page .daily-section:has(.work-token__tools:not([hidden])) .daily-section__add { z-index: 0; }');
+    expect(sections).toContain('class="daily-section__add primary" data-daily-action="add-trade"');
+    expect(css).toMatch(/\.daily-page button\.primary\s*\{[^}]*background:\s*var\(--daily-orange\);/);
+  });
+
   it('頁首沿用基本資料開關，收合時不渲染欄位，允許檢視者操作', () => {
     expect(view).toContain('data-daily-action="toggle-basics" aria-expanded="${appState.dailyBasicsExpanded}" aria-controls="daily-basics-panel"');
     expect(view).toContain('${escapeHtml(site)}');

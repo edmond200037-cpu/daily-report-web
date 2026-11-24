@@ -200,7 +200,8 @@
 .daily-basics-panel input, .daily-basics-panel select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .daily-basics-panel a, .daily-basics-panel button { display: inline-flex; align-items: center; min-height: var(--daily-touch-target); box-sizing: border-box; }
 .daily-page .daily-section { gap: 0; min-width: 0; border-bottom: 1px solid var(--daily-line); }
-.daily-page .daily-section__add { width: 100%; min-height: var(--daily-touch-target); border: 0; border-radius: 0; background: transparent; color: var(--daily-ink); text-align: left; }
+.daily-page .daily-section__add { position: sticky; top: 0; z-index: 10; width: 100%; min-height: var(--daily-touch-target); border: 0; border-radius: 0; background: var(--daily-paper); color: var(--daily-ink); text-align: left; }
+.daily-page .daily-section:has(.work-token__tools:not([hidden])) .daily-section__add { z-index: 0; }
 .daily-page .daily-section__list:not(:empty) { padding-block: var(--space-2); }
 
 @media (max-width: 480px) {
