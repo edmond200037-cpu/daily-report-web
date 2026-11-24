@@ -199,9 +199,12 @@
 .daily-basics-panel label { min-width: 0; }
 .daily-basics-panel input, .daily-basics-panel select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .daily-basics-panel a, .daily-basics-panel button { display: inline-flex; align-items: center; min-height: var(--daily-touch-target); box-sizing: border-box; }
-.daily-page .daily-section { gap: 0; min-width: 0; border-bottom: 1px solid var(--daily-line); }
-.daily-page .daily-section__add { position: sticky; top: 0; z-index: 10; width: 100%; min-height: var(--daily-touch-target); border: 0; border-radius: 0; background: var(--daily-paper); color: var(--daily-ink); text-align: left; }
-.daily-page .daily-section:has(.work-token__tools:not([hidden])) .daily-section__add { z-index: 0; }
+.daily-page { --daily-add-bar-height: 44px; }
+.daily-page .daily-section { gap: 0; min-width: 0; padding-block: var(--space-4); margin-bottom: var(--space-4); border-bottom: 2px solid var(--daily-line-strong); scroll-margin-top: var(--daily-add-bar-height); }
+.daily-page .daily-add-bar { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); height: var(--daily-add-bar-height); background: var(--daily-paper); }
+.daily-page .daily-add-bar button { min-width: 0; min-height: var(--daily-add-bar-height); padding: .5rem .25rem; border: 0; border-right: 1px solid var(--daily-line-strong); border-radius: 0; background: var(--daily-paper); color: var(--daily-ink); white-space: nowrap; }
+.daily-page .daily-add-bar button[aria-current="true"] { background: var(--daily-orange); color: #fff; }
+.daily-page:has(.work-token__tools:not([hidden])) .daily-add-bar { z-index: 0; }
 .daily-page .daily-section__list:not(:empty) { padding-block: var(--space-2); }
 
 @media (max-width: 480px) {

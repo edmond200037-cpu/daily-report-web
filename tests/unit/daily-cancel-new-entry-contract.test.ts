@@ -7,6 +7,15 @@ const view = read('daily/views/daily-view.ts');
 const contact = read('daily/views/contact-view.ts');
 
 describe('剛新增項目的取消入口契約', () => {
+  it('工具列沿用四個新增動作，新編輯器捲入視窗後再聚焦', () => {
+    const bar = view.split('function dailyAddBar')[1].split('function dailySections')[0];
+    expect([...bar.matchAll(/data-daily-action="([^"]+)"/g)].map((match) => match[1])).toEqual(['add-trade', 'add-normal-material', 'add-contact', 'add-special']);
+    expect(events).toContain("scrollAndFocus('#contact-vendor')");
+    expect(events).toContain("if (action === 'add-special') scrollAndFocus(");
+    expect(events).toContain('scrollAndFocus(`[data-trade="${CSS.escape(created.id)}"]');
+    expect(events).toContain("focus({ preventScroll: true })");
+  });
+
   it('只在 appState 保存暫態標記，不寫入日報或草稿序列化', () => {
     expect(read('app/state.ts')).toContain("justAddedEntry: { kind: 'trade' | 'special'; id: string } | null = null;");
     const persist = read('daily/views/daily-entry.ts').split('export function persistEntryDraft()')[1].split('export function restoreEntryScope()')[0];

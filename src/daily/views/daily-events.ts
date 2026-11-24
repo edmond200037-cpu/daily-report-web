@@ -134,11 +134,11 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
     if (appState.entryKind === 'contacts') {
       startContactEntry(trade.name, vendor?.name ?? '', trade.id, vendor?.id ?? null);
       appState.tradePickerOpen = false; await renderApp();
-      app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
+      scrollAndFocus('#contact-vendor'); return;
     }
     const created = appState.daily.addTradeEntry(trade.name, trade.id, vendor);
     appState.tradePickerOpen = false; await appState.daily.flush(); await renderApp();
-    app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`)?.focus(); return;
+    scrollAndFocus(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="${created.vendorNameSnapshot ? 'workerCount' : 'vendorNameSnapshot'}"]`); return;
   }
   if (action === 'create-trade-from-search') {
     appState.dailyPreviewOpen = false;
@@ -146,11 +146,11 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
     appState.justAddedEntry = null;
     if (appState.entryKind === 'contacts') {
       startContactEntry(name); appState.tradePickerOpen = false; await renderApp();
-      app.querySelector<HTMLInputElement>('#contact-vendor')?.focus(); return;
+      scrollAndFocus('#contact-vendor'); return;
     }
     const created = appState.daily.addTradeEntry(name, null);
     appState.tradePickerOpen = false; await appState.daily.flush(); await renderApp();
-    app.querySelector<HTMLInputElement>(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="vendorNameSnapshot"]`)?.focus(); return;
+    scrollAndFocus(`[data-trade="${CSS.escape(created.id)}"] [data-daily-field="vendorNameSnapshot"]`); return;
   }
   if (action === 'add-work') {
     const tradeId = button.dataset.tradeId!;
@@ -199,6 +199,7 @@ export async function handleDailyAction(target: HTMLElement, actionElement: HTML
   else if (action === 'add-special') { appState.daily.addSpecial(); appState.expandedSpecialId = appState.daily.report.specialItems.at(-1)?.id ?? null; appState.justAddedEntry = appState.expandedSpecialId ? { kind: 'special', id: appState.expandedSpecialId } : null; }
   else if (action === 'delete-special') appState.daily.update(() => appState.daily.report.specialItems = appState.daily.report.specialItems.filter((item) => item.id !== button.dataset.id));
   await appState.daily.flush(); await renderApp();
+  if (action === 'add-special') scrollAndFocus(`[data-special="${CSS.escape(appState.expandedSpecialId ?? '')}"] textarea`);
   if (appState.focusWorkItemId) {
     app.querySelector<HTMLInputElement>(`[data-work-item-input="${appState.focusWorkItemId}"]`)?.focus();
     appState.focusWorkItemId = null;

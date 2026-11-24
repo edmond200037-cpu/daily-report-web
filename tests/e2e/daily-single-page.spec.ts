@@ -32,7 +32,7 @@ for (const width of [360, 375, 430]) {
     await context.click();
     await expect(page.locator('.workspace-site')).toContainText('本機工作區');
     await expect(context.locator('[aria-hidden="true"]')).toHaveText('▴');
-    const sizes = await page.locator('#daily-basics-panel :is(input, select, button, a), .daily-section__add, .daily-context-button, .daily-page__header .settings-button').evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().height));
+    const sizes = await page.locator('#daily-basics-panel :is(input, select, button, a), .daily-add-bar button, .daily-context-button, .daily-page__header .settings-button').evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().height));
     expect(sizes.every((height) => height >= 44)).toBe(true);
     await context.click();
     await expect(page.locator('[data-save-status]')).toHaveAttribute('data-state', status!);

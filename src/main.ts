@@ -18,6 +18,7 @@ import { bindBackgroundSync, refreshDailySyncStatus, refreshActiveMemoryCache, s
 import { bindWorkspaceEvents } from './app/workspace-events';
 import { renderAccountLoading, refreshAccount, renderAccountLoaded, bindAccountEvents } from './account/account-controller';
 import { dailyHistoryView, dailyView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
+import { refreshDailyAddBar } from './daily/add-bar';
 import { bindMaterialConnectionResize, syncMaterialConnectionCurves, discardMaterialEditor, materialDirty } from './daily/views/material-view';
 import { contactDirty } from './daily/views/contact-view';
 import { restoreEntryScope, persistEntryDraft } from './daily/views/daily-entry';
@@ -87,6 +88,7 @@ export async function renderApp(): Promise<void> {
     pickerDialog.beforeRender();
     app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`;
     applyDailyReadOnly();
+    refreshDailyAddBar();
     pickerDialog.afterRender();
     requestAnimationFrame(syncMaterialConnectionCurves);
     return;

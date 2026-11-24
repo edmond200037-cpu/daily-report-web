@@ -6,27 +6,41 @@ const view = read('src/daily/views/daily-view.ts');
 const events = read('src/daily/views/daily-events.ts');
 const main = read('src/main.ts');
 const sections = view.slice(view.indexOf('function dailySections'), view.indexOf('function dailyHeader'));
+const bar = view.slice(view.indexOf('function dailyAddBar'), view.indexOf('function dailySections'));
 
 describe('ADR-017 日報一頁到底契約', () => {
   it('依序渲染四個具名區段與新增列，不依賴分類頁籤或空狀態', () => {
     const labels = [...sections.matchAll(/<section class="daily-section" aria-label="([^"]+)"/g)].map((match) => match[1]);
     expect(labels).toEqual(['施工紀錄', '進料', '聯絡事項', '特殊事項']);
-    expect([...sections.matchAll(/data-daily-action="([^"]+)"/g)].map((match) => match[1])).toEqual(['add-trade', 'add-normal-material', 'add-contact', 'add-special']);
+    expect([...bar.matchAll(/data-daily-action="([^"]+)"/g)].map((match) => match[1])).toEqual(['add-trade', 'add-normal-material', 'add-contact', 'add-special']);
+    expect([...sections.matchAll(/data-daily-section="([^"]+)"/g)].map((match) => match[1])).toEqual(['trade', 'material', 'contact', 'special']);
+    expect(sections).not.toContain('<button');
     expect(sections).not.toMatch(/daily-section__header|<h2|<p|daily-section__empty/);
-    expect(sections.indexOf('materialConnectionPanel()')).toBeGreaterThan(sections.indexOf('add-normal-material'));
+    expect(sections.indexOf('materialConnectionPanel()')).toBeGreaterThan(sections.indexOf('data-daily-section="material"'));
     expect(view + main).not.toMatch(/data-daily-tab|role="tab(?:list|panel)?"|daily-tabs/);
   });
 
-  it('各區段新增按鈕以不透明背景置頂，施工新增保留 primary 樣式', () => {
+  it('新增工具列以不透明背景黏頂，四顆短標籤只標亮目前區段', () => {
     const css = read('src/daily/daily.css');
-    const add = css.match(/\.daily-page \.daily-section__add\s*\{([^}]+)\}/)?.[1];
+    const add = css.match(/\.daily-page \.daily-add-bar\s*\{([^}]+)\}/)?.[1];
     expect(add).toMatch(/position:\s*sticky;/);
     expect(add).toMatch(/top:\s*0;/);
     expect(add).toMatch(/z-index:\s*10;/);
     expect(add).toMatch(/background:\s*var\(--daily-paper\);/);
-    expect(css).toContain('.daily-page .daily-section:has(.work-token__tools:not([hidden])) .daily-section__add { z-index: 0; }');
-    expect(sections).toContain('class="daily-section__add primary" data-daily-action="add-trade"');
-    expect(css).toMatch(/\.daily-page button\.primary\s*\{[^}]*background:\s*var\(--daily-orange\);/);
+    expect(add).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
+    expect(css).toContain('.daily-page:has(.work-token__tools:not([hidden])) .daily-add-bar { z-index: 0; }');
+    expect(css).toContain('button[aria-current="true"] { background: var(--daily-orange); color: #fff; }');
+    expect(css).toContain('scroll-margin-top: var(--daily-add-bar-height)');
+    expect(css).toContain('border-bottom: 2px solid var(--daily-line-strong)');
+    expect(bar).not.toContain('primary');
+    expect(bar).toContain('aria-label="新增施工紀錄">＋施工');
+    expect(view).toContain("${moduleTabs('daily')}</div>${dailyAddBar()}");
+    expect(view + css).not.toContain('daily-section__add');
+    const module = read('src/daily/add-bar.ts');
+    expect(module).toContain("window.addEventListener('scroll', scheduleUpdate, { passive: true })");
+    expect(module).toContain('if (frame !== undefined) return;');
+    expect(module).not.toMatch(/appState|persist|mutation|\.update\(/);
+    expect(main).toContain('refreshDailyAddBar();');
   });
 
   it('頁首沿用基本資料開關，收合時不渲染欄位，允許檢視者操作', () => {
