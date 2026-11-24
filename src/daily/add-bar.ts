@@ -8,6 +8,13 @@ export function currentDailySection(sections: readonly { id: DailySection; top: 
   return current;
 }
 
+const order: readonly DailySection[] = ['trade', 'material', 'contact', 'special'];
+
+/** A short page cannot scroll later sections up to the bar: at the bottom, keep the last pressed section if it is later. */
+export function resolveDailySection(computed: DailySection, pressed: DailySection | undefined, atBottom: boolean): DailySection {
+  return atBottom && pressed && order.indexOf(pressed) > order.indexOf(computed) ? pressed : computed;
+}
+
 const addRequest = 'daily-add-request';
 
 /** The add bar and the section lists are separate React roots; this carries the click between them. */

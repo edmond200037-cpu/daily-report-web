@@ -26,7 +26,6 @@ import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { appState } from './state';
 import { useAppVersion, notifyReact } from './react-store';
-import { confirmAction } from './react-confirm';
 import { isReadOnlySite } from './sync-runtime';
 import { handleDailyAction, scrollAndFocus } from '../daily/views/daily-events';
 import {
@@ -43,8 +42,8 @@ import {
 import { splitWorkInput } from '../daily/input-workflow';
 import { canRestoreDetails, snapshotDetails, workUndoScope } from '../daily/work-detail-undo';
 import { applyLocationMemory, normalizeFloor } from '../daily/floor';
-import { startMaterialEditor } from '../daily/views/material-view';
-import { startContactEntry } from '../daily/views/contact-view';
+import { discardMaterialEditor, startMaterialEditor } from '../daily/views/material-view';
+import { discardContactEditor, startContactEntry } from '../daily/views/contact-view';
 import {
   appendContactTask,
   updateContactTaskText,
@@ -797,13 +796,11 @@ export function DailyInputs() {
   const closeTrade = () => { if (!appState.daily.expandedId) return; appState.daily.expandedId = null; notifyReact(); };
   const closeSpecial = () => { appState.justAddedEntry = null; setSpecialId(null); notifyReact(); };
   const cancelMaterial = async () => {
-    if (!appState.materialEditor || !(await confirmAction('目前進料內容尚未儲存，是否放棄這次修改？'))) return;
-    appState.materialEditor = null;
+    if (!appState.materialEditor || !(await discardMaterialEditor())) return;
     notifyReact();
   };
   const cancelContact = async () => {
-    if (!appState.contactEditor || !(await confirmAction('放棄未儲存的聯絡事項變更？'))) return;
-    appState.contactEditor = null;
+    if (!appState.contactEditor || !(await discardContactEditor())) return;
     persistEntryDraft();
     notifyReact();
   };

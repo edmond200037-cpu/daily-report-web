@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addBarMarkup, dailyMarkup } from './helpers/react-daily';
-import { currentDailySection } from '../../src/daily/add-bar';
+import { currentDailySection, resolveDailySection } from '../../src/daily/add-bar';
 
 describe('新增工具列當前區段', () => {
   it('沒有日報區段時不選取', () => {
@@ -16,6 +16,15 @@ describe('新增工具列當前區段', () => {
     expect(currentDailySection(sections, 44)).toBe('contact');
     expect(currentDailySection(sections, 43)).toBe('material');
     expect(currentDailySection(sections, 800)).toBe('special');
+  });
+});
+
+describe('短頁面工具列標亮', () => {
+  it('捲到底時保留較後面的按下區段，否則依位置計算', () => {
+    expect(resolveDailySection('trade', 'contact', true)).toBe('contact');
+    expect(resolveDailySection('special', 'contact', true)).toBe('special');
+    expect(resolveDailySection('trade', 'contact', false)).toBe('trade');
+    expect(resolveDailySection('trade', undefined, true)).toBe('trade');
   });
 });
 

@@ -100,7 +100,13 @@ for (const width of [360, 390, 430]) {
     await expect(
       page.getByRole('combobox', { name: '材料類型', exact: true }),
     ).toBeFocused();
-    await page.getByRole('button', { name: '取消進料輸入', exact: true }).click();
+    const cancel = page.getByRole('button', { name: '取消進料輸入', exact: true });
+    await cancel.click();
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await expect(cancel).toHaveCount(0);
+    await action(page, 'add-normal-material').click();
+    await page.getByRole('combobox', { name: '材料類型', exact: true }).fill('鋼筋');
+    await cancel.click();
     await page
       .getByRole('alertdialog')
       .getByRole('button', { name: '確認', exact: true })
