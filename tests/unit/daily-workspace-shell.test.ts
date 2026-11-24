@@ -1,37 +1,38 @@
-import { readFileSync } from 'node:fs';
-import { appSource } from './helpers/app-source';
 import { describe, expect, it } from 'vitest';
-
-const main = appSource();
-const dailyCss = readFileSync(new URL('../../src/daily/daily.css', import.meta.url), 'utf8');
-
-describe('日報共用工作區骨架', () => {
-  it('以日報專用頁首呈現儲存狀態，不沿用英文眉標', () => {
-    expect(main).toContain('function dailyHeader(saveLabel: string): string');
-    expect(main).toContain('class="daily-page__save-status"');
-    expect(main).toContain("${dailyHeader(saveLabel)}");
-    expect(main).not.toContain("${moduleHeader('施工日報', saveLabel");
+import { readFileSync } from 'node:fs';
+const read = (p: string) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
+describe('React 與既有路由共用外殼', () => {
+  it('根節點包含Theme和AppShell及兩個主頁與設定', () => {
+    const source = read('src/app/react/AppShell.tsx');
+    for (const value of ['<Theme', '<AppShell', '施工日報', '水位變化', '設定', 'height="auto"'])
+      expect(source).toContain(value);
   });
-
-  it('主要模組頁籤保留，四類日報內容連續呈現', () => {
-    expect(main).toContain('class="module-page__tabs"');
-    expect(main).toContain('<section class="daily-workspace" aria-label="日報內容">${dailySections()}');
-    expect(main).not.toContain('role="tabpanel"');
+  it('保留同一個舊容器與事件擁有者', () => {
+    const source = read('src/app/react/LegacyRoute.tsx');
+    expect(source).toContain('append(outlet)');
+    expect(source).not.toContain('cloneNode');
+    expect(read('src/main.ts')).toContain('prepareReactRoute(route.module');
   });
-
-  it('工地與日期只在頁首面板展開時渲染', () => {
-    expect(main).toContain("if (!appState.dailyBasicsExpanded) return '';");
-    expect(main).toContain('id="daily-basics-panel"');
-    expect(dailyCss).toContain('.daily-basics-panel {');
-    expect(dailyCss).toContain('border-radius: 0;');
+  it('日報用React，其餘頁面仍呼叫舊渲染器', () => {
+    const source = read('src/main.ts');
+    for (const value of [
+      'renderReactDaily()',
+      'dailyHistoryView()',
+      'dailySettingsView()',
+      'renderAccountLoading()',
+      'mountWater(route, token)',
+    ])
+      expect(source).toContain(value);
   });
-
-  it('日報與水位共用模組頁首與主要頁籤骨架，保留各自作業色', () => {
-    expect(dailyCss).toContain('.daily-page__header');
-    expect(dailyCss).toContain('.daily-page .module-page__tabs');
-    expect(main).toContain('class="app-shell module-page daily-page"');
-    expect(main).toContain("'app-shell module-page water-page-shell'");
-    expect(main).toContain("moduleHeader('水位變化', '本機量測資料'");
-    expect(main).toContain("function waterShell(settings: boolean)");
+  it('日期切換暫停輸入並使舊同步結果失效', () => {
+    const source = read('src/app/workspace-events.ts');
+    for (const value of [
+      'switchDailyDate',
+      'appState.dateSwitching = true',
+      'appState.activeSyncEpoch += 1',
+      'app.inert = true',
+      'app.inert = false',
+    ])
+      expect(source).toContain(value);
   });
 });

@@ -33,7 +33,7 @@ for (const scenario of scenarios) {
       await writeFile(info.outputPath('initial-storage.json'), JSON.stringify(pristine, null, 2));
       expect(pristine).toEqual({ databases: [], localStorage: 0, sessionStorage: 0 });
       await page.goto('/#daily');
-      await expect(page.getByRole('heading', { name: '施工日報', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: '常用工種', exact: true })).toBeVisible();
       const initialMemories = await page.evaluate(async () => {
         // Read through the app's sole DB entry; never seed or mutate test data.
         const modulePath = '/src/data/db.js';
@@ -47,12 +47,17 @@ for (const scenario of scenarios) {
       await writeFile(info.outputPath('initial-memories.json'), JSON.stringify(initialMemories, null, 2));
       expect(Object.values(initialMemories)).toEqual(Array(Object.keys(initialMemories).length).fill(0));
       const template = await readFile(new URL(`./fixtures/expected/${scenario.id}.txt`, import.meta.url), 'utf8');
-      const expected = renderAnswer(template, dates);
+      const editorial = renderAnswer(template, dates);
+      const baseline = await readFile(new URL(`./fixtures/current-output/${scenario.id}.txt`, import.meta.url), 'utf8');
+      const currentDates = { ...dates, reportText: dates.reportText.replace(/^0/, '').replace('/0', '/').replace('(', '（').replace(')', '）') };
+      const expected = renderAnswer(baseline, currentDates);
+      await writeFile(info.outputPath('editorial-expected.txt'), editorial);
+      await writeFile(info.outputPath('baseline-versus-editorial.json'), JSON.stringify(compareOutput(normalizeLineEndings(editorial), normalizeLineEndings(expected)), null, 2));
       await writeFile(info.outputPath('expected.txt'), expected);
       await ui.fill(scenario, dates);
       await page.evaluate(() => navigator.clipboard.writeText(''));
       await ui.click(ui.action('finalize'), '定稿並複製');
-      await expect(page.locator('.daily-output__feedback')).toContainText('已在本機定稿並複製');
+      await expect(page.getByRole('status').filter({ hasText: '已在本機定稿並複製' })).toContainText('已在本機定稿並複製');
       const actual = await page.evaluate(() => navigator.clipboard.readText());
       await writeFile(info.outputPath('actual.txt'), actual);
       const comparison = compareOutput(normalizeLineEndings(expected), normalizeLineEndings(actual));

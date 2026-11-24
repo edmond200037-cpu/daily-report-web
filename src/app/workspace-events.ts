@@ -6,6 +6,18 @@ import { isReadOnlySite, scheduleBackgroundSync, syncActiveSiteNow, refreshDaily
 import { selectSharedSiteFromWorkspace } from '../account/account-controller';
 import { readOnlyDailyActions } from '../daily/views/daily-view';
 import { persistEntryDraft, capturePendingWork, showEntrySaveError } from '../daily/views/daily-entry';
+export async function switchDailyDate(nextDate: string): Promise<void> {
+  if (!nextDate || nextDate === appState.daily.report.date || appState.dateSwitching) return;
+  appState.dateSwitching = true; appState.activeSyncEpoch += 1; app.inert = true;
+  try {
+    persistEntryDraft();
+    if (!isReadOnlySite()) { capturePendingWork(); await appState.daily.flush(); }
+    appState.daily.replaceReport((await loadDailyDraftForDate(nextDate)) ?? createDailyDraft(null, '', nextDate));
+    appState.daily.expandedId = null; appState.dailyBasicsExpanded = false;
+    await refreshDailySyncStatus(); await renderApp();
+  } catch (error) { showEntrySaveError(error); await renderApp(); }
+  finally { appState.dateSwitching = false; app.inert = false; scheduleBackgroundSync(); }
+}
 export function bindWorkspaceEvents(): void {
   app.addEventListener('click', (event) => { const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-shared-site-select]'); if (button?.dataset.sharedSiteSelect) { event.preventDefault(); void selectSharedSiteFromWorkspace(button.dataset.sharedSiteSelect); } });
   app.addEventListener('click', (event) => {
@@ -51,16 +63,6 @@ export function bindWorkspaceEvents(): void {
     const route = parseRoute(location.hash);
     if (!(target instanceof HTMLInputElement) || route.module !== 'daily' || route.page !== 'main' || target.dataset.dailyField !== 'date') return;
     event.stopImmediatePropagation();
-    const nextDate = target.value;
-    if (!nextDate || nextDate === appState.daily.report.date) return;
-    if (appState.dateSwitching) return;
-    appState.dateSwitching = true; appState.activeSyncEpoch += 1; app.inert = true;
-    try {
-    persistEntryDraft();
-    if (!isReadOnlySite()) { capturePendingWork(); await appState.daily.flush(); }
-    appState.daily.replaceReport((await loadDailyDraftForDate(nextDate)) ?? createDailyDraft(null, '', nextDate));
-    appState.daily.expandedId = null; appState.dailyBasicsExpanded = false;
-    await refreshDailySyncStatus(); await renderApp();
-    } catch (error) { showEntrySaveError(error); await renderApp(); } finally { appState.dateSwitching = false; app.inert = false; scheduleBackgroundSync(); }
+    await switchDailyDate(target.value);
   }, true);
 }

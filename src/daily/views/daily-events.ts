@@ -311,6 +311,7 @@ export function bindDailyInputEvents(): void {
 export function bindContactInputEvents(): void {
   app.addEventListener('input', (event) => {
     const target = event.target as HTMLInputElement;
+    if (target.closest('[data-react-daily]')) return;
     if (appState.contactEditor) {
       if (target.dataset.contactField === 'task') appState.contactEditor.taskQuery = target.value;
       if (target.dataset.contactField === 'trade') { appState.contactEditor.value.tradeNameSnapshot = target.value; appState.contactEditor.tradeQuery = target.value; }

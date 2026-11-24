@@ -1,3 +1,4 @@
+import { offerReactWorkUndo } from './react/runtime';
 /** The row accepts horizontal swipes; only the grip starts long-press sorting. */
 export function swipeDeletes(dx: number, dy: number): boolean { return dx <= -72 && Math.abs(dx) > Math.abs(dy) * 1.5; }
 export function workSwipeIntent(dx: number, dy: number): 'swipe' | 'scroll' | 'cancel' | 'pending' {
@@ -61,6 +62,14 @@ export function bindWorkGestures(root: HTMLElement, actions: Actions): void {
   });
   const showUndo = (undo: (() => void) | undefined) => {
     if (!undo) return;
+    if (root.querySelector('[data-react-daily]')) {
+      offerReactWorkUndo(async () => {
+        if (!actions.editable()) return;
+        undo();
+        try { await actions.save(); await actions.render(); } catch (error) { actions.error(error); }
+      });
+      return;
+    }
     const notice = document.createElement('div'); notice.className = 'work-gesture-undo'; notice.setAttribute('role', 'status');
     notice.append('已刪除工項 '); const button = document.createElement('button'); button.type = 'button'; button.textContent = '復原';
     button.onclick = async () => { if (!actions.editable()) return; button.disabled = true; undo(); try { await actions.save(); await actions.render(); } catch (error) { actions.error(error); } notice.remove(); };

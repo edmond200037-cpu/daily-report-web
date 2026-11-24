@@ -21,6 +21,17 @@ export function dragSurface(content: HTMLElement): HTMLElement {
   surface.append(content);
   return surface;
 }
+/** React routes do not load legacy CSS; keep the shared preview positioned. */
+export function prepareThemedDragPreview(preview: HTMLElement, source: HTMLElement): void {
+  if (!source.closest('[data-react-daily]')) return;
+  const sourceStyle = getComputedStyle(source);
+  for (const name of sourceStyle) if (name.startsWith('--')) preview.style.setProperty(name, sourceStyle.getPropertyValue(name));
+  Object.assign(preview.style, {
+    position: 'fixed', zIndex: '1000', pointerEvents: 'none', opacity: '.88',
+    background: 'var(--color-background-body)', color: sourceStyle.color,
+    fontFamily: sourceStyle.fontFamily, overflow: 'hidden',
+  });
+}
 export function positionDragPreview(preview: HTMLElement, pointerX: number, pointerY: number, offsetX: number, offsetY: number): void {
   const edge = 8;
   const rect = preview.getBoundingClientRect();

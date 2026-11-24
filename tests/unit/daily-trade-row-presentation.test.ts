@@ -1,74 +1,97 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  dailyState as state,
+  resetDaily,
+  renderDaily,
+  fixtureTrade,
+  renderTrade,
+} from './helpers/react-daily';
+import { createWorkItem } from '../../src/domain/daily';
 import { readFileSync } from 'node:fs';
-import { appSource } from './helpers/app-source';
-import { describe, expect, it } from 'vitest';
-
-const source = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
-
-describe('工程資料列呈現契約', () => {
-  const daily = appSource();
-  const input = source('src/daily/work-input.ts');
-  const styles = source('src/daily/daily.css');
-  const presentation = source('src/presentation.css');
-  const tokens = source('src/styles.css');
-
-  it('以工程專用摘要列呈現工種、代表工項、廠商人數與狀態', () => {
-    expect(daily).toContain('function tradeRowSummary');
-    expect(daily).toContain('`<div class="trade-row-summary__${name}"');
-    expect(daily).toContain("cell('trade', row.meta)");
-    expect(daily).toContain("cell('task', row.primary)");
-    expect(daily).toContain("cell('vendor', row.detail)");
-    expect(daily).toContain('trade-row-summary__status');
-    expect(daily).toContain('const nonEmptyWorkItems = trade.workItems.slice().sort((a, b) => a.sortOrder - b.sortOrder).filter');
-    expect(daily).toContain('另 ${nonEmptyWorkItems.length - 1} 項');
-    expect(daily).toContain("trade.status === 'complete' ? '資料齊全'");
+beforeEach(resetDaily);
+describe('Astryx 工程資料列呈現', () => {
+  it('摘要包含工種廠商人數代表工項與筆數', () => {
+    const trade = fixtureTrade();
+    const work = createWorkItem(1);
+    work.taskTextSnapshot = '樓板模';
+    trade.workItems.push(work);
+    const html = renderTrade(trade);
+    for (const text of ['模板工程', '大成營造', '12 人', '柱模組立', '另 1 項', '未完成'])
+      expect(html).toContain(text);
   });
-
-  it('移除握把按鈕，整列同時承擔展開與長按排序', () => {
-    expect(daily).not.toContain('data-drag-trade');
-    expect(daily).not.toContain('class="drag-handle"');
-    expect(daily).toContain("${sortableAttrs('trade', trade.id)}");
-    expect(daily).toContain('data-daily-action="toggle-trade"');
-    expect(daily).toContain('aria-controls="trade-content-');
-    expect(daily).toContain("${expanded ? '收合' : '展開'}工程條目");
-    expect(daily).toContain('title="${escapeHtml(value)}"');
-    expect(daily).toContain('primary: taskSummary');
+  it('已完成狀態使用資料齊全文字', () => {
+    const trade = fixtureTrade();
+    trade.status = 'complete';
+    expect(renderTrade(trade)).toContain('資料齊全');
   });
-
-  it('工項附加資料可返回文字輸入，位置與備註維持獨立欄位', () => {
-    expect(input).toContain('data-work-detail="close"');
-    expect(input).toContain('data-daily-field="locationTextSnapshot"');
-    expect(input).toContain('data-daily-field="note"');
+  it('共用摘要左對齊、狀態居中，未完成僅有細警告線並保留無障礙展開控制', () => {
+    const trade = fixtureTrade();
+    const html = renderTrade(trade);
+    expect(html).toMatch(/aria-expanded="false"/);
+    expect(html).toContain('border-inline-start:var(--border-width) solid var(--color-warning)');
+    expect(html).toContain('justify-content:flex-start');
+    const summary = readFileSync(new URL('../../src/daily/react/EntryRow.tsx', import.meta.url), 'utf8');
+    expect(summary).toContain('interactiveRef={toggle}');
+    expect(summary).toContain('align="center"');
+    expect(summary).toContain('description={detail}');
+    expect(summary).toContain('suppressTradeSummaryClick');
+    state.daily.expandedId = trade.id;
+    const expanded = renderTrade(trade);
+    expect(expanded).toContain('aria-label="更多操作"');
+    expect(expanded).toContain('<svg');
   });
-  it('搜尋包含待審核記憶，並限定目前工種', () => {
-    expect(input).toContain('row.tradeTypeId === trade.tradeTypeId');
-    expect(input).not.toContain('<small>待審核</small>');
-    expect(input).toContain('workSuggestions(trade, actions.tasks()');
+  it('位置不進摘要，空白工項不計入筆數', () => {
+    const trade = fixtureTrade();
+    trade.workItems[0].locationTextSnapshot = '東側';
+    trade.workItems.push(createWorkItem(1));
+    const html = renderTrade(trade);
+    expect(html).not.toContain('東側');
+    expect(html).not.toContain('另 1 項');
   });
-  it('點工項即編輯文字，附加操作提供欄位、排序與刪除', () => {
-    expect(input).toContain('data-inline-work');
-    expect(input).toContain('class="work-location-chip" data-work-detail="location"');
-    expect(input).toContain("'＋位置'");
-    expect(input).not.toContain('位置／樓層');
-    expect(input).not.toContain('work-input-hint');
-    expect(input).toContain('data-work-detail="note"');
-    expect(input).not.toContain('data-work-detail="more"');
-    expect(input).toContain('data-work-move="-1"');
-    expect(input).toContain('data-work-move="1"');
-    expect(input).toContain('data-work-delete');
-    expect(input).not.toContain('data-daily-action="delete-work-item"');
+  it('只有一個工程編輯器展開，收合不改報告', () => {
+    const trade = fixtureTrade();
+    const before = JSON.stringify(state.daily.report);
+    state.daily.toggle(trade.id);
+    expect(renderTrade(trade)).toContain('搜尋或輸入下一個工項');
+    state.daily.toggle(trade.id);
+    expect(renderTrade(trade)).not.toContain('搜尋或輸入下一個工項');
+    expect(JSON.stringify(state.daily.report)).toBe(before);
   });
-  it('使用與聯絡事項一致的外框卡片；桌面使用四欄，手機改為兩層資料列，淡紅提示僅存在未完成狀態欄', () => {
-    expect(tokens).toContain('--daily-incomplete-bg: #f5deda');
-    expect(tokens).toContain('--daily-incomplete-ink: #7a302b');
-    expect(tokens).toContain('--daily-incomplete-border: #d7a29b');
-    expect(styles).toContain('.daily-page .trade-card { background: var(--daily-paper-raised); }');
-    expect(presentation).toContain('.daily-entry, .compact-entry { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md);');
-    expect(styles).toContain('.daily-page .trade-row-summary__toggle { display: grid; grid-column: 2; grid-row: 1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr) 10rem;');
-    expect(styles).toContain('.daily-page .trade-row-summary__status.entry-status--attention { border-color: transparent; background: var(--daily-incomplete-bg); box-shadow: inset 0 0 0 1px var(--daily-incomplete-border); color: var(--daily-incomplete-ink); }');
-    expect(styles).toContain('@media (max-width: 639px)');
-    expect(styles).toContain('.daily-page .trade-row-summary { height: 72px; min-height: 72px; max-height: 72px; }');
-    expect(daily).toContain('trade-row-summary__mobile-meta');
-    expect(styles).toContain('.daily-page .trade-row-summary__mobile-meta { display: flex; grid-column: 1; grid-row: 1; align-items: center; min-width: 0;');
-    expect(styles).toContain('.daily-page .trade-row-summary__status { grid-column: 2; grid-row: 1;');
+  it('工項保留穩定識別與握把，文字編輯位置和備註各自獨立', () => {
+    const trade = fixtureTrade();
+    state.daily.expandedId = trade.id;
+    const html = renderTrade(trade);
+    expect(html).toContain(`data-work="${trade.workItems[0].id}"`);
+    expect(html).toContain('data-work-gesture');
+    expect(html).toContain('位置與樓層');
+    expect(html).toContain('備註');
+    expect(html).not.toContain('上移');
+    expect(html).not.toContain('下移');
+  });
+  it('讀取確認記憶並依使用順序顯示常用晶片', () => {
+    const memory = {
+      id: 'a',
+      name: '模板',
+      normalizedName: '模板',
+      usageCount: 2,
+      lastUsedAt: '2026-11-23',
+      status: 'confirmed',
+    };
+    state.dailyTrades = [
+      memory,
+      { ...memory, id: 'candidate', name: '待審核', status: 'candidate' },
+    ] as typeof state.dailyTrades;
+    const html = renderDaily();
+    expect(html).toContain('data-trade-chip="a"');
+    expect(html).not.toContain('data-trade-chip="candidate"');
+  });
+  it('唯讀時禁用寫入並保留展開入口', () => {
+    const trade = fixtureTrade();
+    state.daily.expandedId = trade.id;
+    state.accountActiveSiteId = 'read-only-test';
+    state.accountActiveSiteRole = 'viewer';
+    const html = renderTrade(trade);
+    expect(html).toContain('disabled');
+    expect(html).toContain('aria-expanded="true"');
   });
 });

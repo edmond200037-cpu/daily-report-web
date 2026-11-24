@@ -66,9 +66,12 @@ describe('位置樓層版面契約', () => {
     expect(form.indexOf('name="endFloor"')).toBeLessThan(form.indexOf('name="name"'));
     expect(read('../../src/styles.css')).toContain('.settings-page .settings-edit-form .work-floor-fields { display: grid; grid-template-columns: var(--field-grid-columns); gap: var(--field-grid-gap);');
   });
-  it('日報位置 input 連接 location-options，datalist 全頁只輸出一次', () => {
-    expect(read('../../src/daily/work-input.ts')).toContain('placeholder="例：東側" list="location-options"');
-    const view = read('../../src/daily/views/daily-view.ts');
-    expect(view.split('<datalist id="location-options">').length).toBe(2);
+  it('React 位置編輯器沿用記憶帶樓層規則且保留原本樓層', () => {
+    const view = read('../../src/daily/react/TradeRow.tsx');
+    expect(view).toContain('applyLocationMemory(target, row)');
+    expect(view).toContain('label="起始樓層"');
+    expect(view).toContain('label="結束樓層"');
+    expect(view).toContain('normalizeFloor(work.startFloorRaw)');
+    expect(view).toContain("row.status === 'confirmed'");
   });
 });

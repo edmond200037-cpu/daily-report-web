@@ -3,8 +3,8 @@ import { escapeHtml } from '../shared/html';
 import { appState } from './state';
 import { settingsReturnLink } from '../settings/views/settings-view';
 export const clearPwaUpdateTimeout = () => { if (appState.pwaUpdateTimeout !== undefined) { window.clearTimeout(appState.pwaUpdateTimeout); appState.pwaUpdateTimeout = undefined; } };
-export const pwaUpdateNotice = () => {
-  if (appState.pwaUpdateState === 'idle') return '';
+export const pwaUpdateContent = () => {
+  if (appState.pwaUpdateState === 'idle') return null;
   const content = appState.pwaUpdateState === 'available'
     ? { title: '已有新版施工日報', message: '新版已在背景下載完成。更新不會刪除本機日報資料。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">立即更新</button>' }
     : appState.pwaUpdateState === 'applying'
@@ -14,6 +14,11 @@ export const pwaUpdateNotice = () => {
       : appState.pwaUpdateState === 'success'
         ? { title: '更新完成', message: '已套用最新版，可以繼續使用。', actions: '<button type="button" data-app-action="dismiss-pwa-update">知道了</button>' }
         : { title: '更新未完成', message: '更新程序發生錯誤，使用者資料未被清除，請重新嘗試。', actions: '<button type="button" data-app-action="dismiss-pwa-update">稍後</button><button type="button" class="primary" data-app-action="apply-pwa-update">重新嘗試</button>' };
+  return content;
+};
+export const pwaUpdateNotice = () => {
+  const content = pwaUpdateContent();
+  if (!content) return '';
   return `<aside class="pwa-update-notice pwa-update-notice--${appState.pwaUpdateState}" role="status" aria-live="polite"><div><strong>${content.title}</strong><p>${content.message}</p></div><div class="pwa-update-notice__actions">${content.actions}</div></aside>`;
 };
 export const memoryOrder = (rows: NamedMemory[]) => rows.slice().sort((a, b) => (b.lastUsedAt ?? '').localeCompare(a.lastUsedAt ?? '') || b.usageCount - a.usageCount || a.name.localeCompare(b.name));

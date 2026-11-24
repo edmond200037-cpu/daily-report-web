@@ -20,3 +20,11 @@ artifacts/
 *.zip
 .mobile-test-results.json
 .test-results.json
+
+# Theme editor pictures and interactive previews are local review artifacts.
+themes/**/preview*.html
+themes/**/preview*.png
+themes/**/sheet*.html
+themes/**/sheet*.png
+themes/**/*.history.json
+themes/**/*.pictures.json

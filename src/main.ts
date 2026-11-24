@@ -1,3 +1,7 @@
+import './layers.css';
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import { initializeReactShell, prepareReactRoute, renderReactDaily } from './app/react/AppShell';
 import { bindTradePickerDialog } from './daily/trade-picker-dialog';
 import { registerSW } from 'virtual:pwa-register';
 import { transitionPwaUpdateState, PWA_UPDATE_SUCCESS_MARKER } from './pwa/update-state';
@@ -17,7 +21,7 @@ import { pwaUpdateNotice, clearPwaUpdateTimeout, normalizeSearch } from './app/s
 import { bindBackgroundSync, refreshDailySyncStatus, refreshActiveMemoryCache, scheduleBackgroundSync } from './app/sync-runtime';
 import { bindWorkspaceEvents } from './app/workspace-events';
 import { renderAccountLoading, refreshAccount, renderAccountLoaded, bindAccountEvents } from './account/account-controller';
-import { dailyHistoryView, dailyView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
+import { dailyHistoryView, applyDailyReadOnly, updateDailySaveStatus } from './daily/views/daily-view';
 import { refreshDailyAddBar } from './daily/add-bar';
 import { bindMaterialConnectionResize, syncMaterialConnectionCurves, discardMaterialEditor, materialDirty } from './daily/views/material-view';
 import { contactDirty } from './daily/views/contact-view';
@@ -36,6 +40,7 @@ import './daily/daily.css';
 import './water-level/water.css';
 import './account/account.css';
 import './daily/input-workflow.css';
+initializeReactShell(app);
 const pickerDialog = bindTradePickerDialog(app, async () => { appState.tradePickerOpen = false; await renderApp(); });
 export function parseRoute(hash: string): AppRoute {
   const normalized = hash || '#daily';
@@ -61,6 +66,7 @@ export async function renderApp(): Promise<void> {
   if (location.hash === '#settings/daily/vendors') { history.replaceState(null, '', '#settings/daily/trade-tasks'); return renderApp(); }
   if (location.hash === '#account') { history.replaceState(null, '', '#settings/account'); return renderApp(); }
   const token = ++appState.renderToken; const route = parseRoute(location.hash); const previousRoute = appState.renderedRoute; appState.renderedRoute = route; appState.water = undefined;
+  prepareReactRoute(route.module === 'daily' && route.page === 'main');
   if (route.module !== 'daily' || route.page !== 'main') appState.justAddedEntry = null;
   if (route.module === 'settings' && route.page === 'home' && (previousRoute?.module === 'daily' || previousRoute?.module === 'water-level') && previousRoute.page === 'main') appState.settingsReturnModule = previousRoute.module;
   if (route.module === 'account') { if (route.page === 'debug') appState.settingsDebug = await databaseSummary(); if (token !== appState.renderToken) return; renderAccountLoading(); void refreshAccount(() => { if (token !== appState.renderToken || parseRoute(location.hash).module !== 'account') return; if (appState.accountLoadCoreReady) renderAccountLoaded(); else renderAccountLoading(); }); return; }
@@ -84,9 +90,11 @@ export async function renderApp(): Promise<void> {
     if (route.page === 'settings') { const section = settingsSectionFromHash(location.hash) ?? 'sites'; if (section !== settingsState.activeSection) Object.assign(settingsState, { activeSection: section, editingId: null, adding: false, dirty: false, selectedTradeTypeId: null, taskSearchKeyword: '', editingKind: null, expandedMaterialTypeId: null, editingMaterialItemId: null }); await refreshSettings(); }
     else if (route.page === 'history') appState.finalizedReports = await listRecentFinalizedReports();
     if (token !== appState.renderToken) return;
-    restoreEntryScope(); persistEntryDraft();
+    restoreEntryScope();
+    if (route.page === 'main') { renderReactDaily(); return; }
+    persistEntryDraft();
     pickerDialog.beforeRender();
-    app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : route.page === 'history' ? dailyHistoryView() : dailyView()}${pwaUpdateNotice()}`;
+    app.innerHTML = `${route.page === 'settings' ? dailySettingsView() : dailyHistoryView()}${pwaUpdateNotice()}`;
     applyDailyReadOnly();
     refreshDailyAddBar();
     pickerDialog.afterRender();

@@ -1,0 +1,96 @@
+{
+  "name": "site-paper",
+  "like": "neutral",
+  "mode": "both",
+  "settings": [
+    {
+      "thing": "accent",
+      "value": "#b84e16",
+      "source": "dial"
+    },
+    {
+      "thing": "neutral",
+      "value": "#78716c",
+      "source": "dial"
+    },
+    {
+      "thing": "corners",
+      "value": "4px",
+      "source": "dial"
+    },
+    {
+      "thing": "--size-element-sm",
+      "value": "48px",
+      "source": "token"
+    },
+    {
+      "thing": "--size-element-md",
+      "value": "48px",
+      "source": "token"
+    },
+    {
+      "thing": "--size-element-lg",
+      "value": "48px",
+      "source": "token"
+    },
+    {
+      "thing": "--color-background-body",
+      "value": "#f6f3ec",
+      "source": "token",
+      "mode": "light"
+    },
+    {
+      "thing": "--color-background-surface",
+      "value": "#fcfaf5",
+      "source": "token",
+      "mode": "light"
+    },
+    {
+      "thing": "--color-text-primary",
+      "value": "#2b2925",
+      "source": "token",
+      "mode": "light"
+    },
+    {
+      "thing": "surfaces",
+      "value": "flat",
+      "source": "dial"
+    },
+    {
+      "thing": "corners",
+      "value": "square",
+      "source": "dial",
+      "on": "list-item"
+    },
+    {
+      "thing": "--shadow-low",
+      "value": "none",
+      "source": "token"
+    },
+    {
+      "thing": "padding-inline",
+      "value": "8px",
+      "source": "property",
+      "on": "button",
+      "when": "size:sm"
+    },
+    {
+      "thing": "--shadow-high",
+      "value": "none",
+      "source": "token"
+    },
+    {
+      "thing": "--shadow-med",
+      "value": "none",
+      "source": "token"
+    },
+    {
+      "thing": "min-height",
+      "value": "48px",
+      "source": "property",
+      "on": "top-nav-item"
+    }
+  ],
+  "lifted": [],
+  "palette": "4eead8afe9fd417a1e256f5b984209b6f47aa24fb16f14ad092a550f08a43443"
+}

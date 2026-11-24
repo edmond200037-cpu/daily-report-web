@@ -1,11 +1,16 @@
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
+import react from '@vitejs/plugin-react';
+import { legacyCssScope } from './scripts/legacy-css-scope';
 
 declare const process: { env: Record<string, string | undefined> };
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? './',
+  optimizeDeps: { entries: ['index.html'] },
+  css: { postcss: { plugins: [legacyCssScope()] } },
   plugins: [
+    react(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',

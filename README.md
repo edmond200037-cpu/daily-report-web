@@ -39,10 +39,12 @@
 
 ## 已知限制
 
+第一階段已將全站外殼及日報頁改為 React 19 + Astryx；設定、帳號、歷史與水位仍使用相容容器中的原介面，見 [ADR-019](docs/adr/019-react-astryx-phase-one.md)。主題由 `npx astryx experimental theme editor` 維護，Core／CLI／Neutral 固定 0.7.17；改主題後請重新產生並檢視 PNG，再執行完整檢查。
+
 日報依 [ADR-017](docs/adr/017-daily-single-page.md) 改為四區段一頁到底，日期與工地預設收進頁首按鈕。舊 `activeTab` 欄位保留相容性，UI 已不再使用；正式部署、手機 IME 與共用 Realtime 仍須另行驗收。
 
 搜尋、候選確認與記憶重新命名已有實作。舊資料升級採保留原始備份的自動修復；完整 migration 管理 UI 尚未提供。本機測試不代表實機手勢、正式 Supabase OAuth／Realtime 或部署快取已驗收。此次稽核修復與驗證邊界見 `docs/full-repository-audit-fixes-2026-10-05.md`。
 
 ## 本機手動 E2E 驗收
 
-安裝依賴後執行 `npx playwright install chromium`、`npm run test:e2e`。腳本由空白本機資料逐字填報，讀取「定稿並複製」的真實剪貼簿，與人工答案逐字比對；報告及首次量測基準存入 `artifacts/daily-e2e/`。此指令不接 CI、pre-push 或 `check:release`。安裝、答案維護、已知格式差異與日期邊界用法見[日報 E2E 驗收說明](docs/daily-e2e.md)。
+安裝依賴後執行 `npx playwright install chromium`、`npm run test:e2e`。報表情境從空白本機資料經 UI 填報，讀取「定稿並複製」的真實剪貼簿，與遷移前未修改 formatter 的固定基準逐字比對；原人工答案及其格式差異也保留。快速輸入情境另透過既有 repository 在隔離瀏覽器建立正式記憶，以驗證常用晶片、IME、唯讀與手勢。報告存入 `artifacts/daily-e2e/`，第一階段手機畫面存入 `artifacts/astryx-phase1/`。此指令不接 CI、pre-push 或 `check:release`；基準的來源及替換斷言見 [ADR-019](docs/adr/019-react-astryx-phase-one.md)，原驗收工具說明見[日報 E2E 驗收說明](docs/daily-e2e.md)。

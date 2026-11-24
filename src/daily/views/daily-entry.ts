@@ -1,4 +1,6 @@
-import { entryDraftKey, readEntryDraft } from '../entry-workflow';
+import { entryDraftKey, readEntryDraft, type EntryDraft } from '../entry-workflow';
+import { uiDraftPersistence, workComposerDrafts } from '../react/runtime';
+const sessionEntryDrafts = new Map<string, EntryDraft>();
 import { listMemories, selectSiteMemory } from '../../data/daily-repository';
 import { normalizeName } from '../../format/normalization';
 import { persistActiveMemoryPartition } from '../../data/memory-partition';
@@ -32,6 +34,10 @@ export function showEntrySaveError(error: unknown): void {
 }
 export function persistEntryDraft(): boolean {
   if (!appState.entryScopeKey || isReadOnlySite() || appState.entryDraftStorageBlocked) return false;
+  if (uiDraftPersistence.memoryOnly) {
+    sessionEntryDrafts.set(appState.entryScopeKey, { contact: structuredClone(appState.contactEditor), work: snapshotWorkDrafts() });
+    return true;
+  }
   try { localStorage.setItem(appState.entryScopeKey, JSON.stringify({ contact: appState.contactEditor, work: snapshotWorkDrafts() })); return true; }
   catch (error) { showEntrySaveError(error); return false; }
 }
@@ -41,7 +47,18 @@ export function restoreEntryScope(): void {
   appState.justAddedEntry = null;
   persistEntryDraft(); appState.entryScopeKey = key; appState.entryDraftStorageBlocked = false;
   appState.contactEditor = null; appState.contactEditorCollapsed = false; restoreWorkDrafts([]); appState.lastContactDate = ''; appState.tradePickerOpen = false;
-  try { const stored = readEntryDraft(localStorage, key); appState.contactEditor = stored.contact; restoreWorkDrafts(stored.work); }
+  try {
+    const stored = (uiDraftPersistence.memoryOnly ? sessionEntryDrafts.get(key) : undefined) ?? readEntryDraft(localStorage, key);
+    appState.contactEditor = stored.contact ? structuredClone(stored.contact) : null;
+    if (uiDraftPersistence.memoryOnly) {
+      // Old UI input is recoverable text, not a hidden WorkItem to auto-submit.
+      for (const [tradeId, text] of stored.work) {
+        const draftKey = `${key}:${tradeId}`;
+        if (!workComposerDrafts.has(draftKey)) workComposerDrafts.set(draftKey, text);
+      }
+      restoreWorkDrafts([]);
+    } else restoreWorkDrafts(stored.work);
+  }
   catch (error) { appState.entryDraftStorageBlocked = true; showEntrySaveError(error); }
 }
 export function capturePendingWork(): void {
