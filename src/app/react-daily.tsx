@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { DateInput } from '@astryxdesign/core/DateInput';
-import { Typeahead, type SearchSource, type SearchableItem } from '@astryxdesign/core/Typeahead';
+import type { SearchSource, SearchableItem } from '@astryxdesign/core/Typeahead';
+import { SuggestInput } from './react-suggest-input';
 import { Selector } from '@astryxdesign/core/Selector';
 import { VStack } from '@astryxdesign/core/VStack';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -33,11 +34,19 @@ async function dispatchDailyAction(action: string, id?: string): Promise<void> {
   notifyReact();
 }
 
+// The typed text only becomes the site when a suggestion (or the add row) is picked.
+function SiteNameInput({ source, isDisabled }: { source: SearchSource; isDisabled: boolean }) {
+  const current = appState.daily.report.siteNameSnapshot;
+  const [text, setText] = useState(current);
+  useEffect(() => setText(current), [current]);
+  return <SuggestInput label="工地名稱" searchSource={source} value={text} isDisabled={isDisabled}
+    onChange={setText} onPick={(item) => { setText(item.label); void selectDailySite(item.label); }} />;
+}
+
 export function DailyContext() {
   const [open, setOpen] = useState(false);
   const report = appState.daily.report;
   const locked = appState.dateSwitching || appState.workspaceSwitching;
-  const selectedSite = useMemo(() => report.siteNameSnapshot ? { id: report.siteId ?? 'current', label: report.siteNameSnapshot } : null, [report.siteId, report.siteNameSnapshot]);
   const source = useMemo<SearchSource>(() => ({
     search: (query) => {
       const rows: SearchableItem[] = appState.dailySites.filter((site) => site.name.includes(query)).map((site) => ({ id: site.id, label: site.name }));
@@ -49,8 +58,7 @@ export function DailyContext() {
   const siteField = appState.accountAuth.user ? <Selector label="切換工地" size="lg" value={appState.accountActiveSiteId ?? ''}
     options={[{ value: '', label: '本機工作區' }, ...appState.accountSites.map((site) => ({ value: site.id, label: site.name }))]}
     onChange={(value) => { void selectSharedSiteFromWorkspace(value ?? ''); }} isDisabled={locked} />
-    : <Typeahead label="工地名稱" size="lg" searchSource={source} value={selectedSite}
-      onChange={(value) => { if (value) void selectDailySite(value.label); }} isDisabled={locked || isReadOnlySite()} emptySearchText="輸入工地名稱以新增" />;
+    : <SiteNameInput source={source} isDisabled={locked || isReadOnlySite()} />;
   // The site is needed to finalize, so it stays on the summary row until one is chosen.
   const needsSite = !report.siteNameSnapshot;
   return <VStack gap={2} padding={4} as="header" className="daily-context">

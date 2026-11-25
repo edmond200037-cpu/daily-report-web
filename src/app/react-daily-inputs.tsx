@@ -18,6 +18,7 @@ import {
 } from '@astryxdesign/core/Typeahead';
 import { Selector } from '@astryxdesign/core/Selector';
 import { DateInput } from '@astryxdesign/core/DateInput';
+import { SuggestInput } from './react-suggest-input';
 import { MoreMenu } from '@astryxdesign/core/MoreMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { BottomSheet } from '@astryxdesign/core/BottomSheet';
@@ -93,8 +94,6 @@ async function save() {
 
 function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
   const [details, setDetails] = useState(false);
-  const locationQuerying = useRef(false);
-  const locationPicking = useRef(false);
   const showToast = useToast();
   const edit = (mutator: () => void) =>
     change(() => appState.daily.updateTradeOutputData(trade.id, mutator));
@@ -191,32 +190,26 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
                 });
             }}
           />
-          <Typeahead
+          <SuggestInput
             label="位置"
-            size="lg"
             searchSource={locations}
-            value={locationQuerying.current ? null : selected(work.locationTextSnapshot)}
-            onChangeQuery={(text) => {
-              if (!text && locationPicking.current) return;
-              locationQuerying.current = true;
-              if (!locked())
-                appState.daily.updateTradeOutputData(trade.id, () => {
-                  work.locationTextSnapshot = text;
-                  work.locationId = null;
-                });
-            }}
-            onChange={(item) => {
-              locationPicking.current = Boolean(item);
-              queueMicrotask(() => { locationPicking.current = false; });
-              locationQuerying.current = false;
+            value={work.locationTextSnapshot}
+            isDisabled={locked()}
+            onChange={(text) =>
               edit(() => {
-                work.locationTextSnapshot = item?.label ?? '';
+                work.locationTextSnapshot = text;
+                work.locationId = null;
+              })
+            }
+            onPick={(item) =>
+              edit(() => {
+                work.locationTextSnapshot = item.label;
                 applyLocationMemory(
                   work,
-                  appState.dailyLocations.find((row) => row.id === item?.id),
+                  appState.dailyLocations.find((row) => row.id === item.id),
                 );
-              });
-            }}
+              })
+            }
           />
           <TextArea
             label="備註"
@@ -500,8 +493,6 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
 function MaterialEditor({ connection }: { connection: ReactNode }) {
   const editor = appState.materialEditor!;
   const value = editor.value;
-  const querying = useRef(new Set<string>());
-  const picking = useRef(new Set<string>());
   // The note stays folded until asked for, unless the entry already has one.
   const [noteOpen, setNoteOpen] = useState(Boolean(value.note));
   const fields = [
@@ -531,10 +522,9 @@ function MaterialEditor({ connection }: { connection: ReactNode }) {
             }}
           />
         ) : (
-          <Typeahead
+          <SuggestInput
             key={field}
             label={label}
-            size="lg"
             searchSource={source(
               field === 'materialTypeSnapshot'
                 ? appState.materialTypes
@@ -549,30 +539,23 @@ function MaterialEditor({ connection }: { connection: ReactNode }) {
                     )
                     .map((row) => ({ id: row.id, name: row.value })),
             )}
-            value={querying.current.has(field) ? null : selected(value[field])}
+            value={value[field]}
             hasAutoFocus={field === 'materialTypeSnapshot' && !editor.originalId}
             isDisabled={locked()}
-            onChangeQuery={(text) => {
-              // The Typeahead clears its query after a pick; that is not a
-              // request to erase the selected material field.
-              if (!text && picking.current.has(field)) return;
-              querying.current.add(field);
+            onChange={(text) => {
               value[field] = text;
               if (field === 'materialTypeSnapshot') value.materialTypeId = appState.materialTypes.find((row) => row.name.trim() === text.trim())?.id ?? null;
+              notifyReact();
             }}
-            onChange={(item) => {
-              if (item) picking.current.add(field);
-              else picking.current.delete(field);
-              queueMicrotask(() => { picking.current.delete(field); });
-              querying.current.delete(field);
-              value[field] = item?.label ?? '';
+            onPick={(item) => {
+              value[field] = item.label;
               if (field === 'materialTypeSnapshot') {
                 const type = appState.materialTypes.find((row) => row.name === value[field]);
                 value.materialTypeId = type?.id ?? null;
                 value.unit = type?.recentUnit ?? '';
                 value.supplierNameSnapshot = type?.recentSupplierName ?? '';
               }
-              if (field === 'itemName' && item && value.materialTypeId) {
+              if (field === 'itemName' && value.materialTypeId) {
                 const type = appState.materialTypes.find((row) => row.id === value.materialTypeId);
                 const specification = appState.materialMemory.filter((row) => row.materialTypeId === value.materialTypeId && row.fieldType === 'specification').sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0];
                 if (!value.specification) value.specification = specification?.value ?? '';
@@ -609,8 +592,6 @@ function MaterialEditor({ connection }: { connection: ReactNode }) {
 
 function ContactEditor() {
   const editor = appState.contactEditor!;
-  const vendorQuerying = useRef(false);
-  const vendorPicking = useRef(false);
   const [epoch, setEpoch] = useState(0);
   const reorderable = createReorderable({
     onReorder: ({ key, to }) => {
@@ -637,31 +618,26 @@ function ContactEditor() {
   return (
     <VStack gap={3}>
       <Text>{editor.value.tradeNameSnapshot}</Text>
-      <Typeahead
+      <SuggestInput
         label="聯絡廠商"
         id="contact-vendor"
-        size="lg"
         searchSource={source(
           appState.dailyVendors.filter(
             (row) => row.tradeTypeId === editor.value.tradeTypeId,
           ),
         )}
-        value={vendorQuerying.current ? null : selected(editor.value.vendorNameSnapshot)}
+        value={editor.value.vendorNameSnapshot}
         isDisabled={locked()}
-        onChangeQuery={(text) => {
-          if (!text && vendorPicking.current) return;
-          vendorQuerying.current = true;
+        onChange={(text) => {
           editor.value.vendorNameSnapshot = text;
           editor.vendorQuery = text;
           persistEntryDraft();
+          notifyReact();
         }}
-        onChange={(item) => {
-          vendorPicking.current = Boolean(item);
-          queueMicrotask(() => { vendorPicking.current = false; });
-          vendorQuerying.current = false;
-          editor.value.vendorNameSnapshot = item?.label ?? '';
+        onPick={(item) => {
+          editor.value.vendorNameSnapshot = item.label;
           editor.value.vendorId =
-            appState.dailyVendors.find((row) => row.id === item?.id)?.id ??
+            appState.dailyVendors.find((row) => row.id === item.id)?.id ??
             null;
           persistEntryDraft();
           notifyReact();
