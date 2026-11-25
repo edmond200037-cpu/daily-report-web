@@ -9,7 +9,7 @@ async function completeTrade(page: Page) {
   const input = page.getByRole('combobox', { name: '搜尋或輸入下一個工項', exact: true });
   await input.fill('地樑鋼筋、柱筋綁紮');
   await expect(input).toHaveValue('柱筋綁紮');
-  await expect(page.getByRole('option', { name: '柱筋綁紮', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: '加入「柱筋綁紮」', exact: true })).toBeVisible();
   await input.press('ArrowDown');
   await input.press('Enter');
   await expect(page.locator('[data-inline-work]')).toHaveCount(2);
@@ -65,7 +65,7 @@ for (const width of [360, 390, 430]) test(`編輯聚焦工項不被 Sheet 固定
   }).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await input.fill('地樑鋼筋');
-  await expect(page.getByRole('option', { name: '地樑鋼筋', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: '加入「地樑鋼筋」', exact: true })).toBeVisible();
   await input.press('ArrowDown');
   await input.press('Enter');
   const work = page.locator('[data-inline-work]').first();

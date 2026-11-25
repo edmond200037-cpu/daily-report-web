@@ -18,7 +18,7 @@ for (const label of fields) for (const ime of [{ isComposing: true, keyCode: 13 
       await page.getByRole('button', { name: '新增施工紀錄', exact: true }).click();
       await chooseTrade();
       await page.getByRole('combobox', { name: '搜尋或輸入下一個工項', exact: true }).fill('配管');
-      await page.getByRole('option', { name: '配管', exact: true }).click();
+      await page.getByRole('option', { name: '加入「配管」', exact: true }).click();
       await pickWorkMenu(page, '位置、樓層與備註');
     }
     const input = page.getByRole('combobox', { name: label, exact: true });

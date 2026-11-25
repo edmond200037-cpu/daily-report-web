@@ -24,7 +24,7 @@ async function addTrade(page: Page, name: string) {
 }
 async function addWork(page: Page, text: string) {
   await page.getByRole('combobox', { name: '搜尋或輸入下一個工項' }).fill(text);
-  await page.getByRole('option', { name: text, exact: true }).click();
+  await page.getByRole('option', { name: `加入「${text}」`, exact: true }).click();
 }
 const rows = (page: Page) =>
   page.locator('[data-work]').locator('xpath=ancestor-or-self::li[1]');

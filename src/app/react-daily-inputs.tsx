@@ -68,6 +68,7 @@ const source = (rows: { id: string; name: string }[]): SearchSource => ({
   },
   bootstrap: () => [],
 });
+const CREATE_PREFIX = '加入「';
 const selected = (text: string) => (text ? { id: text, label: text } : null);
 async function action(name: string, data: Record<string, string> = {}) {
   if (locked()) return;
@@ -363,8 +364,10 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
   };
   const choices = useMemo<SearchSource>(
     () => ({
+      // The typed text, when it matches no suggestion, is offered as an explicit add row (no keyboard Enter needed on a phone).
       search: (text) =>
-        source(workSuggestions(trade, appState.dailyTasks, text)).search(text),
+        (source(workSuggestions(trade, appState.dailyTasks, text)).search(text) as SearchableItem[]).map((row) =>
+          row.id === 'create' ? { ...row, label: `${CREATE_PREFIX}${row.label}」` } : row),
       bootstrap: () => [],
     }),
     [trade],
@@ -453,7 +456,7 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
         isDisabled={locked()}
         onChangeQuery={queryChanged}
         onChange={(item) => {
-          if (item) add(item.label);
+          if (item) add(item.id === 'create' ? item.label.slice(CREATE_PREFIX.length, -1) : item.label);
         }}
         onKeyDown={(event) => {
           // Enter without a highlighted suggestion commits the typed text
@@ -472,13 +475,6 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
           add(input.value);
         }}
         emptySearchText="輸入工項後加入"
-      />
-      <Button
-        label="加入工項"
-        data-work-commit={trade.id}
-        size="lg"
-        isDisabled={!query.trim() || locked()}
-        onClick={() => add()}
       />
       <List hasDividers reorderable={reorderable}>
         {trade.workItems.map((work) => (

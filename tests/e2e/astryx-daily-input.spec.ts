@@ -18,13 +18,13 @@ for (const ime of [
     const input = page.getByRole('combobox', { name: '搜尋或輸入下一個工項' });
     await input.fill('鋼');
     await expect(
-      page.getByRole('option', { name: '鋼', exact: true }),
+      page.getByRole('option', { name: '加入「鋼」', exact: true }),
     ).toBeVisible();
     await input.press('ArrowDown');
     await input.dispatchEvent('compositionstart', { data: '' });
     await input.fill('鋼筋');
     await expect(
-      page.getByRole('option', { name: '鋼筋', exact: true }),
+      page.getByRole('option', { name: '加入「鋼筋」', exact: true }),
     ).toBeVisible();
     await input.dispatchEvent('keydown', {
       key: 'Enter',
@@ -68,7 +68,7 @@ test('清除工項附加欄位在保存後仍可復原', async ({ page }) => {
   await page.getByRole('combobox', { name: '選擇工種', exact: true }).fill('復原測試');
   await page.getByRole('option', { name: '復原測試', exact: true }).click();
   await page.getByRole('combobox', { name: '搜尋或輸入下一個工項', exact: true }).fill('配管');
-  await page.getByRole('option', { name: '配管', exact: true }).click();
+  await page.getByRole('option', { name: '加入「配管」', exact: true }).click();
   await pickWorkMenu(page, '位置、樓層與備註');
   const note = page.getByRole('textbox', { name: '備註', exact: true });
   await note.fill('待監造確認');
@@ -89,7 +89,7 @@ test('建議清單關閉時 Enter 仍加入單一工項', async ({ page }) => {
   const input = page.getByRole('combobox', { name: '搜尋或輸入下一個工項' });
   await input.pressSequentially('鋼板樁打設');
   await expect(
-    page.getByRole('option', { name: '鋼板樁打設', exact: true }),
+    page.getByRole('option', { name: '加入「鋼板樁打設」', exact: true }),
   ).toBeVisible();
   await input.press('Escape');
   await expect(input).toHaveAttribute('aria-expanded', 'false');

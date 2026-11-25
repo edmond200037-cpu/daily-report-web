@@ -74,9 +74,8 @@ export class DailyUI {
       for (const [taskIndex, task] of trade.tasks.entries()) {
         const composer = card.getByRole('combobox', { name: '搜尋或輸入下一個工項' });
         await this.type(composer, task, `${label}工項${taskIndex + 1}`);
-        // In the sheet the suggestion list opens over the add button; close it so the button itself is pressed.
-        if ((await composer.getAttribute('aria-expanded')) === 'true') await this.key(composer, 'Escape', '關閉建議清單');
-        await this.click(card.locator('[data-work-commit]'), '加入施工工項');
+        // No suggestion is highlighted after typing, so Enter commits the typed text.
+        await this.key(composer, 'Enter', '加入施工工項');
         await expect(card.locator('[data-inline-work]')).toHaveCount(taskIndex + 1);
         await expect(card.locator('[data-inline-work]').last()).toHaveValue(task);
       }
