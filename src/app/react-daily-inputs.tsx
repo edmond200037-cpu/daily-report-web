@@ -18,6 +18,7 @@ import {
 } from '@astryxdesign/core/Typeahead';
 import { Selector } from '@astryxdesign/core/Selector';
 import { DateInput } from '@astryxdesign/core/DateInput';
+import { MoreMenu } from '@astryxdesign/core/MoreMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { BottomSheet } from '@astryxdesign/core/BottomSheet';
 import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
@@ -100,58 +101,57 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
     () => source(appState.dailyLocations),
     [appState.dailyLocations],
   );
+  const removeWork = () => {
+    const restore = appState.daily.removeWorkItemForUndo(trade.id, work.id);
+    if (!restore) return;
+    notifyReact();
+    void save();
+    const dismiss = showToast({
+      body: '已刪除工項',
+      autoHideDuration: 6000,
+      endContent: (
+        <Button
+          label="復原"
+          size="lg"
+          onClick={() => {
+            if (locked()) return;
+            restore();
+            dismiss();
+            void save();
+          }}
+        />
+      ),
+    });
+  };
   return (
     <VStack gap={2} data-work={work.id}>
-      <TextInput
-        label="工項"
-        isLabelHidden
-        data-inline-work={work.id}
-        value={work.taskTextSnapshot}
-        size="lg"
-        isDisabled={locked()}
-        onChange={(value) =>
-          edit(() => {
-            work.taskTextSnapshot = value;
-            work.taskId = null;
-          })
-        }
-      />
-      <HStack gap={2} hAlign="start" vAlign="center"><Button
-        label="位置、樓層與備註"
-        size="lg"
-        variant="ghost"
-        onClick={() => setDetails(!details)}
-      /><Button
-        label="刪除工項"
-        size="lg"
-        variant="ghost"
-        isDisabled={locked()}
-        onClick={() => {
-          const restore = appState.daily.removeWorkItemForUndo(
-            trade.id,
-            work.id,
-          );
-          if (!restore) return;
-          notifyReact();
-          void save();
-          const dismiss = showToast({
-            body: '已刪除工項',
-            autoHideDuration: 6000,
-            endContent: (
-              <Button
-                label="復原"
-                size="lg"
-                onClick={() => {
-                  if (locked()) return;
-                  restore();
-                  dismiss();
-                  void save();
-                }}
-              />
-            ),
-          });
-        }}
-      /></HStack>
+      <HStack gap={1} vAlign="center">
+        <TextInput
+          label="工項"
+          isLabelHidden
+          data-inline-work={work.id}
+          value={work.taskTextSnapshot}
+          size="lg"
+          isDisabled={locked()}
+          onChange={(value) =>
+            edit(() => {
+              work.taskTextSnapshot = value;
+              work.taskId = null;
+            })
+          }
+        />
+        {/* The reorder handle's own click starts keyboard reorder mode, so the actions get a separate menu beside it. */}
+        <MoreMenu
+          label="工項選項"
+          size="lg"
+          placement="below"
+          alignment="end"
+          items={[
+            { label: '位置、樓層與備註', onClick: () => setDetails(!details) },
+            { label: '刪除工項', variant: 'destructive', isDisabled: locked(), onClick: removeWork },
+          ]}
+        />
+      </HStack>
       {details && (
         <VStack gap={2}>
           <TextInput

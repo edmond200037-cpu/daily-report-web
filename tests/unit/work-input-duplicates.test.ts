@@ -21,7 +21,7 @@ describe('手機連續工項與同名提醒', () => {
   it('搜尋加入區在工項之前，提醒可由輔助工具讀取', () => {
     const html = dailyMarkup((daily) => { daily.report.tradeSections.push(trade); daily.expandedId = trade.id; });
     expect(html.indexOf('搜尋或輸入下一個工項')).toBeLessThan(html.indexOf('data-inline-work'));
-    expect(html).toContain('astryx-typeahead'); expect(html).toContain('位置、樓層與備註');
+    expect(html).toContain('astryx-typeahead'); expect(html).toContain('工項選項');
 
   });
   it('新增推薦排除既有工項後再取六筆，待審核工項仍可選用', () => {

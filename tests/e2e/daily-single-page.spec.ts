@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { pickWorkMenu } from './helpers/daily-ui';
 
 const action = (page: Page, name: string) =>
   page.locator(`[data-daily-action="${name}"]:visible`);
@@ -203,9 +204,7 @@ for (const width of [360, 390, 430]) {
     expect((await trade.boundingBox())!.height).toBeLessThanOrEqual(450);
     await expect(trade).not.toContainText('取消新增');
     await addWork(page, '鋼筋綁紮');
-    await page
-      .getByRole('button', { name: '位置、樓層與備註', exact: true })
-      .click();
+    await pickWorkMenu(page, '位置、樓層與備註');
     const start = page.getByRole('textbox', { name: '起始樓層' });
     await start.fill('3F');
     const location = page.getByRole('combobox', { name: '位置', exact: true });
@@ -223,9 +222,7 @@ for (const width of [360, 390, 430]) {
       .getByRole('button', { name: '完成，返回工項', exact: true })
       .click();
     await expect(start).not.toBeVisible();
-    await page
-      .getByRole('button', { name: '位置、樓層與備註', exact: true })
-      .click();
+    await pickWorkMenu(page, '位置、樓層與備註');
     await expect(start).toHaveValue('3FL');
     await expect(
       page.getByRole('textbox', { name: '備註', exact: true }),

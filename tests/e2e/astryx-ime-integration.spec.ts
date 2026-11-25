@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { pickWorkMenu } from './helpers/daily-ui';
 const fields = ['工地名稱', '選擇工種', '材料類型', '單位', '聯絡廠商', '聯絡工項', '位置'];
 for (const label of fields) for (const ime of [{ isComposing: true, keyCode: 13 }, { isComposing: false, keyCode: 229 }]) {
   test(`${label} 組字遇重繪保留文字與焦點 ${JSON.stringify(ime)}`, async ({ page }) => {
@@ -18,7 +19,7 @@ for (const label of fields) for (const ime of [{ isComposing: true, keyCode: 13 
       await chooseTrade();
       await page.getByRole('combobox', { name: '搜尋或輸入下一個工項', exact: true }).fill('配管');
       await page.getByRole('option', { name: '配管', exact: true }).click();
-      await page.getByRole('button', { name: '位置、樓層與備註', exact: true }).click();
+      await pickWorkMenu(page, '位置、樓層與備註');
     }
     const input = page.getByRole('combobox', { name: label, exact: true });
     await input.dispatchEvent('compositionstart', { data: '' });

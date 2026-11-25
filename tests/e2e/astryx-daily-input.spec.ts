@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { pickWorkMenu } from './helpers/daily-ui';
 
 for (const ime of [
   { isComposing: true, keyCode: 13 },
@@ -68,7 +69,7 @@ test('清除工項附加欄位在保存後仍可復原', async ({ page }) => {
   await page.getByRole('option', { name: '復原測試', exact: true }).click();
   await page.getByRole('combobox', { name: '搜尋或輸入下一個工項', exact: true }).fill('配管');
   await page.getByRole('option', { name: '配管', exact: true }).click();
-  await page.getByRole('button', { name: '位置、樓層與備註', exact: true }).click();
+  await pickWorkMenu(page, '位置、樓層與備註');
   const note = page.getByRole('textbox', { name: '備註', exact: true });
   await note.fill('待監造確認');
   await page.getByRole('button', { name: '移除位置與備註', exact: true }).click();

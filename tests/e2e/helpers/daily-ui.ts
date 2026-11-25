@@ -161,3 +161,9 @@ export class DailyUI {
     await this.metrics.sample('preview');
   }
 }
+
+/** Opens a work item's menu and picks one entry (the item actions live behind the 工項選項 button). */
+export async function pickWorkMenu(page: Page, name: '位置、樓層與備註' | '刪除工項') {
+  await page.getByRole('button', { name: '工項選項', exact: true }).first().click();
+  await page.getByRole('menuitem', { name, exact: true }).click();
+}
