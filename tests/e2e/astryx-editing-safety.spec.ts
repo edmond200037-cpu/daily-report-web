@@ -74,10 +74,12 @@ for (const width of [360, 390, 430]) test(`編輯聚焦工項不被 Sheet 固定
     const row = node.closest('li')!;
     const field = node.parentElement!.getBoundingClientRect();
     const handle = row.querySelector('[data-astryx-list-reorder]')!.getBoundingClientRect();
-    const [details, remove] = [...row.querySelectorAll('button')].map((button) => button.getBoundingClientRect());
-    return { field: field.toJSON(), handle: handle.toJSON(), details: details.toJSON(), remove: remove.toJSON() };
+    const menu = row.querySelector('button[aria-label="工項選項"]')!.getBoundingClientRect();
+    return { field: field.toJSON(), handle: handle.toJSON(), menu: menu.toJSON() };
   });
   expect(Math.abs(geometry.field.y + geometry.field.height / 2 - geometry.handle.y - geometry.handle.height / 2)).toBeLessThan(2);
-  expect(geometry.details.y).toBe(geometry.remove.y);
-  expect(geometry.details.x).toBe(geometry.field.x);
+  expect(Math.abs(geometry.field.y + geometry.field.height / 2 - geometry.menu.y - geometry.menu.height / 2)).toBeLessThan(2);
+  expect(geometry.menu.x).toBeGreaterThan(geometry.field.x);
+  expect(geometry.menu.width).toBeGreaterThanOrEqual(44);
+  expect(geometry.menu.height).toBeGreaterThanOrEqual(44);
 });

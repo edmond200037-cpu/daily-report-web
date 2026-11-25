@@ -6,6 +6,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
+import { VisuallyHidden } from '@astryxdesign/core/VisuallyHidden';
 import { Button } from '@astryxdesign/core/Button';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
@@ -18,6 +19,7 @@ import { handleDailyAction } from '../daily/views/daily-events';
 import { isReadOnlySite } from './sync-runtime';
 import { formatDailyReport } from '../daily/daily-formatter';
 import { validateTrade, validateWorkerCount } from '../daily/daily-validator';
+import { formatDate } from '../format/date-format';
 import { notifyReact } from './react-store';
 import { dailySyncLabel } from '../daily/views/daily-view';
 import { duplicateVendorTradeIds, groupOutputTrades } from '../daily/daily-output-model';
@@ -32,6 +34,7 @@ async function dispatchDailyAction(action: string, id?: string): Promise<void> {
 }
 
 export function DailyContext() {
+  const [open, setOpen] = useState(false);
   const report = appState.daily.report;
   const locked = appState.dateSwitching || appState.workspaceSwitching;
   const selectedSite = useMemo(() => report.siteNameSnapshot ? { id: report.siteId ?? 'current', label: report.siteNameSnapshot } : null, [report.siteId, report.siteNameSnapshot]);
@@ -43,17 +46,30 @@ export function DailyContext() {
     },
     bootstrap: () => [],
   }), []);
-  return <VStack gap={4} padding={4} as="header" className="daily-context">
-    <Heading level={1}>施工日報</Heading>
-    <output data-save-status data-state={appState.dailySaveState}>{dailySyncLabel()}</output>
-    {!appState.accountAuth.user && <Text>本機工作區</Text>}
-    <DateInput label="日報日期" value={report.date as ComponentProps<typeof DateInput>['value']} onChange={(date) => { if (date) void switchDailyDate(date); }} isDisabled={locked} size="lg" presentation="native" />
-    {appState.accountAuth.user ? <Selector label="切換工地" size="lg" value={appState.accountActiveSiteId ?? ''}
-      options={[{ value: '', label: '本機工作區' }, ...appState.accountSites.map((site) => ({ value: site.id, label: site.name }))]}
-      onChange={(value) => { void selectSharedSiteFromWorkspace(value ?? ''); }} isDisabled={locked} />
-      : <Typeahead label="工地名稱" size="lg" searchSource={source} value={selectedSite}
-        onChange={(value) => { if (value) void selectDailySite(value.label); }} isDisabled={locked || isReadOnlySite()} emptySearchText="輸入工地名稱以新增" />}
-    <Button label="近 7 天日報" href="#daily/history" size="lg" variant="ghost" />
+  const siteField = appState.accountAuth.user ? <Selector label="切換工地" size="lg" value={appState.accountActiveSiteId ?? ''}
+    options={[{ value: '', label: '本機工作區' }, ...appState.accountSites.map((site) => ({ value: site.id, label: site.name }))]}
+    onChange={(value) => { void selectSharedSiteFromWorkspace(value ?? ''); }} isDisabled={locked} />
+    : <Typeahead label="工地名稱" size="lg" searchSource={source} value={selectedSite}
+      onChange={(value) => { if (value) void selectDailySite(value.label); }} isDisabled={locked || isReadOnlySite()} emptySearchText="輸入工地名稱以新增" />;
+  // The site is needed to finalize, so it stays on the summary row until one is chosen.
+  const needsSite = !report.siteNameSnapshot;
+  return <VStack gap={2} padding={4} as="header" className="daily-context">
+    <VisuallyHidden as="h1">施工日報</VisuallyHidden>
+    <HStack gap={2} vAlign="center" hAlign="between">
+      <Text maxLines={2}>{formatDate(report.date)}{report.siteNameSnapshot ? ` · ${report.siteNameSnapshot}` : ''} · <output data-save-status data-state={appState.dailySaveState}>{dailySyncLabel()}</output></Text>
+      <Button label="變更" size="lg" variant="ghost" onClick={() => setOpen(true)} />
+    </HStack>
+    {needsSite && siteField}
+    <BottomSheet label="日報設定" isOpen={open} onOpenChange={setOpen} height="hug" padding={4}>
+      <VStack gap={4}>
+        <Heading level={2}>日報設定</Heading>
+        <DateInput label="日報日期" value={report.date as ComponentProps<typeof DateInput>['value']} onChange={(date) => { if (date) void switchDailyDate(date); }} isDisabled={locked} size="lg" presentation="native" />
+        {!needsSite && siteField}
+        {!appState.accountAuth.user && <Text>本機工作區</Text>}
+        <Button label="近 7 天日報" href="#daily/history" size="lg" variant="ghost" />
+        <Button label="關閉" size="lg" onClick={() => setOpen(false)} />
+      </VStack>
+    </BottomSheet>
   </VStack>;
 }
 

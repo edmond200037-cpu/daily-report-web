@@ -45,8 +45,10 @@ export class DailyUI {
   }
 
   async fill(scenario: Scenario, dates: ReturnType<typeof datesFor>) {
-    await expect(this.page.locator('.daily-context')).toContainText('本機工作區');
+    const settings = await openDailySettings(this.page);
+    await expect(settings).toContainText('本機工作區');
     await expect(this.page.getByLabel('日報日期', { exact: true })).toHaveValue(dates.reportISO);
+    await closeDailySettings(settings);
     await expect(this.page.getByRole('combobox', { name: '工地名稱' })).toHaveValue('');
     await expect(this.page.locator('[data-trade]')).toHaveCount(0);
     await expect(this.page.getByLabel('日報檢查與複製', { exact: true })).toContainText('0 筆施工 · 0 人 · 0 筆聯絡');
@@ -166,4 +168,16 @@ export class DailyUI {
 export async function pickWorkMenu(page: Page, name: '位置、樓層與備註' | '刪除工項') {
   await page.getByRole('button', { name: '工項選項', exact: true }).first().click();
   await page.getByRole('menuitem', { name, exact: true }).click();
+}
+
+/** The 日報設定 sheet holds date, site and workspace; the summary row only shows them. */
+export async function openDailySettings(page: Page) {
+  await page.getByRole('button', { name: '變更', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: '日報設定' });
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+export async function closeDailySettings(sheet: Locator) {
+  await sheet.getByRole('button', { name: '關閉', exact: true }).click();
+  await expect(sheet).not.toBeVisible();
 }

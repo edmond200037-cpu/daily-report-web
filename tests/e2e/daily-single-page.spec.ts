@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { pickWorkMenu } from './helpers/daily-ui';
+import { closeDailySettings, openDailySettings, pickWorkMenu } from './helpers/daily-ui';
 
 const action = (page: Page, name: string) =>
   page.locator(`[data-daily-action="${name}"]:visible`);
@@ -79,13 +79,18 @@ for (const width of [360, 390, 430]) {
     await action(page, 'toggle-preview').click();
     await page.getByRole('button', { name: '關閉預覽', exact: true }).click();
     expect(await reportJSON(page)).toBe(before);
+    const settings = await openDailySettings(page);
     await page.getByLabel('日報日期', { exact: true }).fill('2026-11-21');
     await expect(page.getByLabel('日報日期', { exact: true })).toHaveValue(
       '2026-11-21',
     );
+    await closeDailySettings(settings);
     for (const site of ['臺北市信義區新建工程工地', '超長工地名'.repeat(6)]) {
+      // Once a site is chosen its field moves into the settings sheet.
+      const sheet = (await page.getByRole('combobox', { name: '工地名稱' }).count()) ? null : await openDailySettings(page);
       await page.getByRole('combobox', { name: '工地名稱' }).fill(site);
       await page.getByRole('option', { name: site, exact: true }).click();
+      if (sheet) await closeDailySettings(sheet);
       await expect(page.locator('.daily-context')).toContainText(site);
       expect(
         await page.evaluate(
