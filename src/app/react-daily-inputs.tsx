@@ -505,7 +505,7 @@ function MaterialEditor({ connection }: { connection: ReactNode }) {
   ] as const;
   return (
     <VStack gap={3} data-material-editor={editor.id}>
-      <Grid columns={2} gap={2}>
+      <Grid columns={{ minWidth: 1, max: 2 }} gap={2}>
       {fields.map(([field, label]) =>
         field === 'quantity' ? (
           <TextInput

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
 import { List, ListItem } from '@astryxdesign/core/List';
@@ -10,11 +10,13 @@ const MAX_ROWS = 5;
  * A plain text field whose value is the text itself (no Token), with a suggestion
  * list below while focused. Picking a row calls `onPick`; typing only calls `onChange`.
  */
-export function SuggestInput({ label, value, onChange, onPick, searchSource, isDisabled, hasAutoFocus, id }: {
+export function SuggestInput({ label, value, onChange, onPick, onCommit, searchSource, isDisabled, hasAutoFocus, id }: {
   label: string;
   value: string;
   onChange: (text: string) => void;
   onPick: (item: SearchableItem) => void;
+  /** Optional: typed text that was not picked, sent on blur or Enter with no highlighted row (never while composing). */
+  onCommit?: (text: string) => void;
   searchSource: SearchSource;
   isDisabled?: boolean;
   hasAutoFocus?: boolean;
@@ -23,6 +25,7 @@ export function SuggestInput({ label, value, onChange, onPick, searchSource, isD
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const composing = useRef(false);
   // Sources used here are synchronous lookups over in-memory master data.
   const rows = open && value.trim() ? (searchSource.search(value) as SearchableItem[]).slice(0, MAX_ROWS) : [];
   const optionId = (index: number) => `${listId}-${index}`;
@@ -48,7 +51,9 @@ export function SuggestInput({ label, value, onChange, onPick, searchSource, isD
         isDisabled={isDisabled}
         onChange={(text) => { setOpen(true); setActive(-1); onChange(text); }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onCompositionStart={() => { composing.current = true; }}
+        onCompositionEnd={() => { composing.current = false; }}
+        onBlur={() => { setOpen(false); if (!composing.current) onCommit?.(value); }}
         onKeyDown={(event) => {
           // Composition keys (Enter confirming a candidate, keyCode 229) must reach the IME untouched.
           if (event.nativeEvent.isComposing || event.keyCode === 229) return;
@@ -63,6 +68,8 @@ export function SuggestInput({ label, value, onChange, onPick, searchSource, isD
           } else if (event.key === 'Enter' && rows.length && active >= 0) {
             event.preventDefault();
             pick(rows[active]);
+          } else if (event.key === 'Enter' && onCommit) {
+            onCommit(value);
           }
         }}
       />

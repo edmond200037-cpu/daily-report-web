@@ -40,7 +40,8 @@ function SiteNameInput({ source, isDisabled }: { source: SearchSource; isDisable
   const [text, setText] = useState(current);
   useEffect(() => setText(current), [current]);
   return <SuggestInput label="工地名稱" searchSource={source} value={text} isDisabled={isDisabled}
-    onChange={setText} onPick={(item) => { setText(item.label); void selectDailySite(item.label); }} />;
+    onChange={setText}
+    onCommit={(typed) => { const name = typed.trim(); if (name && name !== current) void selectDailySite(name); }} onPick={(item) => { setText(item.label); void selectDailySite(item.label); }} />;
 }
 
 export function DailyContext() {
@@ -64,8 +65,9 @@ export function DailyContext() {
   return <VStack gap={2} padding={4} as="header" className="daily-context">
     <VisuallyHidden as="h1">施工日報</VisuallyHidden>
     <HStack gap={2} vAlign="center" hAlign="between">
-      <Text maxLines={2}>{formatDate(report.date)}{report.siteNameSnapshot ? ` · ${report.siteNameSnapshot}` : ''} · <output data-save-status data-state={appState.dailySaveState}>{dailySyncLabel()}</output></Text>
-      <Button label="變更" size="lg" variant="ghost" onClick={() => setOpen(true)} />
+      {/* The summary text shrinks and truncates; the button never does. */}
+      <VStack style={{ minWidth: 0 }}><Text maxLines={2}>{formatDate(report.date)}{report.siteNameSnapshot ? ` · ${report.siteNameSnapshot}` : ''} · <output data-save-status data-state={appState.dailySaveState}>{dailySyncLabel()}</output></Text></VStack>
+      <VStack style={{ flexShrink: 0 }}><Button label="變更" size="lg" variant="ghost" onClick={() => setOpen(true)} /></VStack>
     </HStack>
     {needsSite && siteField}
     <BottomSheet label="日報設定" isOpen={open} onOpenChange={setOpen} height="hug" padding={4}>
