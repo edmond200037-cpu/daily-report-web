@@ -104,6 +104,8 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
   const rowRef = useRef<HTMLElement | null>(null);
   const anchorRef = useRef<((el: HTMLElement | null) => void) | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const handleRef = useRef<HTMLElement | null>(null);
   // A pointer tap on the reorder handle opens the item menu; keyboard (detail 0), drags and long holds stay with Astryx's reorder.
   useEffect(() => {
     const li = rowRef.current?.closest('li');
@@ -122,8 +124,13 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
       if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || event.timeStamp - start.t > 300) return;
       event.preventDefault();
       event.stopPropagation();
-      anchorRef.current?.(handle);
-      setMenuOpen(true);
+      handleRef.current = handle;
+      // Phones get a bottom sheet with big buttons; desktop keeps the popover next to the handle.
+      if (window.matchMedia('(pointer: coarse)').matches) setSheetOpen(true);
+      else {
+        anchorRef.current?.(handle);
+        setMenuOpen(true);
+      }
     };
     li.addEventListener('pointerdown', onDown, true);
     li.addEventListener('click', onClick, true);
@@ -176,7 +183,6 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
         isMenuOpen={menuOpen}
         onOpenChange={setMenuOpen}
         placement="start"
-        presentation="adaptive"
         renderTrigger={({ ref }) => {
           anchorRef.current = ref;
           return null;
@@ -186,6 +192,36 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
           { label: '刪除工項', variant: 'destructive', isDisabled: locked(), onClick: removeWork },
         ]}
       />
+      <BottomSheet
+        isOpen={sheetOpen}
+        onOpenChange={setSheetOpen}
+        label="工項功能"
+        height="hug"
+        finalFocusRef={handleRef}
+      >
+        <VStack gap={2}>
+          <Button
+            label="位置、樓層與備註"
+            size="lg"
+            width="100%"
+            onClick={() => {
+              setSheetOpen(false);
+              setDetails(!details);
+            }}
+          />
+          <Button
+            label="刪除工項"
+            size="lg"
+            width="100%"
+            variant="destructive"
+            isDisabled={locked()}
+            onClick={() => {
+              setSheetOpen(false);
+              removeWork();
+            }}
+          />
+        </VStack>
+      </BottomSheet>
       {details && (
         <VStack gap={2}>
           <TextInput

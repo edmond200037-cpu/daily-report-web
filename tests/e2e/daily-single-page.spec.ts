@@ -420,12 +420,20 @@ test.describe('觸控裝置', () => {
     await page.goto('/#daily');
     await addTrade(page, '觸控選單');
     await addWork(page, '工項甲');
-    await grip(rows(page).first()).tap();
+    const sheet = page.getByRole('dialog', { name: '工項功能' });
     for (const name of ['位置、樓層與備註', '刪除工項']) {
-      const item = page.getByRole('list').getByRole('listitem').filter({ has: page.getByRole('button', { name, exact: true }) }).last();
-      await expect(item).toBeVisible();
-      const box = (await item.boundingBox())!;
+      await grip(rows(page).first()).tap();
+      await expect(sheet).toBeVisible();
+      await expect(page.getByText('工項 功能表')).toHaveCount(0);
+      const button = sheet.getByRole('button', { name, exact: true });
+      // Wait for the slide-in animation to finish before measuring.
+      let box = (await button.boundingBox())!;
+      await expect.poll(async () => { const next = (await button.boundingBox())!; const settled = next.y === box.y; box = next; return settled; }).toBe(true);
       expect(box.height).toBeGreaterThanOrEqual(44);
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + 3);
+      await expect(sheet).toHaveCount(0);
+      if (name === '刪除工項') await expect(page.getByRole('region', { name: '通知' }).getByText('已刪除工項')).toBeVisible();
+      else await expect(page.getByRole('textbox', { name: '起始樓層' })).toBeVisible();
     }
   });
 });
