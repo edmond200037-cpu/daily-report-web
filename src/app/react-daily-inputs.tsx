@@ -92,6 +92,32 @@ async function save() {
   notifyReact();
 }
 
+// Swallows a pointer tap (not drag, long press or keyboard) on a reorder handle so Astryx's tap-to-reorder never starts.
+function interceptHandleTap(root: HTMLElement, onTap?: (handle: HTMLElement) => void) {
+  let down: { x: number; y: number; t: number } | null = null;
+  const handleOf = (event: Event) =>
+    (event.target as Element | null)?.closest<HTMLElement>('[data-astryx-list-reorder]') ?? null;
+  const onDown = (event: PointerEvent) => {
+    down = handleOf(event) ? { x: event.clientX, y: event.clientY, t: event.timeStamp } : null;
+  };
+  const onClick = (event: MouseEvent) => {
+    const handle = handleOf(event);
+    const start = down;
+    down = null;
+    if (!handle || !start || event.detail === 0 || handle.getAttribute('aria-disabled') === 'true') return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || event.timeStamp - start.t > 300) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onTap?.(handle);
+  };
+  root.addEventListener('pointerdown', onDown, true);
+  root.addEventListener('click', onClick, true);
+  return () => {
+    root.removeEventListener('pointerdown', onDown, true);
+    root.removeEventListener('click', onClick, true);
+  };
+}
+
 function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
   const [details, setDetails] = useState(false);
   const showToast = useToast();
@@ -110,20 +136,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
   useEffect(() => {
     const li = rowRef.current?.closest('li');
     if (!li) return;
-    let down: { x: number; y: number; t: number } | null = null;
-    const handleOf = (event: Event) =>
-      (event.target as Element | null)?.closest<HTMLElement>('[data-astryx-list-reorder]') ?? null;
-    const onDown = (event: PointerEvent) => {
-      down = handleOf(event) ? { x: event.clientX, y: event.clientY, t: event.timeStamp } : null;
-    };
-    const onClick = (event: MouseEvent) => {
-      const handle = handleOf(event);
-      const start = down;
-      down = null;
-      if (!handle || !start || event.detail === 0 || handle.getAttribute('aria-disabled') === 'true') return;
-      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || event.timeStamp - start.t > 300) return;
-      event.preventDefault();
-      event.stopPropagation();
+    return interceptHandleTap(li, (handle) => {
       handleRef.current = handle;
       // Phones get a bottom sheet with big buttons; desktop keeps the popover next to the handle.
       if (window.matchMedia('(pointer: coarse)').matches) setSheetOpen(true);
@@ -131,13 +144,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
         anchorRef.current?.(handle);
         setMenuOpen(true);
       }
-    };
-    li.addEventListener('pointerdown', onDown, true);
-    li.addEventListener('click', onClick, true);
-    return () => {
-      li.removeEventListener('pointerdown', onDown, true);
-      li.removeEventListener('click', onClick, true);
-    };
+    });
   }, []);
   const removeWork = () => {
     const restore = appState.daily.removeWorkItemForUndo(trade.id, work.id);
@@ -843,6 +850,12 @@ export function DailyInputs() {
     persistEntryDraft();
     notifyReact();
   };
+  const rootRef = useRef<HTMLElement | null>(null);
+  // Outer lists: a pointer tap on the handle does nothing (no reorder menu, no row editor).
+  useEffect(() => {
+    const cleanups = [...(rootRef.current?.querySelectorAll<HTMLElement>('[data-daily-section]') ?? [])].map((el) => interceptHandleTap(el));
+    return () => cleanups.forEach((fn) => fn());
+  }, []);
   useEffect(() => onDailyAddRequest((section) => {
     if (locked()) return;
     scrollToDailySection(section);
@@ -982,6 +995,7 @@ export function DailyInputs() {
                   />);
   return (
     <VStack
+      ref={rootRef}
       gap={6}
       padding={4}
       onClick={(event) => event.stopPropagation()}
@@ -998,7 +1012,7 @@ export function DailyInputs() {
           {report.tradeSections.map((trade) => {
             const works = trade.workItems.filter((work) => work.taskTextSnapshot.trim());
             return <ListItem key={trade.id} itemKey={trade.id} data-trade={trade.id}
-              data-daily-action="toggle-trade" swipe={swipe('trade')} isDisabled={locked()} align="start"
+              data-daily-action="toggle-trade" swipe={swipe('trade')} isDisabled={locked()}
               onClick={() => { appState.daily.expandedId = trade.id; notifyReact(); }}
               label={`${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot || '待填廠商'}`}
               description={`${trade.status === 'complete' ? '資料齊全' : '未完成'} · ${trade.workerCount ? `${trade.workerCount} 人` : '人數未填'} · ${works[0]?.taskTextSnapshot || '尚未填工項'}${works.length > 1 ? `・另 ${works.length - 1} 項` : ''}`} />;
@@ -1013,7 +1027,7 @@ export function DailyInputs() {
             return <ListItem key={entry.id} itemKey={entry.id} data-material={entry.id} swipe={swipe('material')}
               label={`${entry.materialTypeSnapshot} ${entry.itemName} ${entry.quantity} ${entry.unit} ${entry.supplierNameSnapshot}`}
               description={trade ? `已連接：${trade.tradeNameSnapshot}｜${trade.vendorNameSnapshot}` : '未連接'}
-              isDisabled={locked()} align="start" onClick={() => { startMaterialEditor(entry.entryType ?? 'normal', entry); notifyReact(); }} />;
+              isDisabled={locked()} onClick={() => { startMaterialEditor(entry.entryType ?? 'normal', entry); notifyReact(); }} />;
           })}
         </List>
       </VStack>
@@ -1022,7 +1036,7 @@ export function DailyInputs() {
         <List hasDividers reorderable={reorder('contact')}>
           {report.contacts.map((contact) => <ListItem key={contact.id} itemKey={contact.id} data-contact-card={contact.id}
             swipe={swipe('contact')} label={`${contact.tradeNameSnapshot}｜${contact.vendorNameSnapshot}`}
-            description={contact.items.map((item) => item.content).join('；')} align="start" isDisabled={locked()}
+            description={contact.items.map((item) => item.content).join('；')} isDisabled={locked()}
             onClick={() => {
               const run = () => { appState.contactEditor = editContactEntry(contact, report.date); persistEntryDraft(); notifyReact(); };
               if (appState.contactEditor) setConfirmation({ text: '目前聯絡事項尚未儲存，是否放棄這次修改？', run }); else run();

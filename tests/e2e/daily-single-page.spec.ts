@@ -467,3 +467,24 @@ test('鍵盤握把排序與聯絡工項排序', async ({ page }) => {
     page.getByRole('textbox', { name: '聯絡內容', exact: true }).first(),
   ).toHaveValue('聯絡乙');
 });
+test('外層握把置中，點按無作用，鍵盤仍可排序', async ({ page }) => {
+  await page.goto('/#daily');
+  for (const name of ['外層甲', '外層乙']) {
+    await addTrade(page, name);
+    await closeSheet(page);
+  }
+  const outer = page.locator('[data-trade]').locator('xpath=ancestor-or-self::li[1]');
+  await expect(outer).toHaveCount(2);
+  const centre = (l: Locator) => l.evaluate((el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; });
+  const handle = grip(outer.first());
+  expect(Math.abs((await centre(handle)) - (await centre(outer.first())))).toBeLessThanOrEqual(2);
+  await handle.click();
+  await expect(page.locator('[data-trade-editor]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^(上移|下移|Move up|Move down)/ })).toHaveCount(0);
+  await expect(handle).not.toHaveAttribute('aria-pressed', 'true');
+  await handle.focus();
+  await handle.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Escape');
+  await expect(outer.first()).toContainText('外層乙');
+});
