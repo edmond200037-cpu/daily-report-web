@@ -176,6 +176,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
         isMenuOpen={menuOpen}
         onOpenChange={setMenuOpen}
         placement="start"
+        presentation="adaptive"
         renderTrigger={({ ref }) => {
           anchorRef.current = ref;
           return null;

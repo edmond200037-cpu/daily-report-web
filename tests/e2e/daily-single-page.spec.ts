@@ -405,9 +405,29 @@ test('點按工項握把開選單，不進入排序模式', async ({ page }) => 
   const toast = page.getByRole('button', { name: '復原', exact: true });
   await expect(toast).toBeVisible();
   const finish = action(page, 'finish-entry');
-  const toastBox = await rect(toast);
+  const toastBox = await toast.evaluate((el) => { let e = el; while (e.parentElement && e.parentElement.getAttribute('role') !== 'region') e = e.parentElement!; return e.getBoundingClientRect().toJSON() as DOMRect; });
   expect(intersects(toastBox, await rect(finish))).toBe(false);
-  await finish.click();
+  const nav = page.getByRole('navigation').locator('button, a, [role=tab]');
+  expect(await nav.count()).toBe(3);
+  for (const tab of await nav.all()) expect(intersects(toastBox, await rect(tab))).toBe(false);
+  await closeSheet(page);
+  await expect(finish).toHaveCount(0);
+  expect(intersects(toastBox, await rect(page.locator('[data-daily-add-bar]:visible')))).toBe(false);
+});
+test.describe('觸控裝置', () => {
+  test.use({ hasTouch: true, isMobile: true });
+  test('工項選單項目觸控高度至少 44px', async ({ page }) => {
+    await page.goto('/#daily');
+    await addTrade(page, '觸控選單');
+    await addWork(page, '工項甲');
+    await grip(rows(page).first()).tap();
+    for (const name of ['位置、樓層與備註', '刪除工項']) {
+      const item = page.getByRole('list').getByRole('listitem').filter({ has: page.getByRole('button', { name, exact: true }) }).last();
+      await expect(item).toBeVisible();
+      const box = (await item.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  });
 });
 test('鍵盤握把排序與聯絡工項排序', async ({ page }) => {
   await page.goto('/#daily');

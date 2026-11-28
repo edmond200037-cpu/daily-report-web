@@ -16,7 +16,7 @@ let root: Root | undefined;
 export function mountContent(children: ReactNode) {
   app.removeAttribute('data-legacy-ui');
   root ??= createRoot(app);
-  root.render(<InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={themes[defaultThemeSlug]}><LayerProvider toast={{ position: 'topEnd' }}><PwaUpdateNotice />{children}</LayerProvider></Theme></InternationalizationProvider>);
+  root.render(<InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={themes[defaultThemeSlug]}><LayerProvider toast={{ position: 'topEnd', inset: { top: 96 } }}><PwaUpdateNotice />{children}</LayerProvider></Theme></InternationalizationProvider>);
 }
 export function unmountContent() {
   root?.unmount();
