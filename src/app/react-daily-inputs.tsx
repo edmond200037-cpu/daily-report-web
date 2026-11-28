@@ -175,8 +175,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
       <DropdownMenu
         isMenuOpen={menuOpen}
         onOpenChange={setMenuOpen}
-        placement="below"
-        alignment="end"
+        placement="start"
         renderTrigger={({ ref }) => {
           anchorRef.current = ref;
           return null;

@@ -10,12 +10,13 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Button } from '@astryxdesign/core/Button';
+import { LayerProvider } from '@astryxdesign/core/Layer';
 import { PwaUpdateNotice } from './react-pwa';
 let root: Root | undefined;
 export function mountContent(children: ReactNode) {
   app.removeAttribute('data-legacy-ui');
   root ??= createRoot(app);
-  root.render(<InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={themes[defaultThemeSlug]}><PwaUpdateNotice />{children}</Theme></InternationalizationProvider>);
+  root.render(<InternationalizationProvider locale="zh-TW" messages={{ 'zh-TW': zhTW }} overrides={astryxOverrides}><Theme theme={themes[defaultThemeSlug]}><LayerProvider toast={{ position: 'topEnd' }}><PwaUpdateNotice />{children}</LayerProvider></Theme></InternationalizationProvider>);
 }
 export function unmountContent() {
   root?.unmount();

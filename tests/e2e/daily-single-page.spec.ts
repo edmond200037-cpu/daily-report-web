@@ -386,13 +386,28 @@ test('點按工項握把開選單，不進入排序模式', async ({ page }) => 
   await page.goto('/#daily');
   await addTrade(page, '握把選單');
   await addWork(page, '工項甲');
+  await addWork(page, '工項乙');
   await expect(page.getByRole('button', { name: '工項選項' })).toHaveCount(0);
   await grip(rows(page).first()).click();
   await expect(page.getByRole('menuitem', { name: '位置、樓層與備註', exact: true })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '刪除工項', exact: true })).toBeVisible();
   await expect(grip(rows(page).first())).toHaveAttribute('aria-pressed', 'false');
+  const intersects = (x: DOMRect, y: DOMRect) =>
+    x.left < y.right && x.right > y.left && x.top < y.bottom && x.bottom > y.top;
+  const rect = (l: Locator) => l.evaluate((el) => el.getBoundingClientRect().toJSON() as DOMRect);
+  const menu = await rect(page.getByRole('menu'));
+  for (const handle of await rows(page).locator('[data-astryx-list-reorder]').all())
+    expect(intersects(menu, await rect(handle))).toBe(false);
   await page.getByRole('menuitem', { name: '位置、樓層與備註', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '起始樓層' })).toBeVisible();
+  await grip(rows(page).first()).click();
+  await page.getByRole('menuitem', { name: '刪除工項', exact: true }).click();
+  const toast = page.getByRole('button', { name: '復原', exact: true });
+  await expect(toast).toBeVisible();
+  const finish = action(page, 'finish-entry');
+  const toastBox = await rect(toast);
+  expect(intersects(toastBox, await rect(finish))).toBe(false);
+  await finish.click();
 });
 test('鍵盤握把排序與聯絡工項排序', async ({ page }) => {
   await page.goto('/#daily');
