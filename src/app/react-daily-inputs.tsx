@@ -19,7 +19,7 @@ import {
 import { Selector } from '@astryxdesign/core/Selector';
 import { DateInput } from '@astryxdesign/core/DateInput';
 import { SuggestInput } from './react-suggest-input';
-import { MoreMenu } from '@astryxdesign/core/MoreMenu';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { BottomSheet } from '@astryxdesign/core/BottomSheet';
 import { Layout, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout';
@@ -101,6 +101,37 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
     () => source(appState.dailyLocations),
     [appState.dailyLocations],
   );
+  const rowRef = useRef<HTMLElement | null>(null);
+  const anchorRef = useRef<((el: HTMLElement | null) => void) | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // A pointer tap on the reorder handle opens the item menu; keyboard (detail 0), drags and long holds stay with Astryx's reorder.
+  useEffect(() => {
+    const li = rowRef.current?.closest('li');
+    if (!li) return;
+    let down: { x: number; y: number; t: number } | null = null;
+    const handleOf = (event: Event) =>
+      (event.target as Element | null)?.closest<HTMLElement>('[data-astryx-list-reorder]') ?? null;
+    const onDown = (event: PointerEvent) => {
+      down = handleOf(event) ? { x: event.clientX, y: event.clientY, t: event.timeStamp } : null;
+    };
+    const onClick = (event: MouseEvent) => {
+      const handle = handleOf(event);
+      const start = down;
+      down = null;
+      if (!handle || !start || event.detail === 0 || handle.getAttribute('aria-disabled') === 'true') return;
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || event.timeStamp - start.t > 300) return;
+      event.preventDefault();
+      event.stopPropagation();
+      anchorRef.current?.(handle);
+      setMenuOpen(true);
+    };
+    li.addEventListener('pointerdown', onDown, true);
+    li.addEventListener('click', onClick, true);
+    return () => {
+      li.removeEventListener('pointerdown', onDown, true);
+      li.removeEventListener('click', onClick, true);
+    };
+  }, []);
   const removeWork = () => {
     const restore = appState.daily.removeWorkItemForUndo(trade.id, work.id);
     if (!restore) return;
@@ -124,7 +155,7 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
     });
   };
   return (
-    <VStack gap={2} data-work={work.id}>
+    <VStack gap={2} data-work={work.id} ref={rowRef}>
       <HStack gap={1} vAlign="center">
         <TextInput
           label="工項"
@@ -140,18 +171,21 @@ function WorkEditor({ trade, work }: { trade: TradeSection; work: WorkItem }) {
             })
           }
         />
-        {/* The reorder handle's own click starts keyboard reorder mode, so the actions get a separate menu beside it. */}
-        <MoreMenu
-          label="工項選項"
-          size="lg"
-          placement="below"
-          alignment="end"
-          items={[
-            { label: '位置、樓層與備註', onClick: () => setDetails(!details) },
-            { label: '刪除工項', variant: 'destructive', isDisabled: locked(), onClick: removeWork },
-          ]}
-        />
       </HStack>
+      <DropdownMenu
+        isMenuOpen={menuOpen}
+        onOpenChange={setMenuOpen}
+        placement="below"
+        alignment="end"
+        renderTrigger={({ ref }) => {
+          anchorRef.current = ref;
+          return null;
+        }}
+        items={[
+          { label: '位置、樓層與備註', onClick: () => setDetails(!details) },
+          { label: '刪除工項', variant: 'destructive', isDisabled: locked(), onClick: removeWork },
+        ]}
+      />
       {details && (
         <VStack gap={2}>
           <TextInput
@@ -474,9 +508,6 @@ function TradeEditor({ trade }: { trade: TradeSection }) {
           <ListItem
             key={work.id}
             itemKey={work.id}
-            align="start"
-            // Keep the native handle centered on the touch-sized input, above the action row.
-            endContent={<VStack aria-hidden style={{ height: 'calc(var(--spacing-8) + var(--spacing-3))' }} />}
             label={<WorkEditor trade={trade} work={work} />}
           />
         ))}

@@ -60,5 +60,5 @@ describe('日報選定位置帶入樓層', () => {
 
 describe('位置樓層 React 版面契約', () => {
  it('設定位置表單順序為起始、結束與位置', () => { const html = settingsMarkup(MasterSettings, () => { settingsState.activeSection = 'locations'; settingsState.adding = true; }); expect(html.indexOf('name="startFloor"')).toBeLessThan(html.indexOf('name="endFloor"')); expect(html.indexOf('name="endFloor"')).toBeLessThan(html.indexOf('name="name"')); });
- it('日報附加欄位使用按需編輯入口', () => { const html = dailyMarkup((daily) => { const trade = createTrade('水電', '甲', 0); trade.workItems.push(createWorkItem(0)); daily.report.tradeSections.push(trade); daily.expandedId = trade.id; }); expect(html).toContain('工項選項'); expect(html).not.toContain('<datalist'); });
+ it('日報附加欄位使用按需編輯入口', () => { const html = dailyMarkup((daily) => { const trade = createTrade('水電', '甲', 0); trade.workItems.push(createWorkItem(0)); daily.report.tradeSections.push(trade); daily.expandedId = trade.id; }); expect(html).toMatch(/reorder/i); expect(html).not.toContain('<datalist'); });
 });

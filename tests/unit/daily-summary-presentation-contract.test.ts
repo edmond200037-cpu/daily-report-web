@@ -74,7 +74,7 @@ describe('React 日報資料列契約', () => {
       daily.expandedId = trade.id;
     });
     expect(html).toContain(`data-inline-work="${id}"`);
-    expect(html).toContain('工項選項');
+    expect(html).toMatch(/reorder/i);
   });
   it('進料使用 Selector 表達單一連接', () => {
     const html = dailyMarkup((daily) => {
@@ -131,7 +131,7 @@ describe('React 日報資料列契約', () => {
       daily.report.tradeSections.push(trade);
       daily.expandedId = trade.id;
     });
-    expect(html).toContain('工項選項');
+    expect(html).toMatch(/reorder/i);
     expect(html).toMatch(/reorder/i);
   });
 });

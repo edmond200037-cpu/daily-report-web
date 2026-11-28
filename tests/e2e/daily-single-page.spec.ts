@@ -382,6 +382,18 @@ test('Work grip drag sorting and rollback', async ({ page }, info) => {
   ).toBe(true);
   await page.screenshot({ path: info.outputPath('reorder.png') });
 });
+test('點按工項握把開選單，不進入排序模式', async ({ page }) => {
+  await page.goto('/#daily');
+  await addTrade(page, '握把選單');
+  await addWork(page, '工項甲');
+  await expect(page.getByRole('button', { name: '工項選項' })).toHaveCount(0);
+  await grip(rows(page).first()).click();
+  await expect(page.getByRole('menuitem', { name: '位置、樓層與備註', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '刪除工項', exact: true })).toBeVisible();
+  await expect(grip(rows(page).first())).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('menuitem', { name: '位置、樓層與備註', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '起始樓層' })).toBeVisible();
+});
 test('鍵盤握把排序與聯絡工項排序', async ({ page }) => {
   await page.goto('/#daily');
   await addTrade(page, '排序測試');

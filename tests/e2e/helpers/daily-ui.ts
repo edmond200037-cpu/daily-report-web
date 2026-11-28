@@ -163,9 +163,9 @@ export class DailyUI {
   }
 }
 
-/** Opens a work item's menu and picks one entry (the item actions live behind the 工項選項 button). */
+/** Taps a work item's reorder handle (a pointer tap opens the item menu) and picks one entry. */
 export async function pickWorkMenu(page: Page, name: '位置、樓層與備註' | '刪除工項') {
-  await page.getByRole('button', { name: '工項選項', exact: true }).first().click();
+  await page.locator('[data-work]').first().locator('xpath=ancestor-or-self::li[1]').locator('[data-astryx-list-reorder]').click();
   await page.getByRole('menuitem', { name, exact: true }).click();
 }
 
